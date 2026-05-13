@@ -1,0 +1,42 @@
+# .clang-format
+BasedOnStyle: Google
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ColumnLimit: 100
+
+# 大括号风格
+BreakBeforeBraces: Attach
+
+# 指针对齐：int* ptr 还是 int *ptr
+PointerAlignment: Left
+
+# 引用对齐
+ReferenceAlignment: Left
+
+# 短函数/条件是否允许放一行
+AllowShortFunctionsOnASingleLine: InlineOnly
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+
+# include 排序
+SortIncludes: true
+IncludeBlocks: Regroup
+
+# 连续赋值/声明的对齐
+AlignConsecutiveAssignments: false
+AlignConsecutiveDeclarations: false
+
+# 构造函数初始化列表
+ConstructorInitializerAllOnOneLineOrOnePerLine: true
+BreakConstructorInitializers: BeforeColon
+
+# 命名空间
+NamespaceIndentation: None
+FixNamespaceComments: true
+
+# C++11 列表初始化空格
+SpaceBeforeCpp11BracedList: false
+
+# 模板声明换行
+AlwaysBreakTemplateDeclarations: Yes

@@ -1,0 +1,21 @@
+# 编译产物
+build/
+*.exe
+*.out
+*.o
+*.obj
+*.a
+*.dll
+*.dll.a
+*.lib
+*.so
+*.dylib
+# IDE / 工具
+.clang-format    # 如果你想分享格式化配置的话删这行
+.vscode/*
+!.vscode/settings.json
+# clangd 索引缓存
+.cache/
+# 系统杂项
+Thumbs.db
+.DS_Store
