@@ -5,9 +5,10 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 
 add_executable(Clock
     src/main.c
+    src/clk_term.c
+    src/clk_key_io.c
     src/clk_clock.c
-    src/clk_render.c
+    src/clk_menu.c
 )
 
 target_include_directories(Clock PRIVATE include)
-target_link_libraries(Clock PRIVATE ncursesw)

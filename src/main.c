@@ -1,43 +1,41 @@
-#include <ncursesw/ncurses.h>
+#include <stdbool.h>
+#include <windows.h>
 
-#include "clk_render.h"
+#include "clk_clock.h"
+#include "clk_key_io.h"
+#include "clk_menu.h"
+#include "clk_term.h"
 
 int main(void) {
-    clk_render* render = clk_render_create();
-    if (!render)
-        return 1;
-    // 注册一个彩色样式：绿色前景
-    clk_style style_green = {.fg_rgb = 0x00FF00, .bg_rgb = 0x000000, .attrs = A_NORMAL};
-    int green_id = clk_render_register_style(render, &style_green);
-    // 再注册一个：青色前景
-    clk_style style_cyan = {.fg_rgb = 0x00FFFF, .bg_rgb = 0x000000, .attrs = A_NORMAL};
-    int cyan_id = clk_render_register_style(render, &style_cyan);
-    // 11x5 纹理
-    clk_render_texture* tex = clk_render_texture_create(5, 5, 11, 5, 0);
-    if (!tex) {
-        clk_render_destroy(render);
-        return 1;
-    }
-    clk_cell off = {L' ', 0};
-    // 每行 11 列的 HI 图案，不同行用不同颜色
-    const char* lines[] = {
-        "#   # #####", "#   #   #  ", "#####   #  ", "#   #   #  ", "#   # #####",
-    };
-    int colors[] = {green_id, green_id, cyan_id, cyan_id, green_id};
-    for (int y = 0; y < 5; y++) {
-        for (int x = 0; x < 11; x++) {
-            if (lines[y][x] == '#') {
-                clk_cell cell = {L'#', colors[y]};
-                clk_render_texture_set_cell(tex, x, y, cell);
-            } else {
-                clk_render_texture_set_cell(tex, x, y, off);
-            }
+    clk_term_init();
+    clk_clock the_clock = {};
+    clk_texture clock_texture;
+    clk_menu settings_menu = {};
+    clk_texture menu_texture;
+    bool running = true;
+    while (running) {
+        clk_update_clock(&the_clock);
+        clk_update_term();
+        clock_texture = clk_clock_to_texture(&the_clock);
+        clk_key_event event = clk_get_key_event();
+        menu_texture = clk_menu_to_texture(&settings_menu);
+        switch (event.key) {
+            case 'q':
+            case 'Q':
+                // todo
+                break;
+            case 's':
+            case 'S':
+                // todo
+                break;
+            default:
+                break;
         }
+        clk_add_texture_to_term(&clock_texture);
+        clk_add_texture_to_term(&menu_texture);
+        clk_term_draw();
+        Sleep(200);
     }
-    clk_render_add_texture(render, tex);
-    clk_render_present(render);
-    napms(30000);
-    clk_render_texture_destroy(tex);
-    clk_render_destroy(render);
-    return 0;
+    clk_destroy_menu(&settings_menu);
+    clk_term_close();
 }
