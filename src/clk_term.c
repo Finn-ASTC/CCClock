@@ -12,7 +12,7 @@ void clk_term_close(void) {
     // todo
 }
 
-void clk_add_texture_to_term(const clk_texture* texture) {
+void clk_add_texture_to_term(const clk_texture* const texture) {
     // todo
 }
 

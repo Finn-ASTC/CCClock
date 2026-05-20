@@ -11,7 +11,7 @@ typedef struct {
 void clk_term_init(void);
 void clk_term_close(void);
 
-void clk_add_texture_to_term(const clk_texture* texture);
+void clk_add_texture_to_term(const clk_texture* const texture);
 
 void clk_term_draw(void);
 
