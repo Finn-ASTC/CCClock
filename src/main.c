@@ -14,8 +14,16 @@ int main(void) {
     }
     clk_clock the_clock = {};
     clk_texture clock_texture;
+    if (!clk_add_texture_to_render_list(&clock_texture)) {
+        printf("clock_texture添加失败");
+        return 1;
+    }
     clk_menu settings_menu = {};
     clk_texture menu_texture;
+    if (!clk_add_texture_to_render_list(&menu_texture)) {
+        printf("menu_texture添加失败");
+        return 1;
+    }
     bool running = true;
     while (running) {
         clk_update_clock(&the_clock);
@@ -35,8 +43,6 @@ int main(void) {
             default:
                 break;
         }
-        clk_add_texture_to_term(&clock_texture);
-        clk_add_texture_to_term(&menu_texture);
         clk_term_draw();
         Sleep(200);
     }

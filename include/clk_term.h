@@ -40,12 +40,13 @@ typedef struct {
     int tex_w, tex_h;
     int tex_z_order;
     clk_cell* data;
+    bool is_invalid;
 } clk_texture;
 
 bool clk_term_init(void);
 void clk_term_close(void);
 
-void clk_add_texture_to_term(const clk_texture* texture);
+bool clk_add_texture_to_render_list(const clk_texture* texture);
 
 void clk_term_draw(void);
 
