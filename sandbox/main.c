@@ -2,8 +2,13 @@
 #include <stdio.h>
 
 #include "clk_key_io.h"
+#include "clk_term.h"
+
 int main(void) {
-    clk_key_io_init();
+    if (!clk_term_init()) {
+        printf("初始化");
+        return 1;
+    }
     printf("按任意键查看事件（按 q 退出）\n");
     bool running = true;
     while (running) {
@@ -36,6 +41,6 @@ int main(void) {
                 break;
         }
     }
-    clk_key_io_close();
+    clk_term_close();
     return 0;
 }

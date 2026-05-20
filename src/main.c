@@ -1,4 +1,5 @@
 #include <stdbool.h>
+#include <stdio.h>
 #include <windows.h>
 
 #include "clk_clock.h"
@@ -7,7 +8,10 @@
 #include "clk_term.h"
 
 int main(void) {
-    clk_term_init();
+    if (!clk_term_init()) {
+        printf("初始化错误");
+        return 1;
+    }
     clk_clock the_clock = {};
     clk_texture clock_texture;
     clk_menu settings_menu = {};

@@ -1,7 +1,5 @@
 #include "clk_menu.h"
 
-#include "clk_term.h"
-
 void clk_destroy_menu(clk_menu* menu) {
     // todo
 }

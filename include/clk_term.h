@@ -1,6 +1,7 @@
 #ifndef CLK_TERM_H
 #define CLK_TERM_H
 
+#include <stdbool.h>
 #include <stdint.h>
 #ifdef __cplusplus
 extern "C" {
@@ -22,30 +23,35 @@ typedef union {
         uint8_t g;
         uint8_t b;
         uint8_t a;
-    } ch;
+    } rgb;
     uint32_t raw;
 } Color24;
 
 typedef struct {
+    char cell_tex;
     Color24 fg_color;
     Color24 bg_color;
     uint8_t attrs;
+    bool is_empty;
 } clk_cell;
 
 typedef struct {
     int posx, posy;
     int tex_w, tex_h;
-    clk_cell** texture;
+    int tex_z_order;
+    clk_cell* data;
 } clk_texture;
 
-void clk_term_init(void);
+bool clk_term_init(void);
 void clk_term_close(void);
 
-void clk_add_texture_to_term(const clk_texture* const texture);
+void clk_add_texture_to_term(const clk_texture* texture);
 
 void clk_term_draw(void);
 
 void clk_update_term(void);
+
+bool clk_get_term_size(int* term_w, int* term_h);
 
 #ifdef __cplusplus
 }

@@ -4,7 +4,7 @@
 
 static bool clk_key_io_is_init = false;
 
-#ifdef WIN32
+#if defined(_WIN32) || defined(_WIN64)
 
 #include <conio.h>
 #include <stdbool.h>

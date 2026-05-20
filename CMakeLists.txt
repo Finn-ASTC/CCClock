@@ -23,3 +23,8 @@ target_link_libraries(sandbox PRIVATE libclock)
 target_include_directories(sandbox PRIVATE include)
 
 enable_testing()
+
+add_executable(test_key_io test/test_key_io.c)
+target_link_libraries(test_key_io PRIVATE libclock)
+target_include_directories(test_key_io PRIVATE include)
+add_test(NAME key_io COMMAND test_key_io)
