@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "clk_key_io.h"
 
@@ -15,13 +16,40 @@
 #endif
 
 #define CLK_TEXTURE_DEFAULT_LENGTH (16)
+#define CLK_ANSI_OUTPUT_ESTIMATE_PER_CELL (100)
+
+#define APPENDF(buf, cap, len, ...)                          \
+    do {                                                     \
+        int _rem = (int)(cap) - (len);                       \
+        if (_rem <= 0)                                       \
+            return;                                          \
+        int _n = snprintf((buf) + (len), _rem, __VA_ARGS__); \
+        if (_n < 0 || _n >= _rem)                            \
+            return;                                          \
+        (len) += _n;                                         \
+    } while (0)
+
+#define APPENDC(buf, cap, len, ch)   \
+    do {                             \
+        if ((len) + 1 >= (int)(cap)) \
+            return;                  \
+        (buf)[(len)++] = (ch);       \
+    } while (0)
 
 static int clk_is_term_init = false;
 
+static bool clk_is_texture_list_sorted = false;
+
 static clk_cell* screen_buffer;
+static int* if_rendered_sign;
 
 static int screen_w, screen_h;
-static int screen_buffer_size;
+static int screen_size;
+
+static char* ansi_output;
+
+static int ansi_output_length;
+static int ansi_output_capacity;
 
 static const clk_texture** texture_render_list;
 
@@ -29,27 +57,34 @@ static int texture_list_count = 0;
 static int texture_list_capacity = CLK_TEXTURE_DEFAULT_LENGTH;
 
 bool clk_term_init(void) {
+    if (clk_is_term_init)
+        return true;
+
+    // 打开键盘监听
     clk_key_io_init();
 
+    // 相关参数
     int sw, sh;
     if (!clk_get_term_size(&sw, &sh))
         return false;
     if (sw <= 0 || sh <= 0)
         return false;
-    screen_buffer_size = sw * sh;
+    screen_size = sw * sh;
     screen_w = sw;
     screen_h = sh;
 
-    clk_cell* temp_s = malloc(screen_buffer_size * sizeof(clk_cell));
+    clk_cell empty_cell = {.is_empty = true};
+
+    // screen_buffer
+    clk_cell* temp_s = malloc(screen_size * sizeof(clk_cell));
     if (!temp_s)
         return false;
     screen_buffer = temp_s;
 
-    clk_cell empty_cell = {.is_empty = true};
-
-    for (int i = 0; i < screen_buffer_size; ++i)
+    for (int i = 0; i < screen_size; ++i)
         screen_buffer[i] = empty_cell;
 
+    // texture_render_list
     const clk_texture** temp_l = malloc(texture_list_capacity * sizeof(const clk_texture*));
     if (!temp_l) {
         free(screen_buffer);
@@ -61,9 +96,33 @@ bool clk_term_init(void) {
     for (int i = 0; i < texture_list_capacity; ++i)
         texture_render_list[i] = NULL;
 
+    // if_rendered_sign
+    int* temp_sign = calloc(screen_size, sizeof(int));
+    if (!temp_sign) {
+        free(screen_buffer);
+        free(texture_render_list);
+        return false;
+    }
+
+    if_rendered_sign = temp_sign;
+
+    // ansi_output
+    char* temp_a = calloc(1, screen_size * CLK_ANSI_OUTPUT_ESTIMATE_PER_CELL);
+    if (!temp_a) {
+        free(screen_buffer);
+        free(texture_render_list);
+        free(if_rendered_sign);
+        return false;
+    }
+    ansi_output = temp_a;
+    ansi_output_length = 0;
+    ansi_output_capacity = screen_size * CLK_ANSI_OUTPUT_ESTIMATE_PER_CELL;
+
+    // 标记初始化 term
     clk_is_term_init = true;
 
-    printf("\033[?25l");
+    printf("\033[2J\033[H\033[?25l");
+    fflush(stdout);
 
     return true;
 }
@@ -72,30 +131,49 @@ void clk_term_close(void) {
     if (!clk_is_term_init)
         return;
 
+    // 关闭键盘监听
     clk_key_io_close();
 
+    // screen_buffer
     free(screen_buffer);
     screen_buffer = NULL;
 
+    // texture_render_list
     free(texture_render_list);
     texture_render_list = NULL;
     // texture_list 里面存储的 texture 生命周期应该由其创建者管理
 
+    // ansi_output
+    free(ansi_output);
+    ansi_output = NULL;
+
+    // if_rendered_sign
+    free(if_rendered_sign);
+    if_rendered_sign = NULL;
+
+    // 相关参数
     texture_list_count = 0;
     texture_list_capacity = CLK_TEXTURE_DEFAULT_LENGTH;
 
     screen_w = 0;
     screen_h = 0;
-    screen_buffer_size = 0;
+    screen_size = 0;
+
+    // 标记关闭 term
+    clk_is_term_init = false;
 
     printf("\033[?25h");
+    fflush(stdout);
 }
 
 static int cmp_texture_zorder(const void* tex1, const void* tex2) {
     const clk_texture* t1 = *(const clk_texture**)tex1;
     const clk_texture* t2 = *(const clk_texture**)tex2;
 
-    return (t2->tex_z_order > t1->tex_z_order) - (t2->tex_z_order < t1->tex_z_order);
+    if (t1->tex_z_order != t2->tex_z_order)
+        return (t2->tex_z_order > t1->tex_z_order) - (t2->tex_z_order < t1->tex_z_order);
+
+    return 0;
 }
 
 bool clk_add_texture_to_render_list(const clk_texture* texture) {
@@ -124,29 +202,235 @@ bool clk_add_texture_to_render_list(const clk_texture* texture) {
 
     texture_list_count = count;
 
-    // 降序排列
-    qsort(texture_render_list, texture_list_count, sizeof(const clk_texture*), cmp_texture_zorder);
+    // 标记加入新 texture 后续需要排序
+    clk_is_texture_list_sorted = false;
 
     return true;
 }
 
-bool clk_add_all_textures_to_screen_buffer(void) {
-    // todo
-    return true;
+static bool if_cell_equal(const clk_cell* c1, const clk_cell* c2) {
+    if (c1 == c2)
+        return true;
+    if (!c1 || !c2)
+        return false;
+
+    return memcmp(c1->cell_tex, c2->cell_tex, sizeof(c1->cell_tex)) == 0 &&
+           c1->fg_color.raw == c2->fg_color.raw && c1->bg_color.raw == c2->bg_color.raw &&
+           c1->attrs == c2->attrs && c1->is_empty == c2->is_empty;
+}
+
+static void clk_add_cell_to_ansi_output(const clk_cell* cell, int x, int y) {
+    if (!cell || cell->is_empty)
+        return;
+
+    char buf[128];
+    int len = 0;
+
+    APPENDF(buf, sizeof(buf), len, "\033[%d;%dH", y + 1, x + 1);
+
+    int params[16];
+    int pcount = 0;
+    if (cell->attrs & ATTR_BOLD)
+        params[pcount++] = 1;
+    if (cell->attrs & ATTR_DIM)
+        params[pcount++] = 2;
+    if (cell->attrs & ATTR_ITALIC)
+        params[pcount++] = 3;
+    if (cell->attrs & ATTR_UNDERLINE)
+        params[pcount++] = 4;
+    if (cell->attrs & ATTR_BLINK)
+        params[pcount++] = 5;
+    if (cell->attrs & ATTR_REVERSE)
+        params[pcount++] = 7;
+    if (cell->attrs & ATTR_HIDDEN)
+        params[pcount++] = 8;
+    if (cell->attrs & ATTR_STRIKE)
+        params[pcount++] = 9;
+
+    bool has_fg = cell->fg_color.raw != 0;
+    bool has_bg = cell->bg_color.raw != 0;
+
+    if (pcount > 0 || has_fg || has_bg) {
+        APPENDF(buf, sizeof(buf), len, "\033[");
+
+        for (int i = 0; i < pcount; i++) {
+            APPENDF(buf, sizeof(buf), len, "%s%d", i > 0 ? ";" : "", params[i]);
+        }
+
+        if (has_fg) {
+            APPENDF(buf, sizeof(buf), len, "%s38;2;%d;%d;%d", pcount > 0 ? ";" : "",
+                    cell->fg_color.rgb.r, cell->fg_color.rgb.g, cell->fg_color.rgb.b);
+            pcount++;
+        }
+
+        if (has_bg) {
+            APPENDF(buf, sizeof(buf), len, "%s48;2;%d;%d;%d", pcount > 0 ? ";" : "",
+                    cell->bg_color.rgb.r, cell->bg_color.rgb.g, cell->bg_color.rgb.b);
+        }
+
+        APPENDF(buf, sizeof(buf), len, "m");
+    }
+
+    for (int i = 0; i < 5 && cell->cell_tex[i] != '\0'; i++) {
+        APPENDC(buf, sizeof(buf), len, cell->cell_tex[i]);
+    }
+
+    APPENDF(buf, sizeof(buf), len, "\033[0m");
+
+    if (ansi_output_length + len > ansi_output_capacity) {
+        int new_cap = ansi_output_capacity * 2;
+        while (new_cap < ansi_output_length + len)
+            new_cap *= 2;
+        char* temp = realloc(ansi_output, new_cap);
+        if (!temp)
+            return;
+        ansi_output = temp;
+        ansi_output_capacity = new_cap;
+    }
+
+    memcpy(ansi_output + ansi_output_length, buf, len);
+    ansi_output_length += len;
 }
 
 void clk_term_draw(void) {
     if (!clk_is_term_init)
         return;
 
-    if (!clk_add_all_textures_to_screen_buffer())
-        return;
+    for (int i = 0; i < screen_size; ++i)
+        if_rendered_sign[i] = 0;
 
-    // todo
+    if (!clk_is_texture_list_sorted) {
+        // 降序排列
+        qsort(texture_render_list, texture_list_count, sizeof(const clk_texture*),
+              cmp_texture_zorder);
+        clk_is_texture_list_sorted = true;
+    }
+
+    for (int i = 0; i < texture_list_count; ++i) {
+        const clk_texture* tex = texture_render_list[i];
+        if (!tex || tex->is_invalid || !tex->data)
+            continue;
+
+        int pos_x = tex->posx, pos_y = tex->posy;
+        int width = tex->tex_w, height = tex->tex_h;
+
+        for (int tex_y = 0; tex_y < height; ++tex_y) {
+            for (int tex_x = 0; tex_x < width; ++tex_x) {
+                int x = tex_x + pos_x;
+                int y = tex_y + pos_y;
+                if (x < 0 || x >= screen_w || y < 0 || y >= screen_h)
+                    continue;
+
+                int idx = x + y * screen_w;
+                const clk_cell* cell = &tex->data[tex_x + tex_y * width];
+
+                if (if_rendered_sign[idx] || cell->is_empty)
+                    continue;
+
+                if (!if_cell_equal(cell, &screen_buffer[idx])) {
+                    clk_add_cell_to_ansi_output(cell, x, y);
+                    screen_buffer[idx] = *cell;
+                }
+                if_rendered_sign[idx] = 1;
+            }
+        }
+    }
+
+    // 清除上帧有，但这帧中为空的位置的 cell
+    for (int i = 0; i < screen_size; ++i) {
+        if (!if_rendered_sign[i] && !screen_buffer[i].is_empty) {
+            int x = i % screen_w;
+            int y = i / screen_w;
+
+            clk_cell clear = {.cell_tex = {' ', '\0', 0, 0, 0},
+                              .fg_color = {.raw = 0},
+                              .bg_color = {.raw = 0},
+                              .attrs = ATTR_NONE,
+                              .is_empty = false};
+            clk_add_cell_to_ansi_output(&clear, x, y);
+
+            screen_buffer[i] = (clk_cell){.is_empty = true};
+        }
+    }
+
+    if (ansi_output_length > 0) {
+        fwrite(ansi_output, 1, ansi_output_length, stdout);
+        fflush(stdout);
+        ansi_output_length = 0;
+    }
 }
 
-void clk_update_term(void) {
-    // todo
+bool clk_resize_term(int new_w, int new_h) {
+    int new_size = new_w * new_h;
+    int new_cap = new_size * CLK_ANSI_OUTPUT_ESTIMATE_PER_CELL;
+
+    clk_cell* new_buf = malloc(new_size * sizeof(clk_cell));
+    int* new_sign = malloc(new_size * sizeof(int));
+    char* new_ansi = malloc(new_cap);
+
+    if (!new_buf || !new_sign || !new_ansi) {
+        free(new_buf);
+        free(new_sign);
+        free(new_ansi);
+        return false;
+    }
+
+    memset(new_sign, 0, new_size * sizeof(int));
+
+    int copy_count = screen_size < new_size ? screen_size : new_size;
+    memcpy(new_buf, screen_buffer, copy_count * sizeof(clk_cell));
+
+    clk_cell empty = {.is_empty = true};
+    for (int i = screen_size; i < new_size; ++i)
+        new_buf[i] = empty;
+
+    free(screen_buffer);
+    free(if_rendered_sign);
+    free(ansi_output);
+
+    screen_buffer = new_buf;
+    if_rendered_sign = new_sign;
+    ansi_output = new_ansi;
+
+    screen_w = new_w;
+    screen_h = new_h;
+    screen_size = new_size;
+    ansi_output_capacity = new_cap;
+
+    printf("\033[2J\033[H");
+    fflush(stdout);
+
+    return true;
+}
+
+bool clk_update_term(void) {
+    int new_w, new_h;
+    if (!clk_get_term_size(&new_w, &new_h))
+        return false;
+
+    if (new_w <= 0 || new_h <= 0)
+        return false;
+
+    if (new_w != screen_w || new_h != screen_h) {
+        if (!clk_resize_term(new_w, new_h))
+            return false;
+    }
+
+    int write = 0;
+    for (int read = 0; read < texture_list_count; ++read) {
+        const clk_texture* tex = texture_render_list[read];
+        if (tex && !tex->is_invalid) {
+            texture_render_list[write++] = tex;
+        }
+    }
+
+    for (int i = write; i < texture_list_count; ++i) {
+        texture_render_list[i] = NULL;
+    }
+
+    texture_list_count = write;
+
+    return true;
 }
 
 bool clk_get_term_size(int* term_w, int* term_h) {

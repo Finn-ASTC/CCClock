@@ -28,10 +28,14 @@ typedef union {
 } Color24;
 
 typedef struct {
-    char cell_tex;
     Color24 fg_color;
     Color24 bg_color;
     uint8_t attrs;
+} clk_style;
+
+typedef struct {
+    char cell_tex[5];
+    clk_style* style;
     bool is_empty;
 } clk_cell;
 
@@ -50,7 +54,7 @@ bool clk_add_texture_to_render_list(const clk_texture* texture);
 
 void clk_term_draw(void);
 
-void clk_update_term(void);
+bool clk_update_term(void);
 
 bool clk_get_term_size(int* term_w, int* term_h);
 
