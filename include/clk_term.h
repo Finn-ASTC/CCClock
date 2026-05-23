@@ -35,7 +35,7 @@ typedef struct {
 
 typedef struct {
     char cell_tex[5];
-    clk_style* style;
+    int style_id;
     bool is_empty;
 } clk_cell;
 
@@ -57,6 +57,28 @@ void clk_term_draw(void);
 bool clk_update_term(void);
 
 bool clk_get_term_size(int* term_w, int* term_h);
+
+int clk_register_style(Color24 fg, Color24 bg, uint8_t attrs);
+
+clk_texture clk_texture_create(int w, int h);
+
+void clk_texture_destroy(clk_texture* tex);
+
+void clk_texture_set_cell(clk_texture* tex, int x, int y, const char* ch, int style_id);
+
+void clk_texture_fill_rect(clk_texture* tex, int x, int y, int w, int h, const char* ch,
+                           int style_id);
+
+void clk_texture_write_string(clk_texture* tex, int x, int y, const char* str, int style_id);
+
+void clk_texture_clear_cell(clk_texture* tex, int x, int y);
+
+void clk_texture_clear_all(clk_texture* tex);
+
+void clk_texture_set_pos(clk_texture* tex, int x, int y);
+void clk_texture_set_z_order(clk_texture* tex, int z);
+void clk_texture_set_invalid(clk_texture* tex, bool invalid);
+void clk_texture_set_pos_z(clk_texture* tex, int x, int y, int z);
 
 #ifdef __cplusplus
 }

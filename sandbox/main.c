@@ -1,71 +1,74 @@
 #include <stdbool.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 #include "clk_key_io.h"
 #include "clk_term.h"
+
 #ifdef _WIN32
 #include <windows.h>
-#define SLEEP_MS(ms) Sleep(ms)
 #else
 #include <unistd.h>
-#define SLEEP_MS(ms) usleep((ms) * 1000)
 #endif
+
 int main(void) {
     if (!clk_term_init()) {
         printf("clk_term_init 失败\n");
         return 1;
     }
-    const char* text = "Hello, ANSI!";
-    int tex_w = (int)strlen(text);
-    int tex_h = 1;
-    clk_cell* cells = malloc(tex_w * tex_h * sizeof(clk_cell));
-    if (!cells) {
-        clk_term_close();
-        return 1;
-    }
-    Color24 colors[] = {
-        {{.r = 255, .g = 0, .b = 0, .a = 0}},    // 红
-        {{.r = 255, .g = 128, .b = 0, .a = 0}},  // 橙
-        {{.r = 255, .g = 255, .b = 0, .a = 0}},  // 黄
-        {{.r = 0, .g = 255, .b = 0, .a = 0}},    // 绿
-        {{.r = 0, .g = 128, .b = 255, .a = 0}},  // 蓝
-        {{.r = 128, .g = 0, .b = 255, .a = 0}},  // 紫
-        {{.r = 255, .g = 0, .b = 128, .a = 0}},  // 粉
-    };
-    int num_colors = sizeof(colors) / sizeof(colors[0]);
-    for (int x = 0; x < tex_w; x++) {
-        clk_cell c = {0};
-        c.cell_tex[0] = text[x];
-        c.cell_tex[1] = '\0';
-        c.fg_color = colors[x % num_colors];
-        c.attrs = ATTR_BOLD;
-        c.is_empty = false;
-        cells[x] = c;
-    }
-    clk_texture tex = {
-        .posx = 2,
-        .posy = 1,
-        .tex_w = tex_w,
-        .tex_h = tex_h,
-        .tex_z_order = 0,
-        .data = cells,
-        .is_invalid = false,
-    };
-    clk_add_texture_to_render_list(&tex);
+
+    int red = clk_register_style((Color24){.rgb = {255, 50, 50, 0}}, (Color24){0}, ATTR_BOLD);
+    int green = clk_register_style((Color24){.rgb = {50, 255, 50, 0}}, (Color24){0}, ATTR_NONE);
+    int blue = clk_register_style((Color24){.rgb = {100, 150, 255, 0}}, (Color24){0}, ATTR_BOLD);
+    int dim = clk_register_style((Color24){.rgb = {128, 128, 128, 0}}, (Color24){0}, ATTR_DIM);
+    int cyan_bg = clk_register_style((Color24){.rgb = {255, 255, 255, 0}},
+                                     (Color24){.rgb = {0, 100, 100, 0}}, ATTR_NONE);
+    int cyan_fg = clk_register_style((Color24){.rgb = {0, 255, 255, 0}}, (Color24){0}, ATTR_BOLD);
+
+    // hello 纹理：一行彩色文字
+    clk_texture tex_hello = clk_texture_create(11, 1);
+    clk_texture_write_string(&tex_hello, 0, 0, "Hello ANSI!", red);
+    tex_hello.posx = 2;
+    tex_hello.posy = 1;
+    tex_hello.tex_z_order = 0;
+
+    // info 纹理：3x10 带背景色 + 混合样式的格子
+    clk_texture tex_info = clk_texture_create(10, 3);
+    clk_texture_fill_rect(&tex_info, 0, 0, 10, 3, ".", dim);
+    clk_texture_set_cell(&tex_info, 1, 1, "G", green);
+    clk_texture_set_cell(&tex_info, 4, 1, "B", blue);
+    clk_texture_set_cell(&tex_info, 7, 1, "R", red);
+    tex_info.posx = 2;
+    tex_info.posy = 3;
+    tex_info.tex_z_order = 1;
+
+    // 带背景的色块
+    clk_texture tex_block = clk_texture_create(5, 2);
+    clk_texture_fill_rect(&tex_block, 0, 0, 5, 2, " ", cyan_bg);
+    clk_texture_write_string(&tex_block, 0, 0, "BLOCK", cyan_fg);
+    tex_block.posx = 2;
+    tex_block.posy = 7;
+    tex_block.tex_z_order = 0;
+
+    clk_add_texture_to_render_list(&tex_hello);
+    clk_add_texture_to_render_list(&tex_info);
+    clk_add_texture_to_render_list(&tex_block);
+
     clk_term_draw();
-    printf("\033[%d;1H按 q 键退出...", tex_h + 3);
+
+    printf("\033[%d;1HPress q to exit...", 10);
     fflush(stdout);
-    free(cells);
-    bool not_exit = true;
-    clk_key_event event;
-    while (not_exit) {
-        event = clk_get_key_event();
-        if (event.key == 'q') {
-            not_exit = false;
-        }
+
+    clk_key_event ev;
+    bool running = true;
+    while (running) {
+        ev = clk_get_key_event();
+        if (ev.key == 'q')
+            running = false;
     }
+
+    clk_texture_destroy(&tex_hello);
+    clk_texture_destroy(&tex_info);
+    clk_texture_destroy(&tex_block);
     clk_term_close();
     return 0;
 }

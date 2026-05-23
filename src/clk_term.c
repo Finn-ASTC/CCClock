@@ -17,6 +17,7 @@
 
 #define CLK_TEXTURE_DEFAULT_LENGTH (16)
 #define CLK_ANSI_OUTPUT_ESTIMATE_PER_CELL (100)
+#define CLK_STYLE_DEFAULT_CAPACITY (16)
 
 #define APPENDF(buf, cap, len, ...)                          \
     do {                                                     \
@@ -55,6 +56,16 @@ static const clk_texture** texture_render_list;
 
 static int texture_list_count = 0;
 static int texture_list_capacity = CLK_TEXTURE_DEFAULT_LENGTH;
+
+static clk_style* style_registry;
+static int style_count = 0;
+static int style_capacity = 0;
+
+static const clk_style* clk_get_style(int style_id) {
+    if (style_id <= 0 || style_id >= style_count)
+        return NULL;
+    return &style_registry[style_id];
+}
 
 bool clk_term_init(void) {
     if (clk_is_term_init)
@@ -118,6 +129,20 @@ bool clk_term_init(void) {
     ansi_output_length = 0;
     ansi_output_capacity = screen_size * CLK_ANSI_OUTPUT_ESTIMATE_PER_CELL;
 
+    // style_registry
+    clk_style* temp_st = malloc(CLK_STYLE_DEFAULT_CAPACITY * sizeof(clk_style));
+    if (!temp_st) {
+        free(screen_buffer);
+        free(texture_render_list);
+        free(if_rendered_sign);
+        free(ansi_output);
+        return false;
+    }
+    style_registry = temp_st;
+    style_registry[0] = (clk_style){{.raw = 0}, {.raw = 0}, ATTR_NONE};
+    style_count = 1;
+    style_capacity = CLK_STYLE_DEFAULT_CAPACITY;
+
     // 标记初始化 term
     clk_is_term_init = true;
 
@@ -151,6 +176,12 @@ void clk_term_close(void) {
     free(if_rendered_sign);
     if_rendered_sign = NULL;
 
+    // style_registry
+    free(style_registry);
+    style_registry = NULL;
+    style_count = 0;
+    style_capacity = 0;
+
     // 相关参数
     texture_list_count = 0;
     texture_list_capacity = CLK_TEXTURE_DEFAULT_LENGTH;
@@ -164,6 +195,29 @@ void clk_term_close(void) {
 
     printf("\033[?25h");
     fflush(stdout);
+}
+
+int clk_register_style(Color24 fg, Color24 bg, uint8_t attrs) {
+    if (!clk_is_term_init)
+        return 0;
+
+    for (int i = 1; i < style_count; ++i) {
+        if (style_registry[i].fg_color.raw == fg.raw && style_registry[i].bg_color.raw == bg.raw &&
+            style_registry[i].attrs == attrs)
+            return i;
+    }
+
+    if (style_count + 1 > style_capacity) {
+        int new_cap = style_capacity * 2;
+        clk_style* temp = realloc(style_registry, new_cap * sizeof(clk_style));
+        if (!temp)
+            return 0;
+        style_registry = temp;
+        style_capacity = new_cap;
+    }
+
+    style_registry[style_count] = (clk_style){fg, bg, attrs};
+    return style_count++;
 }
 
 static int cmp_texture_zorder(const void* tex1, const void* tex2) {
@@ -215,60 +269,63 @@ static bool if_cell_equal(const clk_cell* c1, const clk_cell* c2) {
         return false;
 
     return memcmp(c1->cell_tex, c2->cell_tex, sizeof(c1->cell_tex)) == 0 &&
-           c1->fg_color.raw == c2->fg_color.raw && c1->bg_color.raw == c2->bg_color.raw &&
-           c1->attrs == c2->attrs && c1->is_empty == c2->is_empty;
+           c1->style_id == c2->style_id && c1->is_empty == c2->is_empty;
 }
 
 static void clk_add_cell_to_ansi_output(const clk_cell* cell, int x, int y) {
     if (!cell || cell->is_empty)
         return;
 
+    const clk_style* style = clk_get_style(cell->style_id);
+
     char buf[128];
     int len = 0;
 
     APPENDF(buf, sizeof(buf), len, "\033[%d;%dH", y + 1, x + 1);
 
-    int params[16];
-    int pcount = 0;
-    if (cell->attrs & ATTR_BOLD)
-        params[pcount++] = 1;
-    if (cell->attrs & ATTR_DIM)
-        params[pcount++] = 2;
-    if (cell->attrs & ATTR_ITALIC)
-        params[pcount++] = 3;
-    if (cell->attrs & ATTR_UNDERLINE)
-        params[pcount++] = 4;
-    if (cell->attrs & ATTR_BLINK)
-        params[pcount++] = 5;
-    if (cell->attrs & ATTR_REVERSE)
-        params[pcount++] = 7;
-    if (cell->attrs & ATTR_HIDDEN)
-        params[pcount++] = 8;
-    if (cell->attrs & ATTR_STRIKE)
-        params[pcount++] = 9;
+    if (style) {
+        int params[16];
+        int pcount = 0;
+        if (style->attrs & ATTR_BOLD)
+            params[pcount++] = 1;
+        if (style->attrs & ATTR_DIM)
+            params[pcount++] = 2;
+        if (style->attrs & ATTR_ITALIC)
+            params[pcount++] = 3;
+        if (style->attrs & ATTR_UNDERLINE)
+            params[pcount++] = 4;
+        if (style->attrs & ATTR_BLINK)
+            params[pcount++] = 5;
+        if (style->attrs & ATTR_REVERSE)
+            params[pcount++] = 7;
+        if (style->attrs & ATTR_HIDDEN)
+            params[pcount++] = 8;
+        if (style->attrs & ATTR_STRIKE)
+            params[pcount++] = 9;
 
-    bool has_fg = cell->fg_color.raw != 0;
-    bool has_bg = cell->bg_color.raw != 0;
+        bool has_fg = style->fg_color.raw != 0;
+        bool has_bg = style->bg_color.raw != 0;
 
-    if (pcount > 0 || has_fg || has_bg) {
-        APPENDF(buf, sizeof(buf), len, "\033[");
+        if (pcount > 0 || has_fg || has_bg) {
+            APPENDF(buf, sizeof(buf), len, "\033[");
 
-        for (int i = 0; i < pcount; i++) {
-            APPENDF(buf, sizeof(buf), len, "%s%d", i > 0 ? ";" : "", params[i]);
+            for (int i = 0; i < pcount; i++) {
+                APPENDF(buf, sizeof(buf), len, "%s%d", i > 0 ? ";" : "", params[i]);
+            }
+
+            if (has_fg) {
+                APPENDF(buf, sizeof(buf), len, "%s38;2;%d;%d;%d", pcount > 0 ? ";" : "",
+                        style->fg_color.rgb.r, style->fg_color.rgb.g, style->fg_color.rgb.b);
+                pcount++;
+            }
+
+            if (has_bg) {
+                APPENDF(buf, sizeof(buf), len, "%s48;2;%d;%d;%d", pcount > 0 ? ";" : "",
+                        style->bg_color.rgb.r, style->bg_color.rgb.g, style->bg_color.rgb.b);
+            }
+
+            APPENDF(buf, sizeof(buf), len, "m");
         }
-
-        if (has_fg) {
-            APPENDF(buf, sizeof(buf), len, "%s38;2;%d;%d;%d", pcount > 0 ? ";" : "",
-                    cell->fg_color.rgb.r, cell->fg_color.rgb.g, cell->fg_color.rgb.b);
-            pcount++;
-        }
-
-        if (has_bg) {
-            APPENDF(buf, sizeof(buf), len, "%s48;2;%d;%d;%d", pcount > 0 ? ";" : "",
-                    cell->bg_color.rgb.r, cell->bg_color.rgb.g, cell->bg_color.rgb.b);
-        }
-
-        APPENDF(buf, sizeof(buf), len, "m");
     }
 
     for (int i = 0; i < 5 && cell->cell_tex[i] != '\0'; i++) {
@@ -342,11 +399,7 @@ void clk_term_draw(void) {
             int x = i % screen_w;
             int y = i / screen_w;
 
-            clk_cell clear = {.cell_tex = {' ', '\0', 0, 0, 0},
-                              .fg_color = {.raw = 0},
-                              .bg_color = {.raw = 0},
-                              .attrs = ATTR_NONE,
-                              .is_empty = false};
+            clk_cell clear = {.cell_tex = {' ', '\0', 0, 0, 0}, .style_id = 0, .is_empty = false};
             clk_add_cell_to_ansi_output(&clear, x, y);
 
             screen_buffer[i] = (clk_cell){.is_empty = true};
@@ -466,4 +519,133 @@ bool clk_get_term_size(int* term_w, int* term_h) {
     return false;
 
 #endif
+}
+
+clk_texture clk_texture_create(int w, int h) {
+    clk_texture tex = {0};
+
+    if (w <= 0 || h <= 0)
+        return tex;
+
+    clk_cell* data = malloc(w * h * sizeof(clk_cell));
+    if (!data)
+        return tex;
+
+    clk_cell empty = {.is_empty = true, .style_id = 0};
+    for (int i = 0; i < w * h; ++i)
+        data[i] = empty;
+
+    tex.tex_w = w;
+    tex.tex_h = h;
+    tex.data = data;
+    return tex;
+}
+
+void clk_texture_destroy(clk_texture* tex) {
+    if (!tex || !tex->data)
+        return;
+    free(tex->data);
+    tex->data = NULL;
+    tex->tex_w = 0;
+    tex->tex_h = 0;
+}
+
+void clk_texture_set_cell(clk_texture* tex, int x, int y, const char* ch, int style_id) {
+    if (!tex || !tex->data || x < 0 || x >= tex->tex_w || y < 0 || y >= tex->tex_h)
+        return;
+
+    clk_cell* cell = &tex->data[x + y * tex->tex_w];
+
+    int i = 0;
+    while (i < 4 && ch && ch[i]) {
+        cell->cell_tex[i] = ch[i];
+        ++i;
+    }
+    cell->cell_tex[i] = '\0';
+    cell->style_id = style_id;
+    cell->is_empty = false;
+}
+
+void clk_texture_fill_rect(clk_texture* tex, int x, int y, int w, int h, const char* ch,
+                           int style_id) {
+    if (!tex || !tex->data || w <= 0 || h <= 0)
+        return;
+
+    for (int dy = 0; dy < h; ++dy)
+        for (int dx = 0; dx < w; ++dx)
+            clk_texture_set_cell(tex, x + dx, y + dy, ch, style_id);
+}
+
+void clk_texture_write_string(clk_texture* tex, int x, int y, const char* str, int style_id) {
+    if (!tex || !tex->data || !str)
+        return;
+
+    int col = 0;
+    int i = 0;
+    while (str[i] != '\0') {
+        unsigned char c = (unsigned char)str[i];
+        int byte_len;
+        if ((c & 0x80) == 0)
+            byte_len = 1;
+        else if ((c & 0xE0) == 0xC0)
+            byte_len = 2;
+        else if ((c & 0xF0) == 0xE0)
+            byte_len = 3;
+        else if ((c & 0xF8) == 0xF0)
+            byte_len = 4;
+        else {
+            ++i;
+            continue;
+        }
+
+        char tmp[5] = {0};
+        for (int j = 0; j < byte_len && str[i + j] != '\0'; ++j)
+            tmp[j] = str[i + j];
+        clk_texture_set_cell(tex, x + col, y, tmp, style_id);
+        i += byte_len;
+        ++col;
+    }
+}
+
+void clk_texture_clear_cell(clk_texture* tex, int x, int y) {
+    if (!tex || !tex->data || x < 0 || x >= tex->tex_w || y < 0 || y >= tex->tex_h)
+        return;
+    tex->data[x + y * tex->tex_w].is_empty = true;
+}
+
+void clk_texture_clear_all(clk_texture* tex) {
+    if (!tex || !tex->data)
+        return;
+
+    for (int i = 0; i < tex->tex_w * tex->tex_h; ++i)
+        tex->data[i].is_empty = true;
+}
+
+void clk_texture_set_pos(clk_texture* tex, int x, int y) {
+    if (!tex)
+        return;
+    tex->posx = x;
+    tex->posy = y;
+}
+
+void clk_texture_set_z_order(clk_texture* tex, int z) {
+    if (!tex)
+        return;
+    tex->tex_z_order = z;
+    clk_is_texture_list_sorted = false;
+}
+
+void clk_texture_set_invalid(clk_texture* tex, bool invalid) {
+    if (!tex)
+        return;
+    tex->is_invalid = invalid;
+}
+
+void clk_texture_set_pos_z(clk_texture* tex, int x, int y, int z) {
+    if (!tex)
+        return;
+    tex->posx = x;
+    tex->posy = y;
+    tex->tex_z_order = z;
+    clk_is_texture_list_sorted = false;
 }
