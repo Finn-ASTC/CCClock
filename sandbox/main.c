@@ -16,13 +16,13 @@ int main(void) {
         return 1;
     }
 
-    int red = clk_register_style((Color24){.rgb = {255, 50, 50, 0}}, (Color24){0}, ATTR_BOLD);
-    int green = clk_register_style((Color24){.rgb = {50, 255, 50, 0}}, (Color24){0}, ATTR_NONE);
-    int blue = clk_register_style((Color24){.rgb = {100, 150, 255, 0}}, (Color24){0}, ATTR_BOLD);
-    int dim = clk_register_style((Color24){.rgb = {128, 128, 128, 0}}, (Color24){0}, ATTR_DIM);
-    int cyan_bg = clk_register_style((Color24){.rgb = {255, 255, 255, 0}},
-                                     (Color24){.rgb = {0, 100, 100, 0}}, ATTR_NONE);
-    int cyan_fg = clk_register_style((Color24){.rgb = {0, 255, 255, 0}}, (Color24){0}, ATTR_BOLD);
+    int red = clk_register_style((Color24){.rgb = {255, 50, 50}}, (Color24){0}, ATTR_BOLD);
+    int green = clk_register_style((Color24){.rgb = {50, 255, 50}}, (Color24){0}, ATTR_NONE);
+    int blue = clk_register_style((Color24){.rgb = {100, 150, 255}}, (Color24){0}, ATTR_BOLD);
+    int dim = clk_register_style((Color24){.rgb = {128, 128, 128}}, (Color24){0}, ATTR_DIM);
+    int cyan_bg = clk_register_style((Color24){.rgb = {255, 255, 255}},
+                                     (Color24){.rgb = {0, 100, 100}}, ATTR_NONE);
+    int cyan_fg = clk_register_style((Color24){.rgb = {0, 255, 255}}, (Color24){0}, ATTR_BOLD);
 
     // hello 纹理：一行彩色文字
     clk_texture tex_hello = clk_texture_create(11, 1);

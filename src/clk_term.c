@@ -42,7 +42,7 @@ static int clk_is_term_init = false;
 static bool clk_is_texture_list_sorted = false;
 
 static clk_cell* screen_buffer;
-static int* if_rendered_sign;
+static bool* if_rendered_sign;
 
 static int screen_w, screen_h;
 static int screen_size;
@@ -90,6 +90,7 @@ bool clk_term_init(void) {
     clk_cell* temp_s = malloc(screen_size * sizeof(clk_cell));
     if (!temp_s)
         return false;
+
     screen_buffer = temp_s;
 
     for (int i = 0; i < screen_size; ++i)
@@ -108,7 +109,7 @@ bool clk_term_init(void) {
         texture_render_list[i] = NULL;
 
     // if_rendered_sign
-    int* temp_sign = calloc(screen_size, sizeof(int));
+    bool* temp_sign = calloc(screen_size, sizeof(bool));
     if (!temp_sign) {
         free(screen_buffer);
         free(texture_render_list);
@@ -179,12 +180,16 @@ void clk_term_close(void) {
     // style_registry
     free(style_registry);
     style_registry = NULL;
-    style_count = 0;
-    style_capacity = 0;
 
     // 相关参数
     texture_list_count = 0;
     texture_list_capacity = CLK_TEXTURE_DEFAULT_LENGTH;
+
+    style_count = 0;
+    style_capacity = CLK_STYLE_DEFAULT_CAPACITY;
+
+    ansi_output_length = 0;
+    ansi_output_capacity = 0;
 
     screen_w = 0;
     screen_h = 0;
@@ -231,6 +236,9 @@ static int cmp_texture_zorder(const void* tex1, const void* tex2) {
 }
 
 bool clk_add_texture_to_render_list(const clk_texture* texture) {
+    if (!clk_is_term_init)
+        return false;
+
     if (!texture || !clk_is_term_init)
         return false;
 
@@ -273,12 +281,15 @@ static bool if_cell_equal(const clk_cell* c1, const clk_cell* c2) {
 }
 
 static void clk_add_cell_to_ansi_output(const clk_cell* cell, int x, int y) {
+    if (!clk_is_term_init)
+        return;
+
     if (!cell || cell->is_empty)
         return;
 
     const clk_style* style = clk_get_style(cell->style_id);
 
-    char buf[128];
+    char buf[256];
     int len = 0;
 
     APPENDF(buf, sizeof(buf), len, "\033[%d;%dH", y + 1, x + 1);
@@ -414,11 +425,14 @@ void clk_term_draw(void) {
 }
 
 bool clk_resize_term(int new_w, int new_h) {
+    if (!clk_is_term_init)
+        return false;
+
     int new_size = new_w * new_h;
     int new_cap = new_size * CLK_ANSI_OUTPUT_ESTIMATE_PER_CELL;
 
     clk_cell* new_buf = malloc(new_size * sizeof(clk_cell));
-    int* new_sign = malloc(new_size * sizeof(int));
+    bool* new_sign = malloc(new_size * sizeof(bool));
     char* new_ansi = malloc(new_cap);
 
     if (!new_buf || !new_sign || !new_ansi) {
@@ -428,7 +442,7 @@ bool clk_resize_term(int new_w, int new_h) {
         return false;
     }
 
-    memset(new_sign, 0, new_size * sizeof(int));
+    memset(new_sign, 0, new_size * sizeof(bool));
 
     int copy_count = screen_size < new_size ? screen_size : new_size;
     memcpy(new_buf, screen_buffer, copy_count * sizeof(clk_cell));
@@ -457,6 +471,9 @@ bool clk_resize_term(int new_w, int new_h) {
 }
 
 bool clk_update_term(void) {
+    if (!clk_is_term_init)
+        return false;
+
     int new_w, new_h;
     if (!clk_get_term_size(&new_w, &new_h))
         return false;

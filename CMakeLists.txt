@@ -4,6 +4,7 @@ set(CMAKE_C_STANDARD 17)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
 add_library(libclock STATIC
+    src/clk_json.c
     src/clk_key_io.c
     src/clk_term.c
     src/clk_clock.c
