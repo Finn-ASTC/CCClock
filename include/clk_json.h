@@ -22,8 +22,8 @@ typedef struct clk_json_value clk_json_value;
 
 typedef struct {
     clk_json_value** items;
-    int count;
-    int capacity;
+    size_t count;
+    size_t capacity;
 } clk_json_array;
 
 typedef struct {
@@ -33,13 +33,12 @@ typedef struct {
 
 typedef struct {
     clk_json_key_value_pair* pairs;
-    int count;
-    int capacity;
+    size_t count;
+    size_t capacity;
 } clk_json_object;
 
 struct clk_json_value {
     clk_json_type type;
-    int line, col;
     union {
         double num_value;
         char* str_value;
@@ -113,7 +112,7 @@ int clk_json_object_remove(clk_json_value* object, const char* key);
 size_t clk_json_object_count(const clk_json_value* object);
 
 typedef struct clk_json_object_iterator {
-    const void* opaque;
+    const void* opaque[4];
 } clk_json_object_iterator;
 
 int clk_json_object_iterator_init(const clk_json_value* object, clk_json_object_iterator* iter);
