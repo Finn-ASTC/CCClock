@@ -117,8 +117,7 @@ typedef struct clk_json_object_iterator {
 
 int clk_json_object_iterator_init(const clk_json_value* object, clk_json_object_iterator* iter);
 
-bool clk_json_object_iterator_next(clk_json_object_iterator* iter, const char** key,
-                                   clk_json_value** value);
+bool clk_json_object_iterator_next(clk_json_object_iterator* iter, clk_json_key_value_pair* pair);
 
 // 数组相关
 clk_json_value* clk_json_array_get(const clk_json_value* array, size_t index);
