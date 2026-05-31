@@ -433,6 +433,112 @@ int main(void) {
     free(s);
     clk_json_free(v);
 
+    /* === Deep Copy === */
+    v = clk_json_parse("{\"a\":1,\"b\":[2,{\"c\":3}],\"d\":\"hello\"}");
+    clk_json_value* cp = clk_json_deep_copy(v);
+    TEST("deep_copy non-null", cp != NULL);
+    TEST("deep_copy equals original", clk_json_equals(v, cp));
+    clk_json_object_set(cp, "a", clk_json_create_number(999));
+    clk_json_get_number(clk_json_object_get(v, "a"), &num_val);
+    TEST("deep_copy original untouched", num_val == 1.0);
+    clk_json_free(cp);
+    clk_json_free(v);
+    cp = clk_json_deep_copy(NULL);
+    TEST("deep_copy NULL returns NULL", cp == NULL);
+
+    /* === Merge Objects === */
+    clk_json_value* dest = clk_json_create_object();
+    clk_json_object_set(dest, "a", clk_json_create_number(1));
+    clk_json_value* src = clk_json_parse("{\"b\":2,\"c\":3}");
+    int rc = clk_json_merge_objects(dest, src);
+    TEST("merge returns 0", rc == 0);
+    TEST("merge count 3", clk_json_object_count(dest) == 3);
+    TEST("merge keeps 'a'",
+         clk_json_is_number(clk_json_object_get(dest, "a")));
+    TEST("merge adds 'b'",
+         clk_json_is_number(clk_json_object_get(dest, "b")));
+    /* overwrite */
+    clk_json_value* src2 = clk_json_parse("{\"a\":99}");
+    rc = clk_json_merge_objects(dest, src2);
+    TEST("merge overwrite ok", rc == 0);
+    clk_json_get_number(clk_json_object_get(dest, "a"), &num_val);
+    TEST("merge overwrite value", num_val == 99.0);
+    clk_json_free(src2);
+    clk_json_free(dest);
+    clk_json_free(src);
+
+    /* merge non-objects fails */
+    clk_json_value* num_node = clk_json_create_number(1);
+    TEST("merge non-object fails", clk_json_merge_objects(num_node, num_node) == -1);
+    clk_json_free(num_node);
+
+    /* === Get By Path === */
+    v = clk_json_parse("{\"users\":[{\"name\":\"Alice\",\"age\":30},{\"name\":\"Bob\",\"age\":25}],\"count\":2}");
+    TEST_REQUIRE("path parse root", v != NULL);
+
+    /* 简单键名 */
+    clk_json_value* r = clk_json_get_by_path(v, "count");
+    TEST("path simple key", r != NULL && clk_json_is_number(r));
+    clk_json_get_number(r, &num_val);
+    TEST("path simple key value", num_val == 2.0);
+
+    /* 一层嵌套对象 */
+    r = clk_json_get_by_path(v, "users");
+    TEST("path nested object", r != NULL && clk_json_is_array(r));
+
+    /* 对象 + 数组索引 */
+    r = clk_json_get_by_path(v, "users[0]");
+    TEST_REQUIRE("path obj+index", r != NULL && clk_json_is_object(r));
+    r = clk_json_get_by_path(r, "name");
+    TEST("path obj+index sub-key", r != NULL);
+
+    /* 对象 + 数组索引 + 键名（一条路径） */
+    r = clk_json_get_by_path(v, "users[0].name");
+    TEST_REQUIRE("path obj+index+key", r != NULL && clk_json_is_string(r));
+    clk_json_get_string(r, &str_val);
+    TEST("path obj+index+key value", strcmp(str_val, "Alice") == 0);
+
+    /* 第二个元素 */
+    r = clk_json_get_by_path(v, "users[1].age");
+    TEST_REQUIRE("path second element", r != NULL);
+    clk_json_get_number(r, &num_val);
+    TEST("path second element value", num_val == 25.0);
+
+    /* 不存在返回 NULL */
+    r = clk_json_get_by_path(v, "missing");
+    TEST("path missing key", r == NULL);
+    r = clk_json_get_by_path(v, "users[99]");
+    TEST("path out of bounds", r == NULL);
+    r = clk_json_get_by_path(v, "users[0].bad");
+    TEST("path missing sub-key", r == NULL);
+
+    /* 空路径返回 root */
+    r = clk_json_get_by_path(v, "");
+    TEST("path empty returns root", r == v);
+
+    /* 从数组开始 */
+    clk_json_value* arr = clk_json_parse("[10,20,30]");
+    r = clk_json_get_by_path(arr, "[0]");
+    TEST_REQUIRE("path array root [0]", r != NULL);
+    clk_json_get_number(r, &num_val);
+    TEST("path array root [0] value", num_val == 10.0);
+    r = clk_json_get_by_path(arr, "[2]");
+    clk_json_get_number(r, &num_val);
+    TEST("path array root [2] value", num_val == 30.0);
+    clk_json_free(arr);
+
+    /* 非法路径 */
+    r = clk_json_get_by_path(v, "users[abc]");
+    TEST("path bad index non-numeric", r == NULL);
+    r = clk_json_get_by_path(v, "users[-1]");
+    TEST("path bad index negative", r == NULL);
+
+    /* NULL 输入 */
+    TEST("path NULL path", clk_json_get_by_path(v, NULL) == NULL);
+    TEST("path NULL root", clk_json_get_by_path(NULL, "a") == NULL);
+
+    clk_json_free(v);
+
 test_cleanup:
     printf("\n%d/%d passed\n", test_total - test_failed, test_total);
     return test_failed > 0 ? 1 : 0;
