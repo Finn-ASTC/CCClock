@@ -7,7 +7,7 @@
 #include <string.h>
 
 /* ================================================================
- *  错误处理
+ *  Error handling
  * ================================================================ */
 
 static char clk_json_parse_err[256];
@@ -16,7 +16,7 @@ static char clk_json_parse_err[256];
     snprintf(clk_json_parse_err, sizeof(clk_json_parse_err), fmt, ##__VA_ARGS__)
 
 /* ================================================================
- *  内部类型：Lexer / Token
+ *  Internal types: Lexer / Token
  * ================================================================ */
 
 typedef struct {
@@ -27,19 +27,19 @@ typedef struct {
 } clk_json_lexer;
 
 typedef enum {
-    TOKEN_LEFT_BRACE,     // {
-    TOKEN_RIGHT_BRACE,    // }
-    TOKEN_LEFT_BRACKET,   // [
-    TOKEN_RIGHT_BRACKET,  // ]
-    TOKEN_COLON,          // :
-    TOKEN_COMMA,          // ,
-    TOKEN_STRING,         // "abc"
-    TOKEN_NUMBER,         // 123
-    TOKEN_TRUE,           // true
-    TOKEN_FALSE,          // false
-    TOKEN_NULL,           // null
-    TOKEN_EOF,            // 输入结束
-    TOKEN_ERROR           // 解析错误
+    TOKEN_LEFT_BRACE,    /* { */
+    TOKEN_RIGHT_BRACE,   /* } */
+    TOKEN_LEFT_BRACKET,  /* [ */
+    TOKEN_RIGHT_BRACKET, /* ] */
+    TOKEN_COLON,         /* : */
+    TOKEN_COMMA,         /* , */
+    TOKEN_STRING,        /* "..." */
+    TOKEN_NUMBER,        /* 123 */
+    TOKEN_TRUE,          /* true */
+    TOKEN_FALSE,         /* false */
+    TOKEN_NULL,          /* null */
+    TOKEN_EOF,           /* end of input */
+    TOKEN_ERROR          /* lex error */
 } clk_json_token_type;
 
 typedef struct {
@@ -51,7 +51,7 @@ typedef struct {
 } clk_json_token;
 
 /* ================================================================
- *  内部工具函数
+ *  Internal helpers
  * ================================================================ */
 
 static bool clk_json_is_delimiter(char c) {
@@ -128,9 +128,11 @@ static void clk_json_lexer_next(clk_json_lexer* lexer, clk_json_token* token) {
     if (!token)
         return;
 
+    /* free previous token's string buffer */
     free(token->str_value);
     memset(token, 0, sizeof(clk_json_token));
 
+    /* skip whitespace */
     while (1) {
         char c = lexer->json[lexer->pos];
         if (c == ' ' || c == '\t' || c == '\r') {
@@ -216,12 +218,14 @@ static void clk_json_lexer_next(clk_json_lexer* lexer, clk_json_token* token) {
             size_t len = 0;
             char* buf = malloc(capacity);
 
+            /* skip opening quote */
             lexer->pos++;
             lexer->col++;
 
             while (1) {
                 char c = lexer->json[lexer->pos];
 
+                /* unterminated string */
                 if (c == '\0' || c == '\n') {
                     token->type = TOKEN_ERROR;
                     goto string_error;
@@ -261,6 +265,7 @@ static void clk_json_lexer_next(clk_json_lexer* lexer, clk_json_token* token) {
                             buf[len++] = '\t';
                             break;
                         case 'u': {
+                            /* skip 'u' */
                             lexer->pos++;
                             lexer->col++;
                             unsigned int codepoint = parse_hex4(lexer);
@@ -271,18 +276,21 @@ static void clk_json_lexer_next(clk_json_lexer* lexer, clk_json_token* token) {
                                 goto string_error;
                             }
 
+                            /* advance past 4 hex digits */
                             lexer->pos += 4;
                             lexer->col += 4;
 
+                            /* surrogate pair: high surrogate must be
+                             * followed by a low surrogate */
                             if (codepoint >= 0xD800 && codepoint <= 0xDBFF) {
                                 if (lexer->json[lexer->pos] == '\\' &&
                                     lexer->json[lexer->pos + 1] == 'u') {
                                     lexer->pos += 2;
                                     lexer->col += 2;
-                                    unsigned int low_surrogate = parse_hex4(lexer);
-                                    if (low_surrogate >= 0xDC00 && low_surrogate <= 0xDFFF) {
-                                        codepoint = 0x10000 + ((codepoint - 0xD800) << 10) +
-                                                    (low_surrogate - 0xDC00);
+                                    unsigned int low = parse_hex4(lexer);
+                                    if (low >= 0xDC00 && low <= 0xDFFF) {
+                                        codepoint =
+                                            0x10000 + ((codepoint - 0xD800) << 10) + (low - 0xDC00);
                                         lexer->pos += 4;
                                         lexer->col += 4;
                                     } else {
@@ -337,12 +345,14 @@ static void clk_json_lexer_next(clk_json_lexer* lexer, clk_json_token* token) {
             token->type = TOKEN_STRING;
             token->str_value = buf;
             token->str_len = len;
+            /* skip closing quote */
             lexer->pos++;
             lexer->col++;
             break;
 
         string_error:
             free(buf);
+            /* skip closing quote even on error so the caller can continue */
             lexer->pos++;
             lexer->col++;
             break;
@@ -368,7 +378,7 @@ static void clk_json_lexer_next(clk_json_lexer* lexer, clk_json_token* token) {
 }
 
 /* ================================================================
- *  Parser（内部递归下降）
+ *  Parser (recursive descent)
  * ================================================================ */
 
 static clk_json_value* clk_json_alloc_node(void) {
@@ -382,6 +392,7 @@ static clk_json_value* clk_json_alloc_node(void) {
 static clk_json_value* clk_parse_object(clk_json_lexer* lexer);
 static clk_json_value* clk_parse_array(clk_json_lexer* lexer);
 
+/** Dispatch a pre-read token to the appropriate value constructor. */
 static clk_json_value* clk_parse_value_from_token(clk_json_lexer* lexer, clk_json_token* token) {
     switch (token->type) {
         case TOKEN_LEFT_BRACE:
@@ -404,6 +415,7 @@ static clk_json_value* clk_parse_value_from_token(clk_json_lexer* lexer, clk_jso
     }
 }
 
+/** Read the next token and dispatch it. */
 static clk_json_value* clk_parse_value(clk_json_lexer* lexer) {
     clk_json_token token = {0};
     clk_json_lexer_next(lexer, &token);
@@ -418,6 +430,7 @@ static clk_json_value* clk_parse_object(clk_json_lexer* lexer) {
     clk_json_token token = {0};
     clk_json_lexer_next(lexer, &token);
 
+    /* empty object */
     if (token.type == TOKEN_RIGHT_BRACE)
         return obj;
 
@@ -456,6 +469,7 @@ static clk_json_value* clk_parse_object(clk_json_lexer* lexer) {
             return NULL;
         }
 
+        /* read next key */
         clk_json_lexer_next(lexer, &token);
     }
 }
@@ -468,10 +482,13 @@ static clk_json_value* clk_parse_array(clk_json_lexer* lexer) {
     clk_json_token token = {0};
     clk_json_lexer_next(lexer, &token);
 
+    /* empty array */
     if (token.type == TOKEN_RIGHT_BRACKET)
         return arr;
 
     while (1) {
+        /* token has already been pre-read — hand off to the
+         * token-aware dispatcher so we don't lose the first value */
         clk_json_value* val = clk_parse_value_from_token(lexer, &token);
         if (!val) {
             SET_ERROR("Invalid value in array at line %d, col %d", token.line, token.col);
@@ -490,8 +507,10 @@ static clk_json_value* clk_parse_array(clk_json_lexer* lexer) {
             return NULL;
         }
 
+        /* read next value */
         clk_json_lexer_next(lexer, &token);
 
+        /* trailing comma */
         if (token.type == TOKEN_RIGHT_BRACKET) {
             SET_ERROR("Trailing comma in array at line %d, col %d", token.line, token.col);
             clk_json_free(arr);
@@ -501,7 +520,7 @@ static clk_json_value* clk_parse_array(clk_json_lexer* lexer) {
 }
 
 /* ================================================================
- *  公开：解析
+ *  Public: Parse
  * ================================================================ */
 
 clk_json_value* clk_json_parse(const char* json_str) {
@@ -529,7 +548,7 @@ clk_json_value* clk_json_parse_ex(const char* json_str, char* errbuf, size_t err
 }
 
 /* ================================================================
- *  公开：创建 JSON 值
+ *  Public: Create
  * ================================================================ */
 
 clk_json_value* clk_json_create_null(void) {
@@ -604,7 +623,7 @@ clk_json_value* clk_json_create_object(void) {
 }
 
 /* ================================================================
- *  公开：类型查询
+ *  Public: Type queries
  * ================================================================ */
 
 clk_json_type clk_json_get_type(const clk_json_value* value) {
@@ -669,7 +688,7 @@ int clk_json_get_string(const clk_json_value* value, const char** str_val) {
 }
 
 /* ================================================================
- *  公开：释放 JSON 值
+ *  Public: Lifecycle
  * ================================================================ */
 
 void clk_json_free(clk_json_value* root) {
@@ -698,7 +717,7 @@ void clk_json_free(clk_json_value* root) {
 }
 
 /* ================================================================
- *  公开：对象操作
+ *  Public: Object operations
  * ================================================================ */
 
 clk_json_value* clk_json_object_get(const clk_json_value* object, const char* key) {
@@ -716,6 +735,7 @@ int clk_json_object_set(clk_json_value* object, const char* key, clk_json_value*
     if (!object || object->type != JSON_OBJECT || !key || !value)
         return -1;
 
+    /* overwrite existing key */
     for (size_t i = 0; i < object->object_value.count; ++i) {
         if (strcmp(object->object_value.pairs[i].key, key) == 0) {
             clk_json_free(object->object_value.pairs[i].value);
@@ -724,6 +744,7 @@ int clk_json_object_set(clk_json_value* object, const char* key, clk_json_value*
         }
     }
 
+    /* expand if needed */
     if (object->object_value.count >= object->object_value.capacity) {
         size_t new_cap = object->object_value.capacity * 2;
         clk_json_key_value_pair* temp =
@@ -800,7 +821,7 @@ bool clk_json_object_iterator_next(clk_json_object_iterator* iter, clk_json_key_
     const clk_json_value* object = (const clk_json_value*)o[0];
     const size_t index = (size_t)o[1];
 
-    if (index >= object->object_value.count || !object)
+    if (!object || index >= object->object_value.count)
         return false;
 
     pair->key = object->object_value.pairs[index].key;
@@ -810,7 +831,7 @@ bool clk_json_object_iterator_next(clk_json_object_iterator* iter, clk_json_key_
 }
 
 /* ================================================================
- *  公开：数组操作
+ *  Public: Array operations
  * ================================================================ */
 
 clk_json_value* clk_json_array_get(const clk_json_value* array, size_t index) {
@@ -881,11 +902,11 @@ int clk_json_array_set(clk_json_value* array, size_t index, clk_json_value* valu
 int clk_json_array_count(const clk_json_value* array) {
     if (!array || array->type != JSON_ARRAY)
         return 0;
-    return array->array_value.count;
+    return (int)array->array_value.count;
 }
 
 /* ================================================================
- *  序列化
+ *  Serialize — compact
  * ================================================================ */
 
 static bool clk_json_str_ensure_capacity(char** buf, size_t* len, size_t* capacity,
@@ -946,7 +967,7 @@ static bool clk_json_append_string_to_str(char** buf, size_t* len, size_t* capac
     (*buf)[(*len)++] = '"';
 
     for (const char* p = str; *p; ++p) {
-        unsigned char c = (unsigned char)*p;
+        char c = *p;
         switch (c) {
             case '"':
                 if (!clk_json_str_ensure_capacity(buf, len, capacity, 2))
@@ -991,20 +1012,16 @@ static bool clk_json_append_string_to_str(char** buf, size_t* len, size_t* capac
                 (*buf)[(*len)++] = 't';
                 break;
             default:
-                if (c < 0x20) {
-                    static const char hex[] = "0123456789abcdef";
+                /* control characters → \u00XX */
+                if ((unsigned char)c < 0x20) {
                     if (!clk_json_str_ensure_capacity(buf, len, capacity, 6))
                         return false;
-                    (*buf)[(*len)++] = '\\';
-                    (*buf)[(*len)++] = 'u';
-                    (*buf)[(*len)++] = '0';
-                    (*buf)[(*len)++] = '0';
-                    (*buf)[(*len)++] = hex[c >> 4];
-                    (*buf)[(*len)++] = hex[c & 0xF];
+                    sprintf(*buf + *len, "\\u%04x", (unsigned char)c);
+                    *len += 6;
                 } else {
                     if (!clk_json_str_ensure_capacity(buf, len, capacity, 1))
                         return false;
-                    (*buf)[(*len)++] = (char)c;
+                    (*buf)[(*len)++] = c;
                 }
         }
     }
@@ -1015,11 +1032,14 @@ static bool clk_json_append_string_to_str(char** buf, size_t* len, size_t* capac
     return true;
 }
 
+/* forward declarations needed by the dispatch function */
 static bool clk_json_append_array_to_str(char** buf, size_t* len, size_t* cap,
                                          const clk_json_value* root);
 static bool clk_json_append_object_to_str(char** buf, size_t* len, size_t* cap,
                                           const clk_json_value* root);
 
+/** Single dispatch entry-point for compact serialization.
+ *  Every value (including nested children) passes through here. */
 static bool clk_json_append_value_to_str(char** buf, size_t* len, size_t* cap,
                                          const clk_json_value* root) {
     switch (root->type) {
@@ -1111,7 +1131,9 @@ static bool clk_json_append_object_to_str(char** buf, size_t* len, size_t* cap,
     return true;
 }
 
-/* ---- Pretty-print 版本 ---- */
+/* ================================================================
+ *  Serialize — pretty-print
+ * ================================================================ */
 
 static bool clk_json_append_newline(char** buf, size_t* len, size_t* cap) {
     if (!clk_json_str_ensure_capacity(buf, len, cap, 1))
@@ -1130,6 +1152,7 @@ static bool clk_json_append_indent(char** buf, size_t* len, size_t* cap, int dep
     return true;
 }
 
+/* forward declarations */
 static bool clk_json_append_array_to_str_pretty(char** buf, size_t* len, size_t* cap,
                                                 const clk_json_value* root, int depth);
 static bool clk_json_append_object_to_str_pretty(char** buf, size_t* len, size_t* cap,
@@ -1163,6 +1186,9 @@ static bool clk_json_append_array_to_str_pretty(char** buf, size_t* len, size_t*
         return false;
     (*buf)[(*len)++] = '[';
 
+    /* Determine if this array needs multi-line formatting.
+     * Arrays of only scalars stay inline; arrays containing other
+     * arrays or objects get expanded. */
     bool new_line_needed = false;
     for (size_t i = 0; i < root->array_value.count; ++i) {
         if (root->array_value.items[i]->type == JSON_ARRAY ||
@@ -1227,9 +1253,8 @@ static bool clk_json_append_object_to_str_pretty(char** buf, size_t* len, size_t
         (*buf)[(*len)++] = ':';
         (*buf)[(*len)++] = ' ';
         if (!clk_json_append_value_to_str_pretty(buf, len, cap, root->object_value.pairs[i].value,
-                                                 depth + 1)) {
+                                                 depth + 1))
             return false;
-        }
         if (i < root->object_value.count - 1) {
             if (!clk_json_str_ensure_capacity(buf, len, cap, 1))
                 return false;
@@ -1271,7 +1296,7 @@ char* clk_json_stringify_pretty(const clk_json_value* root) {
 }
 
 /* ================================================================
- *  相等比较
+ *  Equality
  * ================================================================ */
 
 bool clk_json_equals(const clk_json_value* a, const clk_json_value* b) {
@@ -1317,7 +1342,7 @@ bool clk_json_equals(const clk_json_value* a, const clk_json_value* b) {
 }
 
 /* ================================================================
- *  深拷贝
+ *  Deep copy
  * ================================================================ */
 
 clk_json_value* clk_json_deep_copy(const clk_json_value* src) {
@@ -1371,6 +1396,10 @@ clk_json_value* clk_json_deep_copy(const clk_json_value* src) {
     }
 }
 
+/* ================================================================
+ *  Merge
+ * ================================================================ */
+
 int clk_json_merge_objects(clk_json_value* dest, const clk_json_value* src) {
     if (!dest || dest->type != JSON_OBJECT || !src || src->type != JSON_OBJECT)
         return -1;
@@ -1380,14 +1409,16 @@ int clk_json_merge_objects(clk_json_value* dest, const clk_json_value* src) {
         return -1;
 
     clk_json_key_value_pair pair;
-
     while (clk_json_object_iterator_next(&iter, &pair)) {
         if (clk_json_object_set(dest, pair.key, clk_json_deep_copy(pair.value)) != 0)
             return -1;
     }
-
     return 0;
 }
+
+/* ================================================================
+ *  Path access
+ * ================================================================ */
 
 clk_json_value* clk_json_get_by_path(const clk_json_value* root, const char* path) {
     if (!root || !path)
@@ -1403,9 +1434,8 @@ clk_json_value* clk_json_get_by_path(const clk_json_value* root, const char* pat
             case '\0':
                 return current;
             case '.': {
-                if (current->type != JSON_OBJECT) {
+                if (current->type != JSON_OBJECT)
                     return NULL;
-                }
                 size_t start = pos;
                 while (path[pos] && path[pos] != '.' && path[pos] != '[')
                     pos++;
@@ -1421,15 +1451,13 @@ clk_json_value* clk_json_get_by_path(const clk_json_value* root, const char* pat
                 break;
             }
             case '[': {
-                if (current->type != JSON_ARRAY) {
+                if (current->type != JSON_ARRAY)
                     return NULL;
-                }
                 size_t start = pos;
                 while (path[pos] && path[pos] != ']')
                     pos++;
-                if (path[pos] != ']') {
+                if (path[pos] != ']')
                     return NULL;
-                }
                 size_t index_len = pos - start;
                 char* index_str = strndup(path + start, index_len);
                 if (!index_str)
@@ -1443,13 +1471,14 @@ clk_json_value* clk_json_get_by_path(const clk_json_value* root, const char* pat
                 if (!next)
                     return NULL;
                 current = next;
+                /* skip closing ']' */
                 pos++;
                 break;
             }
             default: {
-                if (current->type != JSON_OBJECT) {
+                /* bare key (not preceded by '.') */
+                if (current->type != JSON_OBJECT)
                     return NULL;
-                }
                 size_t start = pos - 1;
                 while (path[pos] && path[pos] != '.' && path[pos] != '[')
                     pos++;

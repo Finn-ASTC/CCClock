@@ -171,15 +171,15 @@ int main(void) {
     }
 
     /* ---- 样式注册表 ---- */
-    int red_id = clk_register_style((Color24){.rgb = {255, 0, 0}}, (Color24){0}, ATTR_BOLD);
-    int green_id = clk_register_style((Color24){.rgb = {0, 255, 0}}, (Color24){0}, ATTR_NONE);
-    int blue_id = clk_register_style((Color24){.rgb = {0, 0, 255}}, (Color24){0}, ATTR_DIM);
+    int red_id = clk_term_register_style((Color24){.rgb = {255, 0, 0}}, (Color24){0}, ATTR_BOLD);
+    int green_id = clk_term_register_style((Color24){.rgb = {0, 255, 0}}, (Color24){0}, ATTR_NONE);
+    int blue_id = clk_term_register_style((Color24){.rgb = {0, 0, 255}}, (Color24){0}, ATTR_DIM);
 
     TEST("style id > 0", red_id > 0 && green_id > 0 && blue_id > 0);
     TEST("unique style IDs", red_id != green_id && green_id != blue_id);
 
     /* 去重 */
-    int dedup = clk_register_style((Color24){.rgb = {255, 0, 0}}, (Color24){0}, ATTR_BOLD);
+    int dedup = clk_term_register_style((Color24){.rgb = {255, 0, 0}}, (Color24){0}, ATTR_BOLD);
     TEST("dedup returns same id", dedup == red_id);
 
     /* ---- 用真实 style_id 重新测 set_cell 的样式关联 ---- */
@@ -191,9 +191,9 @@ int main(void) {
     clk_texture tex2 = clk_texture_create(3, 3);
     if (tex2.data) {
         clk_texture_set_cell(&tex2, 1, 1, "O", green_id);
-        TEST("add_texture_to_render_list", clk_add_texture_to_render_list(&tex2));
+        TEST("term_add_texture", clk_term_add_texture(&tex2));
     }
-    TEST("add NULL returns false", !clk_add_texture_to_render_list(NULL));
+    TEST("add NULL returns false", !clk_term_add_texture(NULL));
 
     clk_texture_destroy(&tex2);
 

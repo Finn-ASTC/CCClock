@@ -27,38 +27,32 @@ clk_key_event clk_get_key_event(void) {
     int ch = _getch();
     res.raw = (uint32_t)ch;
 
+    /* ESC key */
     if (ch == 27) {
         res.key = CLK_KEY_ESC;
         return res;
     }
 
+    /* extended key prefix (arrow keys etc.) */
     if (ch == 0 || ch == 224) {
         int ch2 = _getch();
         res.raw = (uint32_t)ch2;
         switch (ch2) {
-            case 72:
-                res.key = CLK_KEY_UP;
-                break;
-            case 80:
-                res.key = CLK_KEY_DOWN;
-                break;
-            case 75:
-                res.key = CLK_KEY_LEFT;
-                break;
-            case 77:
-                res.key = CLK_KEY_RIGHT;
-                break;
-            default:
-                break;
+            case 72: res.key = CLK_KEY_UP;    break;
+            case 80: res.key = CLK_KEY_DOWN;  break;
+            case 75: res.key = CLK_KEY_LEFT;  break;
+            case 77: res.key = CLK_KEY_RIGHT; break;
+            default: break;
         }
         return res;
     }
 
+    /* regular ASCII character */
     res.key = (uint32_t)ch;
     return res;
 }
 
-#else  // Linux / MacOS / Unix
+#else  /* Linux / macOS / Unix */
 
 #include <sys/select.h>
 #include <termios.h>
@@ -104,6 +98,7 @@ clk_key_event clk_get_key_event(void) {
     res.raw = (uint32_t)ch;
 
     if (ch == 27) {
+        /* might be ESC or start of an escape sequence */
         if (linux_kbhit()) {
             int ch2 = linux_getch();
             res.raw = (res.raw << 16) | (uint32_t)ch2;
@@ -113,20 +108,11 @@ clk_key_event clk_get_key_event(void) {
                     int ch3 = linux_getch();
                     res.raw = (res.raw << 8) | (uint32_t)ch3;
                     switch (ch3) {
-                        case 'A':
-                            res.key = CLK_KEY_UP;
-                            break;
-                        case 'B':
-                            res.key = CLK_KEY_DOWN;
-                            break;
-                        case 'C':
-                            res.key = CLK_KEY_RIGHT;
-                            break;
-                        case 'D':
-                            res.key = CLK_KEY_LEFT;
-                            break;
-                        default:
-                            break;
+                        case 'A': res.key = CLK_KEY_UP;    break;
+                        case 'B': res.key = CLK_KEY_DOWN;  break;
+                        case 'C': res.key = CLK_KEY_RIGHT; break;
+                        case 'D': res.key = CLK_KEY_LEFT;  break;
+                        default:  break;
                     }
                 }
             }
