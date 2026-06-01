@@ -112,6 +112,9 @@ void clk_texture_clear_cell(clk_texture* tex, int x, int y);
 /** Mark every cell in the texture as empty. */
 void clk_texture_clear_all(clk_texture* tex);
 
+/** Return a read-only pointer to cell (x,y), or NULL if out of bounds. */
+const clk_cell* clk_texture_get_cell(const clk_texture* tex, int x, int y);
+
 /* ------------------------------------------------------------------
  *  Texture — layout
  * ------------------------------------------------------------------ */
@@ -130,6 +133,12 @@ void clk_texture_set_pos_z(clk_texture* tex, int x, int y, int z);
  *  removed or the term is closed. */
 bool clk_term_add_texture(const clk_texture* texture);
 
+/** Remove @p texture from the render list. Does nothing if not found. */
+void clk_term_remove_texture(const clk_texture* texture);
+
+/** Remove all textures from the render list at once. */
+void clk_term_clear_textures(void);
+
 /* ------------------------------------------------------------------
  *  Rendering
  * ------------------------------------------------------------------ */
@@ -144,6 +153,12 @@ bool clk_term_update(void);
 
 /** Query current terminal width and height (in character cells). */
 bool clk_term_get_size(int* term_w, int* term_h);
+
+/** Return true if the terminal size differs from the last known size. */
+bool clk_term_size_changed(void);
+
+/** Suspend execution for @p ms milliseconds. Cross-platform. */
+void clk_term_sleep_ms(int ms);
 
 #ifdef __cplusplus
 }

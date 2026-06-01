@@ -265,6 +265,31 @@ bool clk_term_add_texture(const clk_texture* texture) {
     return true;
 }
 
+void clk_term_remove_texture(const clk_texture* texture) {
+    if (!texture || !clk_is_term_init)
+        return;
+
+    for (int i = 0; i < texture_list_count; ++i) {
+        if (texture_render_list[i] == texture) {
+            /* shift remaining entries left */
+            for (int j = i; j < texture_list_count - 1; ++j)
+                texture_render_list[j] = texture_render_list[j + 1];
+            texture_render_list[texture_list_count - 1] = NULL;
+            texture_list_count--;
+            return;
+        }
+    }
+}
+
+void clk_term_clear_textures(void) {
+    if (!clk_is_term_init)
+        return;
+    for (int i = 0; i < texture_list_count; ++i)
+        texture_render_list[i] = NULL;
+    texture_list_count = 0;
+    clk_is_texture_list_sorted = true;
+}
+
 /* ================================================================
  *  Rendering helpers
  * ================================================================ */
@@ -538,6 +563,23 @@ bool clk_term_get_size(int* term_w, int* term_h) {
 #endif
 }
 
+bool clk_term_size_changed(void) {
+    int w, h;
+    if (!clk_term_get_size(&w, &h))
+        return false;
+    return (w != screen_w || h != screen_h);
+}
+
+void clk_term_sleep_ms(int ms) {
+    if (ms <= 0)
+        return;
+#if defined(_WIN32) || defined(_WIN64)
+    Sleep(ms);
+#else
+    usleep(ms * 1000);
+#endif
+}
+
 /* ================================================================
  *  Texture lifecycle
  * ================================================================ */
@@ -650,6 +692,13 @@ void clk_texture_clear_all(clk_texture* tex) {
         return;
     for (int i = 0; i < tex->tex_w * tex->tex_h; ++i)
         tex->data[i].is_empty = true;
+}
+
+const clk_cell* clk_texture_get_cell(const clk_texture* tex, int x, int y) {
+    if (!tex || !tex->data ||
+        x < 0 || x >= tex->tex_w || y < 0 || y >= tex->tex_h)
+        return NULL;
+    return &tex->data[x + y * tex->tex_w];
 }
 
 /* ================================================================
