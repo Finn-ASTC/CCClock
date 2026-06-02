@@ -2,7 +2,6 @@
 #define CLK_CLOCK_H
 
 #include <stdbool.h>
-#include <time.h>
 
 #include "clk_term.h"
 
@@ -10,11 +9,10 @@
 extern "C" {
 #endif
 
-#define CLK_CLOCK_TIME_FORMAT_LENGTH (64)
+#define CLK_CLOCK_TIME_FORMAT_MAX_LENGTH (64)
 
 typedef struct {
-    struct tm clk_clock_time;
-    char clk_clock_time_format[CLK_CLOCK_TIME_FORMAT_LENGTH];
+    char clk_clock_time_format[CLK_CLOCK_TIME_FORMAT_MAX_LENGTH];
     char* clk_clock_font_path;
     clk_texture* clk_clock_texture;
 } clk_clock;

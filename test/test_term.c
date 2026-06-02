@@ -118,6 +118,69 @@ int main(void) {
     TEST("NULL string doesn't crash", 1);
 
     /* ================================================================
+     *  Wide character support (LEAD / TRAIL model)
+     *
+     *  CJK/emoji characters are stored as two cells: LEAD at (x,y)
+     *  and TRAIL at (x+1,y). write_string auto-detects width and
+     *  calls set_wide_cell internally. The TRAIL cell is skipped
+     *  during rendering — only the LEAD cell produces ANSI output.
+     * ================================================================ */
+
+    /* write_string: CJK characters → width 2, col advances by 2 */
+    clk_texture_write_string(&tex, 0, 4, "你好", 99);
+    const clk_cell* wc = clk_texture_get_cell(&tex, 0, 4);
+    TEST("wide '你' LEAD type", wc != NULL && wc->type == CELL_WIDE_LEAD);
+    TEST("wide '你' not empty", !wc->is_empty);
+
+    wc = clk_texture_get_cell(&tex, 1, 4);
+    TEST("wide TRAIL at col 1", wc != NULL && wc->type == CELL_WIDE_TRAIL);
+
+    wc = clk_texture_get_cell(&tex, 2, 4);
+    TEST("wide '好' at col 2 (LEAD)", wc != NULL && wc->type == CELL_WIDE_LEAD);
+
+    /* '好' should be at col 2, not col 1 — col jumped by 2 */
+    TEST("wide char jumps 2 columns", strcmp(wc->cell_tex, "好") == 0);
+
+    /* mixed ASCII + CJK */
+    clk_texture_write_string(&tex, 0, 4, "A你B", 99);
+    wc = clk_texture_get_cell(&tex, 0, 4); /* 'A' NORMAL */
+    TEST("mixed 'A' NORMAL", wc != NULL && wc->type == CELL_NORMAL);
+    wc = clk_texture_get_cell(&tex, 1, 4); /* '你' LEAD */
+    TEST("mixed '你' LEAD", wc != NULL && wc->type == CELL_WIDE_LEAD);
+    wc = clk_texture_get_cell(&tex, 2, 4); /* '你' TRAIL */
+    TEST("mixed TRAIL after '你'", wc != NULL && wc->type == CELL_WIDE_TRAIL);
+    wc = clk_texture_get_cell(&tex, 3, 4); /* 'B' NORMAL */
+    TEST("mixed 'B' at col 3",
+         wc != NULL && wc->type == CELL_NORMAL && strcmp(wc->cell_tex, "B") == 0);
+
+    /* set_wide_cell boundary — x+1 out of bounds is rejected */
+    clk_texture_set_wide_cell(&tex, tex.tex_w - 1, 0, "X", 99);
+    wc = clk_texture_get_cell(&tex, tex.tex_w - 1, 0);
+    TEST("set_wide at boundary rejected (still empty)", wc != NULL && wc->is_empty);
+
+    /* set_wide with room — both LEAD and TRAIL written */
+    clk_texture_set_wide_cell(&tex, 0, 0, "中", 99);
+    wc = clk_texture_get_cell(&tex, 0, 0);
+    TEST("set_wide LEAD written", wc != NULL && wc->type == CELL_WIDE_LEAD && !wc->is_empty);
+    wc = clk_texture_get_cell(&tex, 1, 0);
+    TEST("set_wide TRAIL written", wc != NULL && wc->type == CELL_WIDE_TRAIL && !wc->is_empty);
+
+    /* set_cell overwriting a TRAIL cell — allowed (caller's responsibility) */
+    clk_texture_set_cell(&tex, 1, 0, "!", 1);
+    wc = clk_texture_get_cell(&tex, 1, 0);
+    TEST("set_cell overwrites TRAIL",
+         wc != NULL && wc->type == CELL_NORMAL && strcmp(wc->cell_tex, "!") == 0);
+    /* LEAD at col 0 is now an orphan — draw should skip it */
+
+    /* clear_cell — individual cells can be cleared regardless of type */
+    clk_texture_set_wide_cell(&tex, 0, 0, "文", 99);
+    clk_texture_clear_cell(&tex, 0, 0); /* clear LEAD */
+    wc = clk_texture_get_cell(&tex, 0, 0);
+    TEST("clear LEAD after set_wide", wc != NULL && wc->is_empty);
+    wc = clk_texture_get_cell(&tex, 1, 0);
+    TEST("TRAIL still present after clearing LEAD", wc != NULL && !wc->is_empty);
+
+    /* ================================================================
      *  clear_cell / clear_all（不依赖终端）
      * ================================================================ */
 

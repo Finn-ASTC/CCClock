@@ -98,17 +98,14 @@ int main(void) {
      * ================================================================ */
 
     clk_clock_update(&clk);
-    /* 年份不应是 0（tm 被填充了） */
-    TEST("clock_update sets year", clk.clk_clock_time.tm_year >= 0);
-    /* 小时应在合法范围 */
-    TEST("clock_update sets hour", clk.clk_clock_time.tm_hour >= 0 &&
-                                     clk.clk_clock_time.tm_hour <= 23);
 
-    /* 更新后纹理内容应有变化——通过检查第一个 cell 不为空来
+    /* 更新后纹理内容应有变化——通过检查中间 cell 不为空来
      * 间接验证 clk_clock_update 触发了纹理刷新 */
-    int mid_x = tex_w / 2;
+    int tex_w2, tex_h2;
+    clk_clock_get_texture_size(&clk, &tex_w2, &tex_h2);
+    int mid_x = tex_w2 / 2;
     const clk_cell* c = clk_texture_get_cell(tex, mid_x, 2);
-    TEST("clock texture has content after update", c != NULL && !c->is_empty);
+    TEST("clock_update populates texture", c != NULL && !c->is_empty);
 
     /* ================================================================
      *  clk_clock_change_time_format —— 切换时间格式

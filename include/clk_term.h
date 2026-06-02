@@ -43,11 +43,19 @@ typedef struct {
     uint8_t attrs;
 } clk_style;
 
+/** Cell type for wide-character support. */
+typedef enum {
+    CELL_NORMAL = 0, /* regular single-width cell */
+    CELL_WIDE_LEAD,  /* left half of a double-width character */
+    CELL_WIDE_TRAIL  /* right half — never rendered alone */
+} clk_cell_type;
+
 /** A single screen cell — up to 4 UTF-8 bytes + a style reference. */
 typedef struct {
-    char cell_tex[5]; /* null-terminated UTF-8 character */
-    int style_id;     /* 0 = default (no SGR output) */
-    bool is_empty;    /* true if this cell should not be rendered */
+    char cell_tex[5];   /* null-terminated UTF-8 character */
+    int style_id;       /* 0 = default (no SGR output) */
+    clk_cell_type type; /* CELL_NORMAL / WIDE_LEAD / WIDE_TRAIL */
+    bool is_empty;      /* true if this cell should not be rendered */
 } clk_cell;
 
 /** A rectangular block of cells that can be positioned on screen. */
@@ -95,8 +103,13 @@ void clk_texture_destroy(clk_texture* tex);
  *  Texture — cell manipulation
  * ------------------------------------------------------------------ */
 
-/** Write character @p ch with style @p style_id into cell (x,y). */
+/** Write character @p ch with style @p style_id into cell (x,y).
+ *  The cell type is set to CELL_NORMAL. */
 void clk_texture_set_cell(clk_texture* tex, int x, int y, const char* ch, int style_id);
+
+/** Write a double-width character as two adjacent cells: LEAD at
+ *  (x,y) and TRAIL at (x+1,y). Rejected if x+1 is out of bounds. */
+void clk_texture_set_wide_cell(clk_texture* tex, int x, int y, const char* ch, int style_id);
 
 /** Fill a rectangular region with the same character + style. */
 void clk_texture_fill_rect(clk_texture* tex, int x, int y, int w, int h, const char* ch,
