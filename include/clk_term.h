@@ -58,14 +58,21 @@ typedef struct {
     bool is_empty;      /* true if this cell should not be rendered */
 } clk_cell;
 
-/** A rectangular block of cells that can be positioned on screen. */
+/** A pure data block — a 2D array of cells, no screen coordinates. */
 typedef struct {
-    int posx, posy;
-    int tex_w, tex_h;
-    int tex_z_order; /* higher = on top */
-    clk_cell* data;  /* w×h array, row-major */
-    bool is_invalid; /* skip during rendering */
+    int tex_w, tex_h; /* dimensions in cells */
+    clk_cell* data;   /* w×h array, row-major */
+    bool owns_data;   /* true = destroy() will free(data) */
 } clk_texture;
+
+/** A texture instance placed on screen at a specific position.
+ *  Multiple sprites can reference the same clk_texture. */
+typedef struct clk_sprite {
+    const clk_texture* tex; /* referenced texture (not owned) */
+    int posx, posy;         /* screen coordinates */
+    int z_order;            /* higher = on top */
+    bool is_invalid;        /* skip during rendering */
+} clk_sprite;
 
 /* ------------------------------------------------------------------
  *  Terminal lifecycle
@@ -88,28 +95,50 @@ void clk_term_close(void);
  *          returned (dedup). */
 int clk_term_register_style(Color24 fg, Color24 bg, uint8_t attrs);
 
+/** Convenience: register a style from raw RGB ints (0–255) and an
+ *  attribute string ("bold", "dim" etc.). Returns 0 on invalid
+ *  colour range or if the term is not initialised. */
+int clk_term_register_style_rgb(int fg_r, int fg_g, int fg_b,
+                                 int bg_r, int bg_g, int bg_b,
+                                 const char* attrs_str);
+
+/** Register a style from "#RRGGBB" hex colour strings.
+ *  Convenience wrapper around parse_hex_color + register_style_rgb.
+ *  Returns 0 on invalid format. */
+int clk_term_register_style_hex(const char* fg_hex, const char* bg_hex,
+                                 const char* attrs_str);
+
+/** Parse a "#RRGGBB" hex colour string into r/g/b components (0–255).
+ *  Returns false if the string is NULL or does not match the format. */
+bool clk_term_parse_hex_color(const char* hex, int* r, int* g, int* b);
+
 /* ------------------------------------------------------------------
- *  Texture lifecycle
+ *  Texture — data
  * ------------------------------------------------------------------ */
 
 /** Create a texture of @p w × @p h cells, all initially empty.
- *  @return Texture with .data allocated, or {0} on failure. */
+ *  The data is owned by the texture — clk_texture_destroy() will free it. */
 clk_texture clk_texture_create(int w, int h);
 
-/** Free texture cell data. Safe to call more than once. */
-void clk_texture_destroy(clk_texture* tex);
+/** Initialise a texture that borrows an existing cell array.
+ *  The data pointer is NOT freed by clk_texture_destroy().
+ *  Caller retains ownership and must free @p data when no longer needed. */
+void clk_texture_init_borrowed(clk_texture* tex, int w, int h, clk_cell* data);
 
-/* ------------------------------------------------------------------
- *  Texture — cell manipulation
- * ------------------------------------------------------------------ */
+/** Free texture cell data (only if owned). Safe to call more than once. */
+void clk_texture_destroy(clk_texture* tex);
 
 /** Write character @p ch with style @p style_id into cell (x,y).
  *  The cell type is set to CELL_NORMAL. */
-void clk_texture_set_cell(clk_texture* tex, int x, int y, const char* ch, int style_id);
+void clk_texture_write_cell(clk_texture* tex, int x, int y, const char* ch, int style_id);
 
 /** Write a double-width character as two adjacent cells: LEAD at
  *  (x,y) and TRAIL at (x+1,y). Rejected if x+1 is out of bounds. */
-void clk_texture_set_wide_cell(clk_texture* tex, int x, int y, const char* ch, int style_id);
+void clk_texture_write_wide_cell(clk_texture* tex, int x, int y, const char* ch, int style_id);
+
+/** Copy an entire clk_cell into (x,y). Useful when the cell has
+ *  already been fully constructed (e.g. from a font glyph table). */
+void clk_texture_set_cell(clk_texture* tex, int x, int y, const clk_cell* cell);
 
 /** Fill a rectangular region with the same character + style. */
 void clk_texture_fill_rect(clk_texture* tex, int x, int y, int w, int h, const char* ch,
@@ -129,39 +158,38 @@ void clk_texture_clear_all(clk_texture* tex);
 const clk_cell* clk_texture_get_cell(const clk_texture* tex, int x, int y);
 
 /* ------------------------------------------------------------------
- *  Texture — layout
+ *  Sprite — texture with a screen position
  * ------------------------------------------------------------------ */
 
-void clk_texture_set_pos(clk_texture* tex, int x, int y);
-void clk_texture_set_z_order(clk_texture* tex, int z);
-void clk_texture_set_invalid(clk_texture* tex, bool invalid);
-void clk_texture_set_pos_z(clk_texture* tex, int x, int y, int z);
+/** Set the z-order of a sprite. Marks the render list as needing
+ *  re-sort before the next clk_term_draw(). */
+void clk_sprite_set_z(clk_sprite* s, int z);
 
 /* ------------------------------------------------------------------
  *  Render list
  * ------------------------------------------------------------------ */
 
-/** Register a texture for rendering. It will be drawn on the next
- *  clk_term_draw() call. Texture data must remain valid until it is
- *  removed or the term is closed. */
-bool clk_term_add_texture(const clk_texture* texture);
+/** Register a sprite for rendering. It will be drawn on the next
+ *  clk_term_draw() call. The sprite's texture must remain valid until
+ *  the sprite is removed or the term is closed. */
+void clk_term_add_sprite(clk_sprite* sprite);
 
-/** Remove @p texture from the render list. Does nothing if not found. */
-void clk_term_remove_texture(const clk_texture* texture);
+/** Remove @p sprite from the render list. Does nothing if not found. */
+void clk_term_remove_sprite(const clk_sprite* sprite);
 
-/** Remove all textures from the render list at once. */
-void clk_term_clear_textures(void);
+/** Remove all sprites from the render list at once. */
+void clk_term_clear_sprites(void);
 
 /* ------------------------------------------------------------------
  *  Rendering
  * ------------------------------------------------------------------ */
 
-/** Composite all registered textures into one frame and flush ANSI
+/** Composite all registered sprites into one frame and flush ANSI
  *  output to stdout. Only changed cells are re-drawn (diff-based). */
 void clk_term_draw(void);
 
 /** Check terminal dimensions and handle resize if needed. Also
- *  compacts the render list by removing invalid textures. */
+ *  compacts the render list by removing invalid sprites. */
 bool clk_term_update(void);
 
 /** Query current terminal width and height (in character cells). */

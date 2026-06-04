@@ -54,6 +54,20 @@ typedef struct {
  *  Internal helpers
  * ================================================================ */
 
+/** Portable strndup replacement — copies at most n bytes, always
+ *  null-terminates. Returns malloc'd copy or NULL on failure. */
+static char* clk_json_strndup(const char* src, size_t n) {
+    if (!src) return NULL;
+    size_t len = strlen(src);
+    if (len > n) len = n;
+    char* dst = malloc(len + 1);
+    if (dst) {
+        memcpy(dst, src, len);
+        dst[len] = '\0';
+    }
+    return dst;
+}
+
 static bool clk_json_is_delimiter(char c) {
     switch (c) {
         case '\0':
@@ -440,7 +454,7 @@ static clk_json_value* clk_parse_object(clk_json_lexer* lexer) {
             clk_json_free(obj);
             return NULL;
         }
-        char* key = strdup(token.str_value);
+        char* key = clk_json_strndup(token.str_value, strlen(token.str_value));
 
         clk_json_lexer_next(lexer, &token);
         if (token.type != TOKEN_COLON) {
@@ -586,7 +600,7 @@ clk_json_value* clk_json_create_string(const char* str) {
     if (!v)
         return NULL;
     v->type = JSON_STRING;
-    v->str_value = strdup(str);
+    v->str_value = clk_json_strndup(str, strlen(str));
     if (!v->str_value) {
         clk_json_free(v);
         return NULL;
@@ -755,7 +769,8 @@ int clk_json_object_set(clk_json_value* object, const char* key, clk_json_value*
         object->object_value.capacity = new_cap;
     }
 
-    object->object_value.pairs[object->object_value.count].key = strdup(key);
+    object->object_value.pairs[object->object_value.count].key =
+        clk_json_strndup(key, strlen(key));
     object->object_value.pairs[object->object_value.count].value = value;
     object->object_value.count++;
     return 0;
@@ -1440,7 +1455,7 @@ clk_json_value* clk_json_get_by_path(const clk_json_value* root, const char* pat
                 while (path[pos] && path[pos] != '.' && path[pos] != '[')
                     pos++;
                 size_t key_len = pos - start;
-                char* key = strndup(path + start, key_len);
+                char* key = clk_json_strndup(path + start, key_len);
                 if (!key)
                     return NULL;
                 clk_json_value* next = clk_json_object_get(current, key);
@@ -1459,7 +1474,7 @@ clk_json_value* clk_json_get_by_path(const clk_json_value* root, const char* pat
                 if (path[pos] != ']')
                     return NULL;
                 size_t index_len = pos - start;
-                char* index_str = strndup(path + start, index_len);
+                char* index_str = clk_json_strndup(path + start, index_len);
                 if (!index_str)
                     return NULL;
                 char* endptr;
@@ -1482,7 +1497,7 @@ clk_json_value* clk_json_get_by_path(const clk_json_value* root, const char* pat
                 size_t start = pos - 1;
                 while (path[pos] && path[pos] != '.' && path[pos] != '[')
                     pos++;
-                char* key = strndup(path + start, pos - start);
+                char* key = clk_json_strndup(path + start, pos - start);
                 if (!key)
                     return NULL;
                 clk_json_value* next = clk_json_object_get(current, key);

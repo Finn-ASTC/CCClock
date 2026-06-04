@@ -50,13 +50,51 @@ int main(void) {
     TEST("destroy NULL doesn't crash", 1);
 
     /* ================================================================
+     *  clk_texture_init_borrowed —— 借用外部 cell 数组
+     *
+     *  测什么：借用纹理可正常读写、destroy 不 free 外部数据。
+     *  为什么测：owns_data=false 时 destroy 必须跳过 free(data)，
+     *  否则 double-free / use-after-free。
+     * ================================================================ */
+
+    /* 手动分配一份 cell 数据 */
+    clk_cell* borrowed_cells = malloc(12 * sizeof(clk_cell));
+    memset(borrowed_cells, 0, 12 * sizeof(clk_cell));
+    for (int i = 0; i < 12; i++)
+        borrowed_cells[i].is_empty = true;
+
+    clk_texture btex;
+    clk_texture_init_borrowed(&btex, 3, 4, borrowed_cells);
+    TEST("borrowed texture w==3", btex.tex_w == 3);
+    TEST("borrowed texture h==4", btex.tex_h == 4);
+    TEST("borrowed data points to ours", btex.data == borrowed_cells);
+
+    /* 写入一个 cell —— 验证副作用落在外部数组上 */
+    clk_texture_write_cell(&btex, 1, 2, "Z", 99);
+    TEST("borrowed set_cell reflected externally",
+         !borrowed_cells[1 + 2 * 3].is_empty &&
+         strcmp(borrowed_cells[1 + 2 * 3].cell_tex, "Z") == 0);
+
+    /* destroy borrowed —— 不应 free 外部数据 */
+    clk_texture_destroy(&btex);
+    TEST("borrowed destroy clears data pointer", btex.data == NULL);
+    TEST("borrowed destroy doesn't free external data",
+         !borrowed_cells[1 + 2 * 3].is_empty); /* 数据还在 */
+
+    /* 二次 destroy 不崩 */
+    clk_texture_destroy(&btex);
+    TEST("borrowed double destroy no crash", 1);
+
+    free(borrowed_cells);
+
+    /* ================================================================
      *  set_cell —— 单格写入（不依赖终端）
      *
      *  测什么：正常写入、越界不崩。
      *  set_cell 只操作 tex->data 指针，不需要终端。
      * ================================================================ */
 
-    clk_texture_set_cell(&tex, 2, 1, "X", 42);
+    clk_texture_write_cell(&tex, 2, 1, "X", 42);
 
     clk_cell* c = &tex.data[2 + 1 * tex.tex_w];
     TEST("set_cell char correct", strcmp(c->cell_tex, "X") == 0);
@@ -64,10 +102,10 @@ int main(void) {
     TEST("set_cell not empty", !c->is_empty);
 
     /* 越界不崩 */
-    clk_texture_set_cell(&tex, -1, 0, "!", 1);
-    clk_texture_set_cell(&tex, 100, 0, "!", 1);
-    clk_texture_set_cell(&tex, 0, -1, "!", 1);
-    clk_texture_set_cell(&tex, 0, 100, "!", 1);
+    clk_texture_write_cell(&tex, -1, 0, "!", 1);
+    clk_texture_write_cell(&tex, 100, 0, "!", 1);
+    clk_texture_write_cell(&tex, 0, -1, "!", 1);
+    clk_texture_write_cell(&tex, 0, 100, "!", 1);
     TEST("out-of-bounds set_cell doesn't crash", 1);
 
     /* ================================================================
@@ -154,26 +192,26 @@ int main(void) {
          wc != NULL && wc->type == CELL_NORMAL && strcmp(wc->cell_tex, "B") == 0);
 
     /* set_wide_cell boundary — x+1 out of bounds is rejected */
-    clk_texture_set_wide_cell(&tex, tex.tex_w - 1, 0, "X", 99);
+    clk_texture_write_wide_cell(&tex, tex.tex_w - 1, 0, "X", 99);
     wc = clk_texture_get_cell(&tex, tex.tex_w - 1, 0);
     TEST("set_wide at boundary rejected (still empty)", wc != NULL && wc->is_empty);
 
     /* set_wide with room — both LEAD and TRAIL written */
-    clk_texture_set_wide_cell(&tex, 0, 0, "中", 99);
+    clk_texture_write_wide_cell(&tex, 0, 0, "中", 99);
     wc = clk_texture_get_cell(&tex, 0, 0);
     TEST("set_wide LEAD written", wc != NULL && wc->type == CELL_WIDE_LEAD && !wc->is_empty);
     wc = clk_texture_get_cell(&tex, 1, 0);
     TEST("set_wide TRAIL written", wc != NULL && wc->type == CELL_WIDE_TRAIL && !wc->is_empty);
 
     /* set_cell overwriting a TRAIL cell — allowed (caller's responsibility) */
-    clk_texture_set_cell(&tex, 1, 0, "!", 1);
+    clk_texture_write_cell(&tex, 1, 0, "!", 1);
     wc = clk_texture_get_cell(&tex, 1, 0);
     TEST("set_cell overwrites TRAIL",
          wc != NULL && wc->type == CELL_NORMAL && strcmp(wc->cell_tex, "!") == 0);
     /* LEAD at col 0 is now an orphan — draw should skip it */
 
     /* clear_cell — individual cells can be cleared regardless of type */
-    clk_texture_set_wide_cell(&tex, 0, 0, "文", 99);
+    clk_texture_write_wide_cell(&tex, 0, 0, "文", 99);
     clk_texture_clear_cell(&tex, 0, 0); /* clear LEAD */
     wc = clk_texture_get_cell(&tex, 0, 0);
     TEST("clear LEAD after set_wide", wc != NULL && wc->is_empty);
@@ -198,29 +236,27 @@ int main(void) {
     TEST("clear_all makes all cells empty", all_empty);
 
     /* ================================================================
-     *  setter 函数（不依赖终端）
+     *  Sprite —— 位置和 z 序
+     *
+     *  位置和可见性已从 clk_texture 剥离到 clk_sprite。
+     *  sprite 字段可直接读写；只有改 z_order 需要调 setter
+     *  （因为它要重置 render list 排序标志）。
      * ================================================================ */
 
-    clk_texture_set_pos(&tex, 5, 10);
-    TEST("set_pos", tex.posx == 5 && tex.posy == 10);
+    clk_sprite sp = {.tex = &tex, .posx = 5, .posy = 10, .z_order = 3};
+    TEST("sprite posx",    sp.posx == 5);
+    TEST("sprite posy",    sp.posy == 10);
+    TEST("sprite z_order", sp.z_order == 3);
+    TEST("sprite not invalid default", !sp.is_invalid);
 
-    clk_texture_set_z_order(&tex, 3);
-    TEST("set_z_order", tex.tex_z_order == 3);
+    sp.is_invalid = true;
+    TEST("sprite set invalid", sp.is_invalid);
 
-    clk_texture_set_invalid(&tex, true);
-    TEST("set_invalid true", tex.is_invalid);
-    clk_texture_set_invalid(&tex, false);
-    TEST("set_invalid false", !tex.is_invalid);
+    clk_sprite_set_z(&sp, 9);
+    TEST("sprite_set_z", sp.z_order == 9);
 
-    clk_texture_set_pos_z(&tex, 1, 2, 3);
-    TEST("set_pos_z", tex.posx == 1 && tex.posy == 2 && tex.tex_z_order == 3);
-
-    /* NULL 不崩 */
-    clk_texture_set_pos(NULL, 0, 0);
-    clk_texture_set_z_order(NULL, 0);
-    clk_texture_set_invalid(NULL, false);
-    clk_texture_set_pos_z(NULL, 0, 0, 0);
-    TEST("NULL setters don't crash", 1);
+    clk_sprite_set_z(NULL, 0);
+    TEST("sprite_set_z NULL no crash", 1);
 
     /* ================================================================
      *  以下测试依赖 clk_term_init（需要真实终端）
@@ -245,18 +281,54 @@ int main(void) {
     int dedup = clk_term_register_style((Color24){.rgb = {255, 0, 0}}, (Color24){0}, ATTR_BOLD);
     TEST("dedup returns same id", dedup == red_id);
 
+    /* ---- register_style_rgb 便捷 API ---- */
+    int rgb_id = clk_term_register_style_rgb(100, 200, 50, 0, 0, 0, "bold italic");
+    TEST("register_style_rgb id > 0", rgb_id > 0);
+    TEST("register_style_rgb different from red", rgb_id != red_id);
+
+    /* dedup via rgb convenience */
+    int rgb_dedup = clk_term_register_style_rgb(100, 200, 50, 0, 0, 0, "bold italic");
+    TEST("register_style_rgb dedup", rgb_dedup == rgb_id);
+
+    /* out-of-range colour values → 0 */
+    int bad = clk_term_register_style_rgb(-1, 0, 0, 0, 0, 0, NULL);
+    TEST("register_style_rgb negative r fails", bad == 0);
+    bad = clk_term_register_style_rgb(256, 0, 0, 0, 0, 0, NULL);
+    TEST("register_style_rgb >255 r fails", bad == 0);
+
+    /* ---- register_style_hex 便捷 API ---- */
+    int hex_id = clk_term_register_style_hex("#FF8800", "#000000", "bold");
+    TEST("register_style_hex id > 0", hex_id > 0);
+    TEST("register_style_hex different from red", hex_id != red_id);
+
+    /* dedup */
+    int hex_dedup = clk_term_register_style_hex("#FF8800", "#000000", "bold");
+    TEST("register_style_hex dedup", hex_dedup == hex_id);
+
+    /* same colour different attrs should be different */
+    int hex_diff = clk_term_register_style_hex("#FF8800", "#000000", "dim");
+    TEST("register_style_hex different attrs", hex_diff != hex_id && hex_diff > 0);
+
+    /* invalid hex */
+    int hex_bad = clk_term_register_style_hex("no-hash", "#000000", NULL);
+    TEST("register_style_hex bad format fails", hex_bad == 0);
+    hex_bad = clk_term_register_style_hex("#ZZZZZZ", "#000000", NULL);
+    TEST("register_style_hex invalid hex chars fails", hex_bad == 0);
+
     /* ---- 用真实 style_id 重新测 set_cell 的样式关联 ---- */
-    clk_texture_set_cell(&tex, 5, 2, "Y", red_id);
+    clk_texture_write_cell(&tex, 5, 2, "Y", red_id);
     c = &tex.data[5 + 2 * tex.tex_w];
     TEST("set_cell with real style_id", !c->is_empty && c->style_id == red_id);
 
     /* ---- render list ---- */
     clk_texture tex2 = clk_texture_create(3, 3);
     if (tex2.data) {
-        clk_texture_set_cell(&tex2, 1, 1, "O", green_id);
-        TEST("term_add_texture", clk_term_add_texture(&tex2));
+        clk_texture_write_cell(&tex2, 1, 1, "O", green_id);
+        clk_sprite s2 = {.tex = &tex2, .z_order = 0};
+        clk_term_add_sprite(&s2);
+        TEST("term_add_sprite succeeds", 1);
     }
-    TEST("add NULL returns false", !clk_term_add_texture(NULL));
+    TEST("add NULL returns false", 0);  /* clk_term_add_sprite returns void, always safe */
 
     clk_texture_destroy(&tex2);
 
