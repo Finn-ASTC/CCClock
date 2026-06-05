@@ -20,7 +20,8 @@ typedef struct {
     clk_sprite** clk_clock_sprites;
     size_t clk_clock_sprite_count;
     size_t clk_clock_sprite_capacity;
-    size_t clk_clock_glyph_spacing;
+    int clk_clock_glyph_spacing;
+    int posx, posy;
 } clk_clock;
 
 bool clk_clock_create(clk_clock* clk, const char* time_format, const char* font_path);
@@ -31,6 +32,8 @@ bool clk_clock_change_time_format(clk_clock* clk, const char* new_time_format);
 
 bool clk_clock_change_font_path(clk_clock* clk, const char* new_font_path);
 
+bool clk_clock_reload_config(clk_clock* clk);
+
 void clk_clock_update(clk_clock* clk);
 
 bool clk_clock_get_sprite_size(const clk_clock* clk, int* width, int* height);
@@ -40,6 +43,8 @@ bool clk_clock_get_font_texture_size(const clk_clock* clk, int* width, int* heig
 bool clk_clock_get_sprite_pos(const clk_clock* clk, int* posx, int* posy);
 
 bool clk_clock_set_sprite_pos(clk_clock* clk, int posx, int posy);
+
+bool clk_clock_add_to_term(clk_clock* clk);
 
 #ifdef __cplusplus
 }

@@ -98,15 +98,13 @@ int clk_term_register_style(Color24 fg, Color24 bg, uint8_t attrs);
 /** Convenience: register a style from raw RGB ints (0–255) and an
  *  attribute string ("bold", "dim" etc.). Returns 0 on invalid
  *  colour range or if the term is not initialised. */
-int clk_term_register_style_rgb(int fg_r, int fg_g, int fg_b,
-                                 int bg_r, int bg_g, int bg_b,
-                                 const char* attrs_str);
+int clk_term_register_style_rgb(int fg_r, int fg_g, int fg_b, int bg_r, int bg_g, int bg_b,
+                                const char* attrs_str);
 
 /** Register a style from "#RRGGBB" hex colour strings.
  *  Convenience wrapper around parse_hex_color + register_style_rgb.
  *  Returns 0 on invalid format. */
-int clk_term_register_style_hex(const char* fg_hex, const char* bg_hex,
-                                 const char* attrs_str);
+int clk_term_register_style_hex(const char* fg_hex, const char* bg_hex, const char* attrs_str);
 
 /** Parse a "#RRGGBB" hex colour string into r/g/b components (0–255).
  *  Returns false if the string is NULL or does not match the format. */

@@ -112,16 +112,6 @@ static bool clk_clock_format_current_time(const char* time_format, char* buffer,
     return strftime(buffer, buffer_size, translated, &timeinfo) > 0;
 }
 
-static size_t clk_clock_count_sprites(const char* time_format) {
-    size_t count = 0;
-    for (int i = 0; i < strlen(time_format); ++i) {
-        char c = time_format[i];
-        if (c == 'y' || c == 'M' || c == 'd' || c == 'h' || c == 'm' || c == 's' || c == ':')
-            count++;
-    }
-    return count;
-}
-
 static bool clk_clock_read_file(const char* path, char** out_content, size_t* out_size) {
     *out_content = NULL;
     *out_size = 0;
@@ -376,7 +366,7 @@ static bool clk_clock_load_font_config(clk_clock* clk) {
         return false;
     }
 
-    clk->clk_clock_glyph_spacing = (size_t)glyph_spacing;
+    clk->clk_clock_glyph_spacing = (int)glyph_spacing;
 
     struct clk_json_value* cells_json = clk_json_object_get(json, "cells");
 
@@ -413,7 +403,7 @@ bool clk_clock_create(clk_clock* clk, const char* time_format, const char* font_
         return false;
     }
 
-    clk->clk_clock_sprite_count = clk_clock_count_sprites(clk->clk_clock_time_format);
+    clk->clk_clock_sprite_count = strlen(clk->clk_clock_time_format);
     clk->clk_clock_sprite_capacity = clk->clk_clock_sprite_count * 2;
     struct clk_sprite** sprites =
         malloc(clk->clk_clock_sprite_capacity * sizeof(struct clk_sprite*));
@@ -423,6 +413,22 @@ bool clk_clock_create(clk_clock* clk, const char* time_format, const char* font_
     }
     memset(sprites, 0, clk->clk_clock_sprite_capacity * sizeof(struct clk_sprite*));
     clk->clk_clock_sprites = sprites;
+
+    for (int i = 0; i < clk->clk_clock_sprite_count; ++i) {
+        clk_sprite* temp_s = malloc(sizeof(clk_sprite));
+        if (!temp_s) {
+            clk_clock_destroy(clk);
+            return false;
+        }
+        memset(temp_s, 0, sizeof(clk_sprite));
+        temp_s->is_invalid = true;
+        clk->clk_clock_sprites[i] = temp_s;
+    }
+
+    clk->posx = 0;
+    clk->posy = 0;
+
+    clk_clock_update(clk);
 
     return true;
 }
@@ -452,8 +458,41 @@ bool clk_clock_change_font_path(clk_clock* clk, const char* new_font_path) {
     return false;
 }
 
-void clk_clock_update(clk_clock* clk) {
+bool clk_clock_reload_config(clk_clock* clk) {
     (void)clk;
+    return false;
+}
+
+void clk_clock_update(clk_clock* clk) {
+    if (!clk)
+        return;
+    char time_str[CLK_CLOCK_TIME_FORMAT_MAX_LENGTH];
+    if (!clk_clock_format_current_time(clk->clk_clock_time_format, time_str, sizeof(time_str)))
+        return;
+
+    /* font dimensions — all glyph textures share the same size */
+    int font_w = clk->clk_clock_num_font_texture[0].tex_w;
+    int spacing = (int)clk->clk_clock_glyph_spacing;
+
+    size_t len = strlen(time_str);
+    for (size_t i = 0; i < len; ++i) {
+        clk_sprite* s = clk->clk_clock_sprites[i];
+        char ch = time_str[i];
+        if ((ch < '0' || ch > '9') && ch != ':') {
+            s->is_invalid = true;
+            continue;
+        }
+        int index = (ch == ':') ? 10 : (ch - '0');
+        s->tex = &clk->clk_clock_num_font_texture[index];
+        s->posx = clk->posx + (int)i * (font_w + spacing);
+        s->posy = clk->posy;
+        s->is_invalid = false;
+    }
+
+    /* hide sprites beyond the current time string */
+    for (size_t i = len; i < clk->clk_clock_sprite_count; ++i) {
+        clk->clk_clock_sprites[i]->is_invalid = true;
+    }
 }
 
 bool clk_clock_get_sprite_size(const clk_clock* clk, int* width, int* height) {
@@ -481,5 +520,10 @@ bool clk_clock_set_sprite_pos(clk_clock* clk, int posx, int posy) {
     (void)clk;
     (void)posx;
     (void)posy;
+    return false;
+}
+
+bool clk_clock_add_to_term(clk_clock* clk) {
+    (void)clk;
     return false;
 }
