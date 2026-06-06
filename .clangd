@@ -1,4 +1,4 @@
 CompileFlags:
-  CompilationDatabase: build
-Diagnostics:
-  Suppress: tweak
+  Add:
+    - "-I/mnt/d/VsCode_Project/Cpp/Clock/include"
+    - "-std=gnu17"

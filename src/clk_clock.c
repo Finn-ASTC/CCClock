@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include "clk_clock.h"
 
 #include <stdbool.h>
@@ -10,14 +11,14 @@
 #include "clk_json.h"
 #include "clk_term.h"
 
-/**
- * Translate a user-friendly format string into strftime format.
- *   yyyy → %Y    yy → %y
- *   MM   → %m    dd → %d
- *   hh   → %H    mm → %M    ss → %S
- * Characters not listed above are passed through literally
- * (spaces, colons, newlines, etc.).
- */
+/* ================================================================
+ *  Time format translation
+ *
+ *  User-friendly tokens → strftime (%… ) tokens.
+ *  Unrecognised characters (spaces, colons, newlines) pass through
+ *  literally so they appear in the formatted output.
+ * ================================================================ */
+
 static bool translate_time_format(const char* fmt, char* out, size_t out_size) {
     int i = 0, o = 0;
     int end = (int)strlen(fmt);
@@ -93,7 +94,6 @@ static bool clk_clock_format_current_time(const char* time_format, char* buffer,
     if (!time_format || !buffer || buffer_size == 0)
         return false;
 
-    /* translate "yyyy:MM:dd hh:mm:ss" → "%Y:%m:%d %H:%M:%S" */
     char translated[128];
     if (!translate_time_format(time_format, translated, sizeof(translated)))
         return false;
@@ -111,6 +111,10 @@ static bool clk_clock_format_current_time(const char* time_format, char* buffer,
 
     return strftime(buffer, buffer_size, translated, &timeinfo) > 0;
 }
+
+/* ================================================================
+ *  File I/O helper
+ * ================================================================ */
 
 static bool clk_clock_read_file(const char* path, char** out_content, size_t* out_size) {
     *out_content = NULL;
@@ -153,6 +157,12 @@ static bool clk_clock_read_file(const char* path, char** out_content, size_t* ou
     return true;
 }
 
+/* ================================================================
+ *  Font config — JSON → styles + cell templates + glyph textures
+ * ================================================================ */
+
+/** Convert a JSON cell definition into a clk_cell using the
+ *  style-name → style-id translator. */
 static bool clk_clock_trans_json_cell_to_clk_cell(const clk_json_value* json_cell,
                                                   clk_cell* out_cell,
                                                   const clk_json_value* style_int_translator) {
@@ -167,7 +177,7 @@ static bool clk_clock_trans_json_cell_to_clk_cell(const clk_json_value* json_cel
     if (empty && clk_json_is_true(empty))
         return true;
 
-    /* "char" → cell_tex */
+    /* "char" → cell_tex (null-terminated UTF-8) */
     const char* ch_str = NULL;
     struct clk_json_value* ch = clk_json_object_get(json_cell, "char");
     if (!ch || !clk_json_is_string(ch) || clk_json_get_string(ch, &ch_str) != 0)
@@ -198,130 +208,137 @@ static bool clk_clock_trans_json_cell_to_clk_cell(const clk_json_value* json_cel
     return true;
 }
 
+/** Register every style from the JSON "styles" object with the
+ *  term and build a style-name → style-id lookup table. */
 static bool clk_clock_register_config_style(const clk_json_value* styles_json,
-                                            clk_json_value* style_int_translator) {
+                                            clk_json_value* translator) {
     clk_json_object_iterator iter;
     if (clk_json_object_iterator_init(styles_json, &iter) != 0)
         return false;
+
     clk_json_key_value_pair pair;
-    while (1) {
-        if (!clk_json_object_iterator_next(&iter, &pair))
-            break;
-        char* json_style_name = pair.key;
+    while (clk_json_object_iterator_next(&iter, &pair)) {
+        char* name = pair.key;
+        struct clk_json_value* s = pair.value;
 
-        struct clk_json_value* json_style = pair.value;
-
-        struct clk_json_value* fg = clk_json_object_get(json_style, "fg");
         const char* fg_str = NULL;
+        struct clk_json_value* fg = clk_json_object_get(s, "fg");
         if (!fg || !clk_json_is_string(fg) || clk_json_get_string(fg, &fg_str) != 0)
             return false;
-        struct clk_json_value* bg = clk_json_object_get(json_style, "bg");
+
         const char* bg_str = NULL;
+        struct clk_json_value* bg = clk_json_object_get(s, "bg");
         if (!bg || !clk_json_is_string(bg) || clk_json_get_string(bg, &bg_str) != 0)
             return false;
-        struct clk_json_value* attr = clk_json_object_get(json_style, "attr");
+
         const char* attr_str = NULL;
+        struct clk_json_value* attr = clk_json_object_get(s, "attr");
         if (!attr || !clk_json_is_string(attr) || clk_json_get_string(attr, &attr_str) != 0)
             return false;
 
-        int style_id = clk_term_register_style_hex(fg_str, bg_str, attr_str);
+        int id = clk_term_register_style_hex(fg_str, bg_str, attr_str);
 
-        if (clk_json_object_set_number(style_int_translator, json_style_name, style_id) != 0)
+        if (clk_json_object_set_number(translator, name, id) != 0)
             return false;
     }
     return true;
 }
 
+/** Build the 11 glyph textures from the parsed JSON.
+ *
+ *  Two-phase: first iterate the "cells" object to build a
+ *  char → clk_cell lookup table (one JSON parse per unique cell);
+ *  then iterate "glyphs" and fill each texture by indexing the
+ *  table by character. */
 static bool clk_clock_load_font_texture(const clk_json_value* json, clk_clock* clk, int glyph_w,
                                         int glyph_h) {
     struct clk_json_value* json_glyphs = clk_json_object_get(json, "glyphs");
-    if (json_glyphs == NULL || !clk_json_is_object(json_glyphs) ||
+    if (!json_glyphs || !clk_json_is_object(json_glyphs) ||
         clk_json_object_count(json_glyphs) != 11)
         return false;
 
     struct clk_json_value* styles_json = clk_json_object_get(json, "styles");
 
-    struct clk_json_value* style_int_translator = clk_json_create_object();
-    if (!clk_clock_register_config_style(styles_json, style_int_translator)) {
-        clk_json_free(style_int_translator);
+    /* --- build style-name → style-id translator --- */
+    struct clk_json_value* translator = clk_json_create_object();
+    if (!clk_clock_register_config_style(styles_json, translator)) {
+        clk_json_free(translator);
         return false;
     }
 
-    /* build cell lookup table: char → clk_cell (one parse per unique cell) */
+    /* --- build cell lookup table: char → clk_cell --- */
     clk_cell cell_table[256] = {0};
     for (int i = 0; i < 256; i++)
         cell_table[i].is_empty = true;
 
     struct clk_json_value* json_cells = clk_json_object_get(json, "cells");
     if (!json_cells) {
-        clk_json_free(style_int_translator);
+        clk_json_free(translator);
         return false;
     }
 
     clk_json_object_iterator cell_iter;
     if (clk_json_object_iterator_init(json_cells, &cell_iter) != 0) {
-        clk_json_free(style_int_translator);
+        clk_json_free(translator);
         return false;
     }
     clk_json_key_value_pair cp;
     while (clk_json_object_iterator_next(&cell_iter, &cp)) {
         unsigned char idx = (unsigned char)cp.key[0];
-        if (!clk_clock_trans_json_cell_to_clk_cell(cp.value, &cell_table[idx],
-                                                   style_int_translator)) {
-            clk_json_free(style_int_translator);
+        if (!clk_clock_trans_json_cell_to_clk_cell(cp.value, &cell_table[idx], translator)) {
+            clk_json_free(translator);
             return false;
         }
     }
 
-    /* populate glyph textures */
+    /* --- populate glyph textures --- */
     clk_json_object_iterator iter;
     if (clk_json_object_iterator_init(json_glyphs, &iter) != 0) {
-        clk_json_free(style_int_translator);
+        clk_json_free(translator);
         return false;
     }
 
     clk_json_key_value_pair pair;
-
-    while (1) {
-        if (!clk_json_object_iterator_next(&iter, &pair))
-            break;
+    while (clk_json_object_iterator_next(&iter, &pair)) {
         char key = pair.key[0];
         int slot = (key >= '0' && key <= '9') ? (key - '0') : (key == ':' ? 10 : -1);
         if (slot == -1) {
-            clk_json_free(style_int_translator);
+            clk_json_free(translator);
             return false;
         }
 
         clk->clk_clock_num_font_texture[slot] = clk_texture_create(glyph_w, glyph_h);
 
-        struct clk_json_value* font_texture_json = pair.value;
-        if (clk_json_get_type(font_texture_json) != JSON_ARRAY) {
-            clk_json_free(style_int_translator);
+        struct clk_json_value* gv = pair.value;
+        if (clk_json_get_type(gv) != JSON_ARRAY) {
+            clk_json_free(translator);
             return false;
         }
 
         for (int y = 0; y < glyph_h; ++y) {
-            struct clk_json_value* texture_line = clk_json_array_get(font_texture_json, y);
-            const char* texture_line_str = NULL;
-            if (clk_json_get_string(texture_line, &texture_line_str) != 0) {
-                clk_json_free(style_int_translator);
+            struct clk_json_value* row = clk_json_array_get(gv, y);
+            const char* str = NULL;
+            if (clk_json_get_string(row, &str) != 0) {
+                clk_json_free(translator);
                 return false;
             }
             for (int x = 0; x < glyph_w; ++x) {
-                const clk_cell* c = &cell_table[(unsigned char)texture_line_str[x]];
+                const clk_cell* c = &cell_table[(unsigned char)str[x]];
                 if (!c->is_empty)
                     clk_texture_set_cell(&clk->clk_clock_num_font_texture[slot], x, y, c);
-                /* wide pair: skip the trailing marker character */
+                /* wide pair: skip the trailing marker */
                 if (c->type == CELL_WIDE_LEAD)
                     ++x;
             }
         }
     }
 
-    clk_json_free(style_int_translator);
+    clk_json_free(translator);
     return true;
 }
 
+/** Top-level font loader: read file, parse JSON, extract metrics,
+ *  then delegate to clk_clock_load_font_texture. */
 static bool clk_clock_load_font_config(clk_clock* clk) {
     char* file_content = NULL;
     size_t file_size = 0;
@@ -334,43 +351,24 @@ static bool clk_clock_load_font_config(clk_clock* clk) {
         return false;
     }
 
-    double glyph_spacing = 0;
-    double glyph_w = 0, glyph_h = 0;
+    double spacing = 0;
+    double fw = 0, fh = 0;
 
-    struct clk_json_value* json_glyph_spacing = clk_json_object_get(json, "glyph_spacing");
-    if (!json_glyph_spacing || !clk_json_is_number(json_glyph_spacing)) {
+    struct clk_json_value* js = clk_json_object_get(json, "glyph_spacing");
+    struct clk_json_value* jw = clk_json_object_get(json, "font_w");
+    struct clk_json_value* jh = clk_json_object_get(json, "font_h");
+
+    if (!js || !clk_json_is_number(js) || !jw || !clk_json_is_number(jw) || !jh ||
+        !clk_json_is_number(jh) || clk_json_get_number(js, &spacing) != 0 ||
+        clk_json_get_number(jw, &fw) != 0 || clk_json_get_number(jh, &fh) != 0) {
         clk_json_free(json);
         free(file_content);
         return false;
     }
 
-    struct clk_json_value* json_font_w = clk_json_object_get(json, "font_w");
-    if (!json_font_w || !clk_json_is_number(json_font_w)) {
-        clk_json_free(json);
-        free(file_content);
-        return false;
-    }
+    clk->clk_clock_glyph_spacing = (int)spacing;
 
-    struct clk_json_value* json_font_h = clk_json_object_get(json, "font_h");
-    if (!json_font_h || !clk_json_is_number(json_font_h)) {
-        clk_json_free(json);
-        free(file_content);
-        return false;
-    }
-
-    if (clk_json_get_number(json_glyph_spacing, &glyph_spacing) != 0 ||
-        clk_json_get_number(json_font_w, &glyph_w) != 0 ||
-        clk_json_get_number(json_font_h, &glyph_h) != 0) {
-        clk_json_free(json);
-        free(file_content);
-        return false;
-    }
-
-    clk->clk_clock_glyph_spacing = (int)glyph_spacing;
-
-    struct clk_json_value* cells_json = clk_json_object_get(json, "cells");
-
-    if (!clk_clock_load_font_texture(json, clk, (int)glyph_w, (int)glyph_h)) {
+    if (!clk_clock_load_font_texture(json, clk, (int)fw, (int)fh)) {
         clk_json_free(json);
         free(file_content);
         return false;
@@ -381,10 +379,15 @@ static bool clk_clock_load_font_config(clk_clock* clk) {
     return true;
 }
 
+/* ================================================================
+ *  Public API
+ * ================================================================ */
+
 bool clk_clock_create(clk_clock* clk, const char* time_format, const char* font_path) {
     if (!clk || !time_format || !font_path)
         return false;
 
+    /* zero-initialise so destroy() is safe on partial construction */
     memset(clk, 0, sizeof(*clk));
 
     size_t fmt_len = strlen(time_format);
@@ -405,125 +408,242 @@ bool clk_clock_create(clk_clock* clk, const char* time_format, const char* font_
 
     clk->clk_clock_sprite_count = strlen(clk->clk_clock_time_format);
     clk->clk_clock_sprite_capacity = clk->clk_clock_sprite_count * 2;
-    struct clk_sprite** sprites =
-        malloc(clk->clk_clock_sprite_capacity * sizeof(struct clk_sprite*));
+    clk_sprite** sprites = malloc(clk->clk_clock_sprite_capacity * sizeof(clk_sprite*));
     if (!sprites) {
         clk_clock_destroy(clk);
         return false;
     }
-    memset(sprites, 0, clk->clk_clock_sprite_capacity * sizeof(struct clk_sprite*));
+    memset(sprites, 0, clk->clk_clock_sprite_capacity * sizeof(clk_sprite*));
     clk->clk_clock_sprites = sprites;
 
-    for (int i = 0; i < clk->clk_clock_sprite_count; ++i) {
-        clk_sprite* temp_s = malloc(sizeof(clk_sprite));
-        if (!temp_s) {
+    for (size_t i = 0; i < clk->clk_clock_sprite_count; ++i) {
+        clk_sprite* s = malloc(sizeof(clk_sprite));
+        if (!s) {
             clk_clock_destroy(clk);
             return false;
         }
-        memset(temp_s, 0, sizeof(clk_sprite));
-        temp_s->is_invalid = true;
-        clk->clk_clock_sprites[i] = temp_s;
+        memset(s, 0, sizeof(clk_sprite));
+        s->is_invalid = true;
+        clk->clk_clock_sprites[i] = s;
     }
 
     clk->posx = 0;
     clk->posy = 0;
-
+    clk->clk_clock_z_order = 0;
     clk_clock_update(clk);
-
     return true;
 }
 
 void clk_clock_destroy(clk_clock* clk) {
     if (!clk)
         return;
+
     free(clk->clk_clock_font_path);
-    for (int i = 0; i < CLK_CLOCK_NUM_TEXTURE_COUNT; ++i) {
+    clk->clk_clock_font_path = NULL;
+
+    for (int i = 0; i < CLK_CLOCK_NUM_TEXTURE_COUNT; ++i)
         clk_texture_destroy(&clk->clk_clock_num_font_texture[i]);
-    }
+
     for (size_t i = 0; i < clk->clk_clock_sprite_count; ++i) {
+        clk_term_remove_sprite(clk->clk_clock_sprites[i]);
         free(clk->clk_clock_sprites[i]);
     }
     free(clk->clk_clock_sprites);
-}
 
-bool clk_clock_change_time_format(clk_clock* clk, const char* new_time_format) {
-    (void)clk;
-    (void)new_time_format;
-    return false;
-}
-
-bool clk_clock_change_font_path(clk_clock* clk, const char* new_font_path) {
-    (void)clk;
-    (void)new_font_path;
-    return false;
+    clk->clk_clock_sprites = NULL;
+    clk->clk_clock_sprite_count = 0;
+    clk->clk_clock_sprite_capacity = 0;
 }
 
 bool clk_clock_reload_config(clk_clock* clk) {
-    (void)clk;
-    return false;
+    if (!clk)
+        return false;
+
+    for (int i = 0; i < CLK_CLOCK_NUM_TEXTURE_COUNT; ++i)
+        clk_texture_destroy(&clk->clk_clock_num_font_texture[i]);
+
+    if (!clk_clock_load_font_config(clk))
+        return false;
+
+    clk_clock_update(clk);
+    return true;
 }
+
+bool clk_clock_change_time_format(clk_clock* clk, const char* new_time_format) {
+    if (!clk || !new_time_format)
+        return false;
+
+    size_t new_len = strlen(new_time_format);
+    if (new_len >= CLK_CLOCK_TIME_FORMAT_MAX_LENGTH)
+        return false;
+
+    /* copy format string */
+    memset(clk->clk_clock_time_format, 0, sizeof(clk->clk_clock_time_format));
+    memcpy(clk->clk_clock_time_format, new_time_format, new_len + 1);
+
+    /* expand sprite array if the new format is longer */
+    if (new_len > clk->clk_clock_sprite_count) {
+        if (new_len > clk->clk_clock_sprite_capacity) {
+            size_t new_cap = new_len * 2;
+            clk_sprite** sp = realloc(clk->clk_clock_sprites, new_cap * sizeof(clk_sprite*));
+            if (!sp)
+                return false;
+            memset(sp + clk->clk_clock_sprite_capacity, 0,
+                   (new_cap - clk->clk_clock_sprite_capacity) * sizeof(clk_sprite*));
+            clk->clk_clock_sprites = sp;
+            clk->clk_clock_sprite_capacity = new_cap;
+        }
+
+        for (size_t i = clk->clk_clock_sprite_count; i < new_len; ++i) {
+            clk_sprite* s = malloc(sizeof(clk_sprite));
+            if (!s)
+                return false;
+            memset(s, 0, sizeof(clk_sprite));
+            s->is_invalid = true;
+            s->z_order = clk->clk_clock_z_order;
+            clk->clk_clock_sprites[i] = s;
+            clk_term_add_sprite(s);
+        }
+    }
+
+    clk->clk_clock_sprite_count = new_len;
+    return true;
+}
+
+bool clk_clock_change_font_path(clk_clock* clk, const char* new_font_path) {
+    if (!clk || !new_font_path)
+        return false;
+
+    free(clk->clk_clock_font_path);
+    clk->clk_clock_font_path = strdup(new_font_path);
+    if (!clk->clk_clock_font_path)
+        return false;
+
+    return clk_clock_reload_config(clk);
+}
+
+/* ================================================================
+ *  Update
+ * ================================================================ */
 
 void clk_clock_update(clk_clock* clk) {
     if (!clk)
         return;
+
     char time_str[CLK_CLOCK_TIME_FORMAT_MAX_LENGTH];
     if (!clk_clock_format_current_time(clk->clk_clock_time_format, time_str, sizeof(time_str)))
         return;
 
-    /* font dimensions — all glyph textures share the same size */
+    /* all glyph textures share the same dimensions */
     int font_w = clk->clk_clock_num_font_texture[0].tex_w;
+    int font_h = clk->clk_clock_num_font_texture[0].tex_h;
     int spacing = (int)clk->clk_clock_glyph_spacing;
 
     size_t len = strlen(time_str);
+    int col = 0, row = 0;
+
     for (size_t i = 0; i < len; ++i) {
         clk_sprite* s = clk->clk_clock_sprites[i];
         char ch = time_str[i];
-        if ((ch < '0' || ch > '9') && ch != ':') {
+
+        /* newline → next row */
+        if (ch == '\n') {
             s->is_invalid = true;
+            row++;
+            col = 0;
             continue;
         }
-        int index = (ch == ':') ? 10 : (ch - '0');
-        s->tex = &clk->clk_clock_num_font_texture[index];
-        s->posx = clk->posx + (int)i * (font_w + spacing);
-        s->posy = clk->posy;
-        s->is_invalid = false;
+
+        if ((ch >= '0' && ch <= '9') || ch == ':') {
+            int index = (ch == ':') ? 10 : (ch - '0');
+            s->tex = &clk->clk_clock_num_font_texture[index];
+            s->posx = clk->posx + col * (font_w + spacing);
+            s->posy = clk->posy + row * font_h;
+            s->z_order = clk->clk_clock_z_order;
+            s->is_invalid = false;
+        } else {
+            /* space / literal — keep gap but render nothing */
+            s->is_invalid = true;
+        }
+        col++;
     }
 
     /* hide sprites beyond the current time string */
-    for (size_t i = len; i < clk->clk_clock_sprite_count; ++i) {
+    for (size_t i = len; i < clk->clk_clock_sprite_count; ++i)
         clk->clk_clock_sprites[i]->is_invalid = true;
-    }
+}
+
+/* ================================================================
+ *  Query
+ * ================================================================ */
+
+bool clk_clock_get_font_texture_size(const clk_clock* clk, int* width, int* height) {
+    if (!clk || !width || !height)
+        return false;
+    const clk_texture* tex = &clk->clk_clock_num_font_texture[0];
+    *width = tex->tex_w;
+    *height = tex->tex_h;
+    return true;
 }
 
 bool clk_clock_get_sprite_size(const clk_clock* clk, int* width, int* height) {
-    (void)clk;
-    (void)width;
-    (void)height;
-    return false;
+    int fw, fh;
+    if (!clk_clock_get_font_texture_size(clk, &fw, &fh))
+        return false;
+
+    int spacing = (int)clk->clk_clock_glyph_spacing;
+    int max_cols = 0, cur_cols = 0, rows = 1;
+    const char* p = clk->clk_clock_time_format;
+    for (; *p; ++p) {
+        if (*p == '\n') {
+            if (cur_cols > max_cols)
+                max_cols = cur_cols;
+            cur_cols = 0;
+            rows++;
+        } else {
+            cur_cols++;
+        }
+    }
+    if (cur_cols > max_cols)
+        max_cols = cur_cols;
+
+    *width = max_cols * fw + (max_cols > 0 ? max_cols - 1 : 0) * spacing;
+    *height = rows * fh;
+    return true;
 }
 
-bool clk_clock_get_font_texture_size(const clk_clock* clk, int* width, int* height) {
-    (void)clk;
-    (void)width;
-    (void)height;
-    return false;
+bool clk_clock_get_sprite_pos(const clk_clock* clk, int* px, int* py) {
+    if (!clk || !px || !py)
+        return false;
+    *px = clk->posx;
+    *py = clk->posy;
+    return true;
 }
 
-bool clk_clock_get_sprite_pos(const clk_clock* clk, int* posx, int* posy) {
-    (void)clk;
-    (void)posx;
-    (void)posy;
-    return false;
+bool clk_clock_set_sprite_pos(clk_clock* clk, int px, int py) {
+    if (!clk)
+        return false;
+    clk->posx = px;
+    clk->posy = py;
+    return true;
 }
 
-bool clk_clock_set_sprite_pos(clk_clock* clk, int posx, int posy) {
-    (void)clk;
-    (void)posx;
-    (void)posy;
-    return false;
+void clk_clock_set_z_order(clk_clock* clk, int z) {
+    if (!clk)
+        return;
+    clk->clk_clock_z_order = z;
+    for (size_t i = 0; i < clk->clk_clock_sprite_count; ++i)
+        clk_sprite_set_z(clk->clk_clock_sprites[i], z);
 }
+
+/* ================================================================
+ *  Render list
+ * ================================================================ */
 
 bool clk_clock_add_to_term(clk_clock* clk) {
-    (void)clk;
-    return false;
+    if (!clk)
+        return false;
+    for (size_t i = 0; i < clk->clk_clock_sprite_count; ++i)
+        clk_term_add_sprite(clk->clk_clock_sprites[i]);
+    return true;
 }

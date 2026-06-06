@@ -2,6 +2,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1479,8 +1480,9 @@ clk_json_value* clk_json_get_by_path(const clk_json_value* root, const char* pat
                     return NULL;
                 char* endptr;
                 long index = strtol(index_str, &endptr, 10);
+                bool bad_index = (*endptr != '\0' || index < 0);
                 free(index_str);
-                if (*endptr != '\0' || index < 0)
+                if (bad_index)
                     return NULL;
                 clk_json_value* next = clk_json_array_get(current, (size_t)index);
                 if (!next)

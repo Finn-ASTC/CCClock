@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include "clk_term.h"
 
 #include <stdbool.h>
@@ -296,6 +297,12 @@ void clk_sprite_set_z(clk_sprite* s, int z) {
 void clk_term_add_sprite(clk_sprite* sprite) {
     if (!clk_is_term_init || !sprite)
         return;
+
+    /* dedup — ignore if already registered */
+    for (int i = 0; i < sprite_list_count; ++i) {
+        if (sprite_render_list[i] == sprite)
+            return;
+    }
 
     int count = sprite_list_count + 1;
     if (count > sprite_list_capacity) {

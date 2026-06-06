@@ -306,117 +306,122 @@ int main(void) {
     v = clk_json_parse("{}");
     s = clk_json_stringify_pretty(v);
     TEST("pretty empty obj", strcmp(s, "{}") == 0);
-    free(s); clk_json_free(v);
+    free(s);
+    clk_json_free(v);
 
     v = clk_json_parse("[]");
     s = clk_json_stringify_pretty(v);
     TEST("pretty empty array", strcmp(s, "[]") == 0);
-    free(s); clk_json_free(v);
+    free(s);
+    clk_json_free(v);
 
     /* 简单对象 —— 一行一个键值对，2空格缩进 */
     v = clk_json_parse("{\"a\":1}");
     s = clk_json_stringify_pretty(v);
     TEST("pretty simple obj exact", s && strcmp(s, "{\n  \"a\": 1\n}") == 0);
-    free(s); clk_json_free(v);
+    free(s);
+    clk_json_free(v);
 
     /* 多键值对 —— 每个独立一行，最后不带逗号 */
     v = clk_json_parse("{\"x\":1,\"y\":2,\"z\":3}");
     s = clk_json_stringify_pretty(v);
-    TEST("pretty multi-key obj exact",
-         s && strcmp(s,
-                      "{\n"
-                      "  \"x\": 1,\n"
-                      "  \"y\": 2,\n"
-                      "  \"z\": 3\n"
-                      "}") == 0);
-    free(s); clk_json_free(v);
+    TEST("pretty multi-key obj exact", s && strcmp(s,
+                                                   "{\n"
+                                                   "  \"x\": 1,\n"
+                                                   "  \"y\": 2,\n"
+                                                   "  \"z\": 3\n"
+                                                   "}") == 0);
+    free(s);
+    clk_json_free(v);
 
     /* 全是基本值的数组 —— 不换行 */
     v = clk_json_parse("[1,2,3]");
     s = clk_json_stringify_pretty(v);
     TEST("pretty primitive array inline", strcmp(s, "[1,2,3]") == 0);
-    free(s); clk_json_free(v);
+    free(s);
+    clk_json_free(v);
 
     /* 数组里有一个容器孩子 —— 换行 */
     v = clk_json_parse("[1,[2],3]");
     s = clk_json_stringify_pretty(v);
-    TEST("pretty array with nested inline",
-         s && strcmp(s,
-                      "[\n"
-                      "  1,\n"
-                      "  [2],\n"
-                      "  3\n"
-                      "]") == 0);
-    free(s); clk_json_free(v);
+    TEST("pretty array with nested inline", s && strcmp(s,
+                                                        "[\n"
+                                                        "  1,\n"
+                                                        "  [2],\n"
+                                                        "  3\n"
+                                                        "]") == 0);
+    free(s);
+    clk_json_free(v);
 
     /* 纯容器孩子数组 —— 全换行 */
     v = clk_json_parse("[[1,2],[3,4]]");
     s = clk_json_stringify_pretty(v);
-    TEST("pretty array all containers",
-         s && strcmp(s,
-                      "[\n"
-                      "  [1,2],\n"
-                      "  [3,4]\n"
-                      "]") == 0);
-    free(s); clk_json_free(v);
+    TEST("pretty array all containers", s && strcmp(s,
+                                                    "[\n"
+                                                    "  [1,2],\n"
+                                                    "  [3,4]\n"
+                                                    "]") == 0);
+    free(s);
+    clk_json_free(v);
 
     /* 双层嵌套对象 —— 内层缩进 4 空格 */
     v = clk_json_parse("{\"outer\":{\"inner\":99}}");
     s = clk_json_stringify_pretty(v);
-    TEST("pretty nested object depth 2",
-         s && strcmp(s,
-                      "{\n"
-                      "  \"outer\": {\n"
-                      "    \"inner\": 99\n"
-                      "  }\n"
-                      "}") == 0);
-    free(s); clk_json_free(v);
+    TEST("pretty nested object depth 2", s && strcmp(s,
+                                                     "{\n"
+                                                     "  \"outer\": {\n"
+                                                     "    \"inner\": 99\n"
+                                                     "  }\n"
+                                                     "}") == 0);
+    free(s);
+    clk_json_free(v);
 
     /* 三层嵌套 —— 内层 6 空格 */
     v = clk_json_parse("{\"a\":{\"b\":{\"c\":3}}}");
     s = clk_json_stringify_pretty(v);
-    TEST("pretty nested object depth 3",
-         s && strcmp(s,
-                      "{\n"
-                      "  \"a\": {\n"
-                      "    \"b\": {\n"
-                      "      \"c\": 3\n"
-                      "    }\n"
-                      "  }\n"
-                      "}") == 0);
-    free(s); clk_json_free(v);
+    TEST("pretty nested object depth 3", s && strcmp(s,
+                                                     "{\n"
+                                                     "  \"a\": {\n"
+                                                     "    \"b\": {\n"
+                                                     "      \"c\": 3\n"
+                                                     "    }\n"
+                                                     "  }\n"
+                                                     "}") == 0);
+    free(s);
+    clk_json_free(v);
 
     /* 对象中含数组 —— 数组换行，内层基本值不换行 */
     v = clk_json_parse("{\"nums\":[1,2,3],\"flag\":true}");
     s = clk_json_stringify_pretty(v);
-    TEST("pretty obj with array",
-         s && strcmp(s,
-                      "{\n"
-                      "  \"nums\": [1,2,3],\n"
-                      "  \"flag\": true\n"
-                      "}") == 0);
-    free(s); clk_json_free(v);
+    TEST("pretty obj with array", s && strcmp(s,
+                                              "{\n"
+                                              "  \"nums\": [1,2,3],\n"
+                                              "  \"flag\": true\n"
+                                              "}") == 0);
+    free(s);
+    clk_json_free(v);
 
     /* 数组中含对象 —— 每个对象换行内联 */
     v = clk_json_parse("[{\"id\":1},{\"id\":2}]");
     s = clk_json_stringify_pretty(v);
-    TEST("pretty array of objects",
-         s && strcmp(s,
-                      "[\n"
-                      "  {\n"
-                      "    \"id\": 1\n"
-                      "  },\n"
-                      "  {\n"
-                      "    \"id\": 2\n"
-                      "  }\n"
-                      "]") == 0);
-    free(s); clk_json_free(v);
+    TEST("pretty array of objects", s && strcmp(s,
+                                                "[\n"
+                                                "  {\n"
+                                                "    \"id\": 1\n"
+                                                "  },\n"
+                                                "  {\n"
+                                                "    \"id\": 2\n"
+                                                "  }\n"
+                                                "]") == 0);
+    free(s);
+    clk_json_free(v);
 
     /* 混合类型 —— null / false / 字符串 */
     v = clk_json_parse("[null,false,\"hi\"]");
     s = clk_json_stringify_pretty(v);
     TEST("pretty mixed primitives inline", strcmp(s, "[null,false,\"hi\"]") == 0);
-    free(s); clk_json_free(v);
+    free(s);
+    clk_json_free(v);
 
     /* 往返测试 —— 格式化后数据不丢 */
     v = clk_json_parse("{\"a\":1,\"b\":[2,{\"c\":3}]}");
@@ -453,10 +458,8 @@ int main(void) {
     int rc = clk_json_merge_objects(dest, src);
     TEST("merge returns 0", rc == 0);
     TEST("merge count 3", clk_json_object_count(dest) == 3);
-    TEST("merge keeps 'a'",
-         clk_json_is_number(clk_json_object_get(dest, "a")));
-    TEST("merge adds 'b'",
-         clk_json_is_number(clk_json_object_get(dest, "b")));
+    TEST("merge keeps 'a'", clk_json_is_number(clk_json_object_get(dest, "a")));
+    TEST("merge adds 'b'", clk_json_is_number(clk_json_object_get(dest, "b")));
     /* overwrite */
     clk_json_value* src2 = clk_json_parse("{\"a\":99}");
     rc = clk_json_merge_objects(dest, src2);
@@ -473,7 +476,8 @@ int main(void) {
     clk_json_free(num_node);
 
     /* === Get By Path === */
-    v = clk_json_parse("{\"users\":[{\"name\":\"Alice\",\"age\":30},{\"name\":\"Bob\",\"age\":25}],\"count\":2}");
+    v = clk_json_parse(
+        "{\"users\":[{\"name\":\"Alice\",\"age\":30},{\"name\":\"Bob\",\"age\":25}],\"count\":2}");
     TEST_REQUIRE("path parse root", v != NULL);
 
     /* 简单键名 */

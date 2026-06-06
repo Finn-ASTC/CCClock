@@ -1,11 +1,9 @@
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 #include "clk_clock.h"
 #include "test_utils.h"
 
-#define TEST_FONT_PATH "assets/test_clock_config.json"
+#define TEST_FONT_PATH "../test/test_clock_config.json"
 
 int main(void) {
     if (isatty_fd(fileno(stdout))) {
@@ -15,131 +13,82 @@ int main(void) {
 
     clk_clock clk;
 
-    /* ================================================================
-     *  clk_clock_create —— 无效参数
-     *
-     *  测什么：NULL clock、NULL time_format、NULL font_path 都返回 false。
-     *  为什么测：create 是把所有分配组合在一起的入口，如果参数校验
-     *  漏了，内部会崩在 malloc 或 strdup 上。
-     * ================================================================ */
-
-    /* NULL clock */
+    /* === clk_clock_create — invalid args === */
     bool ok = clk_clock_create(NULL, "%H:%M:%S", TEST_FONT_PATH);
     TEST("clock_create NULL clock fails", !ok);
 
-    /* NULL time format */
     ok = clk_clock_create(&clk, NULL, TEST_FONT_PATH);
     TEST("clock_create NULL format fails", !ok);
 
-    /* NULL font path */
     ok = clk_clock_create(&clk, "%H:%M:%S", NULL);
     TEST("clock_create NULL font path fails", !ok);
 
-    /* invalid font path */
     ok = clk_clock_create(&clk, "%H:%M:%S", "nonexistent.json");
     TEST("clock_create missing file fails", !ok);
 
-    /* ================================================================
-     *  clk_clock_create —— 正常创建
-     *
-     *  测什么：合法参数返回 true，内部 texture 非空且尺寸正确。
-     *  为什么测：create 是链式操作——分配内存 → 解析 JSON →
-     *  注册样式 → 建字形表 → 分配纹理。任何一个环节崩了，
-     *  返回值或纹理尺寸就能抓出来。
-     * ================================================================ */
-
+    /* === clk_clock_create — success === */
     ok = clk_clock_create(&clk, "%H:%M:%S", TEST_FONT_PATH);
     TEST_REQUIRE("clock_create succeeds", ok);
 
-    /* 纹理存在且非空 */
-    const clk_texture* tex = clk_clock_get_texture(&clk);
-    TEST_REQUIRE("clock_get_texture non-null", tex != NULL);
-    TEST("clock texture data non-null", tex->data != NULL);
+    /* font texture size */
+    int fw, fh;
+    TEST("get_font_texture_size succeeds", clk_clock_get_font_texture_size(&clk, &fw, &fh));
+    TEST("font_w == 5", fw == 5);
+    TEST("font_h == 5", fh == 5);
 
-    /* 纹理尺寸：5 个数字 + 1 个冒号 + 5 个数字 + 1 个冒号 + 5 个数字
-     *   8 个字形 × 5 列 = 40 列（每个字形间无间距）
-     *   5 行高 */
-    int tex_w, tex_h;
-    TEST("clock_get_texture_size succeeds",
-         clk_clock_get_texture_size(&clk, &tex_w, &tex_h));
-    TEST("clock texture width > 0",  tex_w > 0);
-    TEST("clock texture height == 5", tex_h == 5);
+    /* sprite position */
+    int px, py;
+    TEST("get_sprite_pos succeeds", clk_clock_get_sprite_pos(&clk, &px, &py));
+    TEST("default pos == 0,0", px == 0 && py == 0);
 
-    /* ================================================================
-     *  clk_clock_get_texture / get/set pos —— 纹理访问
-     * ================================================================ */
+    TEST("set_sprite_pos succeeds", clk_clock_set_sprite_pos(&clk, 10, 5));
+    clk_clock_get_sprite_pos(&clk, &px, &py);
+    TEST("set_sprite_pos reflects", px == 10 && py == 5);
 
-    /* 默认位置应在屏幕居中 */
-    int posx, posy;
-    TEST("clock_get_texture_pos succeeds",
-         clk_clock_get_texture_pos(&clk, &posx, &posy));
+    /* NULL protection */
+    TEST("get_sprite_pos NULL fails", !clk_clock_get_sprite_pos(&clk, NULL, &py));
+    TEST("get_font_texture_size NULL fails", !clk_clock_get_font_texture_size(&clk, NULL, &fh));
 
-    /* 修改位置并验证 */
-    TEST("clock_set_texture_pos succeeds",
-         clk_clock_set_texture_pos(&clk, 10, 5));
-    TEST("clock_get_texture_pos succeeds (2)",
-         clk_clock_get_texture_pos(&clk, &posx, &posy));
-    TEST("clock_set_texture_pos x == 10", posx == 10);
-    TEST("clock_set_texture_pos y == 5",  posy == 5);
-
-    /* NULL 参数保护 */
-    TEST("clock_get_texture_pos NULL posx fails",
-         !clk_clock_get_texture_pos(&clk, NULL, &posy));
-    TEST("clock_get_texture_size NULL arg fails",
-         !clk_clock_get_texture_size(&clk, NULL, &tex_h));
-
-    /* ================================================================
-     *  clk_clock_update —— 时间更新
-     *
-     *  测什么：调用后 clk_clock_time 字段被填入合法值。
-     *  为什么测：update 调 localtime_s / localtime_r，跨平台写法
-     *  不同（Windows 用 localtime_s，Linux 用 localtime_r），
-     *  最容易在这里出平台 bug。
-     * ================================================================ */
-
+    /* === clk_clock_update === */
     clk_clock_update(&clk);
+    TEST("clock_update doesn't crash", 1);
 
-    /* 更新后纹理内容应有变化——通过检查中间 cell 不为空来
-     * 间接验证 clk_clock_update 触发了纹理刷新 */
-    int tex_w2, tex_h2;
-    clk_clock_get_texture_size(&clk, &tex_w2, &tex_h2);
-    int mid_x = tex_w2 / 2;
-    const clk_cell* c = clk_texture_get_cell(tex, mid_x, 2);
-    TEST("clock_update populates texture", c != NULL && !c->is_empty);
+    /* sprite size */
+    int sw, sh;
+    TEST("get_sprite_size succeeds", clk_clock_get_sprite_size(&clk, &sw, &sh));
+    TEST("sprite total_w > 0", sw > 0);
+    TEST("sprite total_h == 5", sh == 5);
 
-    /* ================================================================
-     *  clk_clock_change_time_format —— 切换时间格式
-     *
-     *  测什么：合法格式成功、NULL 格式失败、切完后 update 不崩。
-     *  为什么测：时间格式变更需要重新评估纹理大小，如果纹理没
-     *  重新分配，新格式超出旧纹理边界就会越界。
-     * ================================================================ */
-
-    TEST("clock_change_time_format to %%H:%%M succeeds",
-         clk_clock_change_time_format(&clk, "%H:%M"));
-    TEST("clock_change_time_format NULL fails",
-         !clk_clock_change_time_format(&clk, NULL));
-
-    /* 切格式后 update 不应崩溃 */
+    /* === change_time_format === */
+    /* shorten format */
+    TEST("change_time_format succeeds", clk_clock_change_time_format(&clk, "%H:%M"));
+    TEST("change_time_format NULL fails", !clk_clock_change_time_format(&clk, NULL));
     clk_clock_update(&clk);
+    TEST("update after shorten doesn't crash", 1);
 
-    /* ================================================================
-     *  clk_clock_destroy —— 安全销毁
-     *
-     *  测什么：一次 destroy 不崩、二次 destroy 不崩、
-     *  destroy 后 get_texture 返 NULL。
-     *  为什么测：destroy 要释放纹理 data + 字形表内部内存。
-     *  double-free 是最危险的内存 bug。
-     * ================================================================ */
+    /* expand format (短→长：验证 sprite 扩容） */
+    TEST("change_time_format to HH:MM:SS succeeds", clk_clock_change_time_format(&clk, "%H:%M:%S"));
+    clk_clock_update(&clk);
+    TEST("update after expand doesn't crash", 1);
 
+    /* === reload_config === */
+    TEST("reload_config succeeds", clk_clock_reload_config(&clk));
+
+    /* === change_font_path === */
+    TEST("change_font_path succeeds", clk_clock_change_font_path(&clk, TEST_FONT_PATH));
+    TEST("change_font_path NULL fails", !clk_clock_change_font_path(&clk, NULL));
+
+    /* === add_to_term === */
+    TEST("add_to_term succeeds", clk_clock_add_to_term(&clk));
+    TEST("add_to_term NULL fails", !clk_clock_add_to_term(NULL));
+
+    /* === destroy === */
     clk_clock_destroy(&clk);
     TEST("clock_destroy no crash", 1);
-
-    /* 二次 destroy 不应崩溃 */
     clk_clock_destroy(&clk);
     TEST("clock_destroy double no crash", 1);
 
-    /* destroy 后将 clock 重新 create——验证 destroy 清理干净了 */
+    /* re-create after destroy */
     ok = clk_clock_create(&clk, "%H:%M:%S", TEST_FONT_PATH);
     TEST("clock re-create after destroy succeeds", ok);
     clk_clock_destroy(&clk);
