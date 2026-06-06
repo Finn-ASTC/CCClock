@@ -11,7 +11,7 @@ extern "C" {
 #endif
 
 #define CLK_CLOCK_TIME_FORMAT_MAX_LENGTH (64)
-#define CLK_CLOCK_NUM_TEXTURE_COUNT      (11)  /* '0'–'9' + ':' */
+#define CLK_CLOCK_NUM_TEXTURE_COUNT (11) /* '0'–'9' + ':' */
 
 /* ------------------------------------------------------------------
  *  Types
@@ -27,6 +27,7 @@ typedef struct {
     size_t clk_clock_sprite_capacity;
 
     int clk_clock_glyph_spacing;
+    int clk_clock_line_spacing;
     int clk_clock_z_order;
     int posx, posy;
 } clk_clock;
@@ -39,8 +40,7 @@ typedef struct {
  *  Allocates glyph textures, parses the font, and builds the sprite
  *  table.  Returns false if any step fails — clk_clock_destroy() is
  *  safe to call regardless. */
-bool clk_clock_create(clk_clock* clk, const char* time_format,
-                      const char* font_path);
+bool clk_clock_create(clk_clock* clk, const char* time_format, const char* font_path);
 
 /** Release all resources held by the clock.  NULL-safe and
  *  idempotent — safe to call more than once. */
@@ -71,17 +71,20 @@ bool clk_clock_change_font_path(clk_clock* clk, const char* new_path);
  * ------------------------------------------------------------------ */
 
 /** Return the total pixel size of the rendered clock on screen. */
-bool clk_clock_get_sprite_size(const clk_clock* clk, int* w, int* h);
+bool clk_clock_get_clock_size(const clk_clock* clk, int* w, int* h);
 
 /** Return the dimensions of a single glyph texture. */
 bool clk_clock_get_font_texture_size(const clk_clock* clk, int* w, int* h);
 
 /** Read / write the top-left screen position of the entire clock. */
 bool clk_clock_get_sprite_pos(const clk_clock* clk, int* px, int* py);
-bool clk_clock_set_sprite_pos(clk_clock* clk, int px, int py);
+void clk_clock_set_sprite_pos(clk_clock* clk, int px, int py);
 
 /** Set the z-order for all clock sprites at once. */
 void clk_clock_set_z_order(clk_clock* clk, int z);
+
+/** Get the current z-order of the clock. */
+int clk_clock_get_z_order(const clk_clock* clk);
 
 /* ------------------------------------------------------------------
  *  Rendering
@@ -95,4 +98,4 @@ bool clk_clock_add_to_term(clk_clock* clk);
 }
 #endif
 
-#endif  /* CLK_CLOCK_H */
+#endif /* CLK_CLOCK_H */

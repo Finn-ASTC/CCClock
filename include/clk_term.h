@@ -68,10 +68,11 @@ typedef struct {
 /** A texture instance placed on screen at a specific position.
  *  Multiple sprites can reference the same clk_texture. */
 typedef struct clk_sprite {
-    const clk_texture* tex; /* referenced texture (not owned) */
+    clk_texture* tex;       /* referenced texture (not owned); may be NULL */
     int posx, posy;         /* screen coordinates */
     int z_order;            /* higher = on top */
-    bool is_invalid;        /* skip during rendering */
+    bool is_invalid;        /* permanently dead — compact() will remove */
+    bool is_hidden;         /* alive but skip rendering this frame */
 } clk_sprite;
 
 /* ------------------------------------------------------------------
@@ -163,6 +164,23 @@ const clk_cell* clk_texture_get_cell(const clk_texture* tex, int x, int y);
  *  re-sort before the next clk_term_draw(). */
 void clk_sprite_set_z(clk_sprite* s, int z);
 
+/** Allocate a sprite with no texture (tex = NULL). The sprite is not
+ *  yet added to the render list — use clk_term_add_sprite() when ready. */
+clk_sprite* clk_sprite_create(void);
+
+/** Allocate a sprite and attach @p tex at the given screen position and
+ *  z-order. The sprite is not yet added to the render list. */
+clk_sprite* clk_sprite_create_with_texture(clk_texture* tex, int x, int y, int z);
+
+/** Remove the sprite from the render list (if present) and free it. */
+void clk_sprite_destroy(clk_sprite* s);
+
+/** Bind a texture to an existing sprite. Does nothing if @p s is NULL. */
+void clk_sprite_set_texture(clk_sprite* s, clk_texture* tex);
+
+/** Detach the texture from @p s (sets tex = NULL). */
+void clk_sprite_remove_texture(clk_sprite* s);
+
 /* ------------------------------------------------------------------
  *  Render list
  * ------------------------------------------------------------------ */
@@ -189,6 +207,14 @@ void clk_term_draw(void);
 /** Check terminal dimensions and handle resize if needed. Also
  *  compacts the render list by removing invalid sprites. */
 bool clk_term_update(void);
+
+/** Detect terminal size change and resize internal buffers
+ *  accordingly. Does NOT compact the sprite render list. */
+void clk_term_resize(void);
+
+/** Remove invalid sprites from the render list. Call this each frame
+ *  after sprites may have been invalidated (e.g. format change). */
+void clk_term_compact(void);
 
 /** Query current terminal width and height (in character cells). */
 bool clk_term_get_size(int* term_w, int* term_h);

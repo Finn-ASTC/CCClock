@@ -186,8 +186,8 @@ void clk_term_close(void) {
 
     clk_is_term_init = false;
 
-    /* show cursor */
-    printf("\033[?25h");
+    /* clear screen & show cursor */
+    printf("\033[2J\033[H\033[?25h");
     fflush(stdout);
 }
 
@@ -292,6 +292,44 @@ void clk_sprite_set_z(clk_sprite* s, int z) {
         return;
     s->z_order = z;
     clk_is_sprite_list_sorted = false;
+}
+
+clk_sprite* clk_sprite_create(void) {
+    clk_sprite* s = malloc(sizeof(clk_sprite));
+    if (!s)
+        return NULL;
+    memset(s, 0, sizeof(clk_sprite));
+    return s;
+}
+
+clk_sprite* clk_sprite_create_with_texture(clk_texture* tex, int x, int y, int z) {
+    clk_sprite* s = clk_sprite_create();
+    if (!s)
+        return NULL;
+    s->tex = tex;
+    s->posx = x;
+    s->posy = y;
+    s->z_order = z;
+    return s;
+}
+
+void clk_sprite_destroy(clk_sprite* s) {
+    if (!s)
+        return;
+    clk_term_remove_sprite(s);
+    free(s);
+}
+
+void clk_sprite_set_texture(clk_sprite* s, clk_texture* tex) {
+    if (!s)
+        return;
+    s->tex = tex;
+}
+
+void clk_sprite_remove_texture(clk_sprite* s) {
+    if (!s)
+        return;
+    s->tex = NULL;
 }
 
 void clk_term_add_sprite(clk_sprite* sprite) {
@@ -447,7 +485,7 @@ void clk_term_draw(void) {
 
     for (int i = 0; i < sprite_list_count; ++i) {
         const clk_sprite* s = sprite_render_list[i];
-        if (!s || s->is_invalid || !s->tex || !s->tex->data)
+        if (!s || s->is_invalid || s->is_hidden || !s->tex || !s->tex->data)
             continue;
 
         int pos_x = s->posx, pos_y = s->posy;
@@ -532,11 +570,8 @@ bool clk_resize_term(int new_w, int new_h) {
 
     memset(new_sign, 0, new_size * sizeof(bool));
 
-    int copy_count = screen_size < new_size ? screen_size : new_size;
-    memcpy(new_buf, screen_buffer, copy_count * sizeof(clk_cell));
-
     clk_cell empty = {.is_empty = true};
-    for (int i = screen_size; i < new_size; ++i)
+    for (int i = 0; i < new_size; ++i)
         new_buf[i] = empty;
 
     free(screen_buffer);
@@ -556,20 +591,33 @@ bool clk_resize_term(int new_w, int new_h) {
     return true;
 }
 
+void clk_term_resize(void) {
+    if (!clk_is_term_init)
+        return;
+
+    int new_w, new_h;
+    if (!clk_term_get_size(&new_w, &new_h))
+        return;
+    if (new_w <= 0 || new_h <= 0)
+        return;
+
+    if (new_w != screen_w || new_h != screen_h) {
+        clk_resize_term(new_w, new_h);
+    }
+}
+
 bool clk_term_update(void) {
     if (!clk_is_term_init)
         return false;
 
-    int new_w, new_h;
-    if (!clk_term_get_size(&new_w, &new_h))
-        return false;
-    if (new_w <= 0 || new_h <= 0)
-        return false;
+    clk_term_resize();
+    clk_term_compact();
+    return true;
+}
 
-    if (new_w != screen_w || new_h != screen_h) {
-        if (!clk_resize_term(new_w, new_h))
-            return false;
-    }
+void clk_term_compact(void) {
+    if (!clk_is_term_init)
+        return;
 
     int write = 0;
     for (int read = 0; read < sprite_list_count; ++read) {
@@ -580,8 +628,6 @@ bool clk_term_update(void) {
     for (int i = write; i < sprite_list_count; ++i)
         sprite_render_list[i] = NULL;
     sprite_list_count = write;
-
-    return true;
 }
 
 bool clk_term_get_size(int* term_w, int* term_h) {
@@ -691,20 +737,19 @@ void clk_texture_write_cell(clk_texture* tex, int x, int y, const char* ch, int 
 }
 
 void clk_texture_write_wide_cell(clk_texture* tex, int x, int y, const char* ch, int style_id) {
-    if (!tex || !tex->data || !ch || x < 0 || x + 1 >= tex->tex_w ||
-        y < 0 || y >= tex->tex_h)
+    if (!tex || !tex->data || !ch || x < 0 || x + 1 >= tex->tex_w || y < 0 || y >= tex->tex_h)
         return;
 
     clk_cell cell = {.style_id = style_id, .type = CELL_WIDE_LEAD, .is_empty = false};
     int i = 0;
-    while (i < 4 && ch[i]) cell.cell_tex[i] = ch[i], ++i;
+    while (i < 4 && ch[i])
+        cell.cell_tex[i] = ch[i], ++i;
     cell.cell_tex[i] = '\0';
     clk_texture_set_cell(tex, x, y, &cell);
 }
 
 void clk_texture_set_cell(clk_texture* tex, int x, int y, const clk_cell* cell) {
-    if (!tex || !tex->data || !cell ||
-        x < 0 || x >= tex->tex_w || y < 0 || y >= tex->tex_h)
+    if (!tex || !tex->data || !cell || x < 0 || x >= tex->tex_w || y < 0 || y >= tex->tex_h)
         return;
 
     /* TRAIL cells are created automatically by LEAD — never set directly */

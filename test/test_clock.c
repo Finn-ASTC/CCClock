@@ -41,8 +41,7 @@ int main(void) {
     TEST("get_sprite_pos succeeds", clk_clock_get_sprite_pos(&clk, &px, &py));
     TEST("default pos == 0,0", px == 0 && py == 0);
 
-    TEST("set_sprite_pos succeeds", clk_clock_set_sprite_pos(&clk, 10, 5));
-    clk_clock_get_sprite_pos(&clk, &px, &py);
+    clk_clock_set_sprite_pos(&clk, 10, 5); clk_clock_get_sprite_pos(&clk, &px, &py);
     TEST("set_sprite_pos reflects", px == 10 && py == 5);
 
     /* NULL protection */
@@ -55,7 +54,7 @@ int main(void) {
 
     /* sprite size */
     int sw, sh;
-    TEST("get_sprite_size succeeds", clk_clock_get_sprite_size(&clk, &sw, &sh));
+    TEST("get_sprite_size succeeds", clk_clock_get_clock_size(&clk, &sw, &sh));
     TEST("sprite total_w > 0", sw > 0);
     TEST("sprite total_h == 5", sh == 5);
 

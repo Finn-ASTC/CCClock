@@ -30,10 +30,10 @@ add_executable(Clock src/main.c)
 target_link_libraries(Clock PRIVATE libclock)
 target_include_directories(Clock PRIVATE include)
 
-add_executable(sandbox sandbox/clock_demo.c)
+add_executable(clock_demo sandbox/clock_demo.c)
 
-target_link_libraries(sandbox PRIVATE libclock)
-target_include_directories(sandbox PRIVATE include)
+target_link_libraries(clock_demo PRIVATE libclock)
+target_include_directories(clock_demo PRIVATE include)
 
 enable_testing()
 

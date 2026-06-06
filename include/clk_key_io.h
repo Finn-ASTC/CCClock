@@ -12,21 +12,21 @@ extern "C" {
  *  Virtual key codes
  * ------------------------------------------------------------------ */
 
-#define CLK_KEY_NONE  0xFFFFFFFF
+#define CLK_KEY_NONE 0xFFFFFFFF
 
-#define CLK_KEY_UP    0xE000
-#define CLK_KEY_DOWN  0xE001
-#define CLK_KEY_LEFT  0xE002
+#define CLK_KEY_UP 0xE000
+#define CLK_KEY_DOWN 0xE001
+#define CLK_KEY_LEFT 0xE002
 #define CLK_KEY_RIGHT 0xE003
-#define CLK_KEY_ESC   27
+#define CLK_KEY_ESC 27
 
 /* ------------------------------------------------------------------
  *  Types
  * ------------------------------------------------------------------ */
 
 typedef struct {
-    uint32_t key;             /* virtual key (CLK_KEY_*) or ASCII char */
-    uint32_t raw;             /* platform-specific raw scancode */
+    uint32_t key; /* virtual key (CLK_KEY_*) or ASCII char */
+    uint32_t raw; /* platform-specific raw scancode */
     uint32_t _reserved[2];
 } clk_key_event;
 
@@ -52,4 +52,4 @@ clk_key_event clk_get_key_event(void);
 }
 #endif
 
-#endif  /* CLK_KEY_IO_H */
+#endif /* CLK_KEY_IO_H */
