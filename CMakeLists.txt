@@ -35,6 +35,11 @@ add_executable(clock_demo sandbox/clock_demo.c)
 target_link_libraries(clock_demo PRIVATE libclock)
 target_include_directories(clock_demo PRIVATE include)
 
+add_executable(json_benchmark sandbox/json_benchmark.c)
+
+target_link_libraries(json_benchmark PRIVATE libclock)
+target_include_directories(json_benchmark PRIVATE include)
+
 enable_testing()
 
 add_clk_test(key_io)

@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -152,7 +153,7 @@ size_t clk_json_object_count(const clk_json_value* object);
  * ------------------------------------------------------------------ */
 
 typedef struct clk_json_object_iterator {
-    const void* opaque[4];
+    uintptr_t opaque[3];
 } clk_json_object_iterator;
 
 /** Initialise an iterator over @p object. @return 0 on success. */

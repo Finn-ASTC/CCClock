@@ -23,6 +23,7 @@ static char clk_json_parse_err[256];
 typedef struct {
     const char* json;
     int pos;
+    int json_len;
     int line;
     int col;
 } clk_json_lexer;
@@ -55,12 +56,20 @@ typedef struct {
  *  Internal helpers
  * ================================================================ */
 
-/** Portable strndup replacement — copies at most n bytes, always
- *  null-terminates. Returns malloc'd copy or NULL on failure. */
+/** Portable strndup replacement — copies at most n bytes, stopping
+ *  early at the first NUL. Always null-terminates. */
 static char* clk_json_strndup(const char* src, size_t n) {
-    if (!src) return NULL;
-    size_t len = strlen(src);
-    if (len > n) len = n;
+    if (!src || n == 0) {
+        if (!src)
+            return NULL;
+        char* dst = malloc(1);
+        if (dst)
+            dst[0] = '\0';
+        return dst;
+    }
+    size_t len = 0;
+    while (len < n && src[len] != '\0')
+        len++;
     char* dst = malloc(len + 1);
     if (dst) {
         memcpy(dst, src, len);
@@ -89,6 +98,8 @@ static bool clk_json_is_delimiter(char c) {
 }
 
 static unsigned int parse_hex4(clk_json_lexer* lexer) {
+    if (lexer->pos + 4 > lexer->json_len)
+        return 0xFFFFFFFF;
     unsigned int codepoint = 0;
     for (int i = 0; i < 4; i++) {
         char c = lexer->json[lexer->pos + i];
@@ -135,6 +146,7 @@ static int encode_utf8(unsigned int cp, char* dst) {
 static void clk_json_lexer_init(clk_json_lexer* lexer, const char* json_str) {
     lexer->json = json_str;
     lexer->pos = 0;
+    lexer->json_len = json_str ? (int)strlen(json_str) : 0;
     lexer->line = 1;
     lexer->col = 1;
 }
@@ -149,6 +161,8 @@ static void clk_json_lexer_next(clk_json_lexer* lexer, clk_json_token* token) {
 
     /* skip whitespace */
     while (1) {
+        if (lexer->pos >= lexer->json_len)
+            break;
         char c = lexer->json[lexer->pos];
         if (c == ' ' || c == '\t' || c == '\r') {
             lexer->pos++;
@@ -160,6 +174,11 @@ static void clk_json_lexer_next(clk_json_lexer* lexer, clk_json_token* token) {
         } else {
             break;
         }
+    }
+
+    if (lexer->pos >= lexer->json_len) {
+        token->type = TOKEN_EOF;
+        return;
     }
 
     char c = lexer->json[lexer->pos];
@@ -196,8 +215,10 @@ static void clk_json_lexer_next(clk_json_lexer* lexer, clk_json_token* token) {
             lexer->col++;
             break;
         case 't':
-            if (strncmp(lexer->json + lexer->pos, "true", 4) == 0 &&
-                clk_json_is_delimiter(lexer->json[lexer->pos + 4])) {
+            if (lexer->pos + 4 <= lexer->json_len &&
+                strncmp(lexer->json + lexer->pos, "true", 4) == 0 &&
+                (lexer->pos + 4 >= lexer->json_len ||
+                 clk_json_is_delimiter(lexer->json[lexer->pos + 4]))) {
                 token->type = TOKEN_TRUE;
                 lexer->pos += 4;
                 lexer->col += 4;
@@ -206,8 +227,10 @@ static void clk_json_lexer_next(clk_json_lexer* lexer, clk_json_token* token) {
             }
             break;
         case 'f':
-            if (strncmp(lexer->json + lexer->pos, "false", 5) == 0 &&
-                clk_json_is_delimiter(lexer->json[lexer->pos + 5])) {
+            if (lexer->pos + 5 <= lexer->json_len &&
+                strncmp(lexer->json + lexer->pos, "false", 5) == 0 &&
+                (lexer->pos + 5 >= lexer->json_len ||
+                 clk_json_is_delimiter(lexer->json[lexer->pos + 5]))) {
                 token->type = TOKEN_FALSE;
                 lexer->pos += 5;
                 lexer->col += 5;
@@ -216,8 +239,10 @@ static void clk_json_lexer_next(clk_json_lexer* lexer, clk_json_token* token) {
             }
             break;
         case 'n':
-            if (strncmp(lexer->json + lexer->pos, "null", 4) == 0 &&
-                clk_json_is_delimiter(lexer->json[lexer->pos + 4])) {
+            if (lexer->pos + 4 <= lexer->json_len &&
+                strncmp(lexer->json + lexer->pos, "null", 4) == 0 &&
+                (lexer->pos + 4 >= lexer->json_len ||
+                 clk_json_is_delimiter(lexer->json[lexer->pos + 4]))) {
                 token->type = TOKEN_NULL;
                 lexer->pos += 4;
                 lexer->col += 4;
@@ -238,10 +263,14 @@ static void clk_json_lexer_next(clk_json_lexer* lexer, clk_json_token* token) {
             lexer->col++;
 
             while (1) {
+                if (lexer->pos >= lexer->json_len) {
+                    token->type = TOKEN_ERROR;
+                    goto string_error;
+                }
                 char c = lexer->json[lexer->pos];
 
                 /* unterminated string */
-                if (c == '\0' || c == '\n') {
+                if (c == '\n') {
                     token->type = TOKEN_ERROR;
                     goto string_error;
                 }
@@ -252,6 +281,10 @@ static void clk_json_lexer_next(clk_json_lexer* lexer, clk_json_token* token) {
                 if (c == '\\') {
                     lexer->pos++;
                     lexer->col++;
+                    if (lexer->pos >= lexer->json_len) {
+                        token->type = TOKEN_ERROR;
+                        goto string_error;
+                    }
                     char esc = lexer->json[lexer->pos];
 
                     switch (esc) {
@@ -298,7 +331,8 @@ static void clk_json_lexer_next(clk_json_lexer* lexer, clk_json_token* token) {
                             /* surrogate pair: high surrogate must be
                              * followed by a low surrogate */
                             if (codepoint >= 0xD800 && codepoint <= 0xDBFF) {
-                                if (lexer->json[lexer->pos] == '\\' &&
+                                if (lexer->pos + 2 <= lexer->json_len &&
+                                    lexer->json[lexer->pos] == '\\' &&
                                     lexer->json[lexer->pos + 1] == 'u') {
                                     lexer->pos += 2;
                                     lexer->col += 2;
@@ -434,7 +468,9 @@ static clk_json_value* clk_parse_value_from_token(clk_json_lexer* lexer, clk_jso
 static clk_json_value* clk_parse_value(clk_json_lexer* lexer) {
     clk_json_token token = {0};
     clk_json_lexer_next(lexer, &token);
-    return clk_parse_value_from_token(lexer, &token);
+    clk_json_value* result = clk_parse_value_from_token(lexer, &token);
+    free(token.str_value);
+    return result;
 }
 
 static clk_json_value* clk_parse_object(clk_json_lexer* lexer) {
@@ -770,8 +806,7 @@ int clk_json_object_set(clk_json_value* object, const char* key, clk_json_value*
         object->object_value.capacity = new_cap;
     }
 
-    object->object_value.pairs[object->object_value.count].key =
-        clk_json_strndup(key, strlen(key));
+    object->object_value.pairs[object->object_value.count].key = clk_json_strndup(key, strlen(key));
     object->object_value.pairs[object->object_value.count].value = value;
     object->object_value.count++;
     return 0;
@@ -823,9 +858,8 @@ size_t clk_json_object_count(const clk_json_value* object) {
 int clk_json_object_iterator_init(const clk_json_value* object, clk_json_object_iterator* iter) {
     if (!object || object->type != JSON_OBJECT || !iter)
         return -1;
-    const void** o = iter->opaque;
-    o[0] = (const void*)object;
-    o[1] = (const void*)(size_t)0;
+    iter->opaque[0] = (uintptr_t)object;
+    iter->opaque[1] = 0;
     return 0;
 }
 
@@ -833,16 +867,15 @@ bool clk_json_object_iterator_next(clk_json_object_iterator* iter, clk_json_key_
     if (!iter || !pair)
         return false;
 
-    const void** o = iter->opaque;
-    const clk_json_value* object = (const clk_json_value*)o[0];
-    const size_t index = (size_t)o[1];
+    const clk_json_value* object = (const clk_json_value*)iter->opaque[0];
+    const size_t index = (size_t)iter->opaque[1];
 
     if (!object || index >= object->object_value.count)
         return false;
 
     pair->key = object->object_value.pairs[index].key;
     pair->value = object->object_value.pairs[index].value;
-    o[1] = (const void*)(index + 1);
+    iter->opaque[1] = (uintptr_t)(index + 1);
     return true;
 }
 
@@ -965,10 +998,10 @@ static bool clk_json_append_false_to_str(char** buf, size_t* len, size_t* capaci
 }
 
 static bool clk_json_append_number_to_str(char** buf, size_t* len, size_t* capacity, double num) {
-    int num_len = snprintf(NULL, 0, "%g", num);
+    int num_len = snprintf(NULL, 0, "%.17g", num);
     if (num_len < 0 || !clk_json_str_ensure_capacity(buf, len, capacity, (size_t)num_len))
         return false;
-    snprintf(*buf + *len, num_len + 1, "%g", num);
+    snprintf(*buf + *len, num_len + 1, "%.17g", num);
     *len += (size_t)num_len;
     return true;
 }
