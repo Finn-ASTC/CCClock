@@ -50,6 +50,7 @@ typedef struct {
     clk_menu_tab** tabs;
     size_t tab_count;
     size_t tab_capacity;
+    int next_tab_id;
     int active_tab;
     int scroll_offset;
     int posx, posy;

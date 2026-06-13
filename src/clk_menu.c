@@ -5,7 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define CLK_MENU_DEFAULT_CAPACITY 6
+#define CLK_TAB_DEFAULT_CAPACITY 6
+#define CLK_ITEM_DEFAULT_CAPACITY 6
 
 /* ------------------------------------------------------------------
  *  Internal helper
@@ -33,14 +34,14 @@ clk_menu* clk_menu_create(void) {
     if (!menu)
         return NULL;
     memset(menu, 0, sizeof(clk_menu));
-    clk_menu_tab** tabs = malloc(CLK_MENU_DEFAULT_CAPACITY * sizeof(clk_menu_tab*));
+    clk_menu_tab** tabs = malloc(CLK_TAB_DEFAULT_CAPACITY * sizeof(clk_menu_tab*));
     if (!tabs) {
         clk_menu_destroy(menu);
         return NULL;
     }
-    memset(tabs, 0, CLK_MENU_DEFAULT_CAPACITY * sizeof(clk_menu_tab*));
+    memset(tabs, 0, CLK_TAB_DEFAULT_CAPACITY * sizeof(clk_menu_tab*));
     menu->tabs = tabs;
-    menu->tab_capacity = CLK_MENU_DEFAULT_CAPACITY;
+    menu->tab_capacity = CLK_TAB_DEFAULT_CAPACITY;
     return menu;
 }
 
@@ -89,8 +90,45 @@ static void clk_menu_item_destroy(clk_menu_item* item) {
  * ------------------------------------------------------------------ */
 
 int clk_menu_add_tab(clk_menu* m, const char* name) {
-    /* TODO: allocate clk_menu_tab, set id (auto-increment), strdup name, add to tabs[] */
-    return -1;
+    if (!m || !name)
+        return -1;
+
+    if (m->tab_count >= m->tab_capacity) {
+        size_t new_cap = m->tab_capacity * 2;
+        clk_menu_tab** tmp = realloc(m->tabs, new_cap * sizeof(clk_menu_tab*));
+        if (!tmp)
+            return -1;
+        memset(tmp + m->tab_capacity, 0, (new_cap - m->tab_capacity) * sizeof(clk_menu_tab*));
+        m->tabs = tmp;
+        m->tab_capacity = new_cap;
+    }
+
+    clk_menu_tab* tab = malloc(sizeof(clk_menu_tab));
+    if (!tab)
+        return -1;
+    memset(tab, 0, sizeof(clk_menu_tab));
+
+    tab->name = strdup(name);
+    if (!tab->name) {
+        clk_menu_tab_destroy(tab);
+        return -1;
+    }
+
+    clk_menu_item** items = malloc(CLK_ITEM_DEFAULT_CAPACITY * sizeof(clk_menu_item*));
+    if (!items) {
+        clk_menu_tab_destroy(tab);
+        return -1;
+    }
+    memset(items, 0, CLK_ITEM_DEFAULT_CAPACITY * sizeof(clk_menu_item*));
+    tab->items = items;
+
+    tab->item_capacity = CLK_ITEM_DEFAULT_CAPACITY;
+
+    tab->id = m->next_tab_id++;
+
+    m->tabs[m->tab_count++] = tab;
+
+    return tab->id;
 }
 
 /* ------------------------------------------------------------------
