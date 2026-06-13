@@ -1,7 +1,11 @@
 #include "clk_menu.h"
 
+#include <assert.h>
+#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
+
+#define CLK_MENU_DEFAULT_CAPACITY 6
 
 /* ------------------------------------------------------------------
  *  Internal helper
@@ -25,12 +29,59 @@ static clk_menu_item* find_item(clk_menu* m, int tab_id, int item_id) {
  * ------------------------------------------------------------------ */
 
 clk_menu* clk_menu_create(void) {
-    /* TODO: allocate clk_menu, zero-init, return */
-    return NULL;
+    clk_menu* menu = malloc(sizeof(clk_menu));
+    if (!menu)
+        return NULL;
+    memset(menu, 0, sizeof(clk_menu));
+    clk_menu_tab** tabs = malloc(CLK_MENU_DEFAULT_CAPACITY * sizeof(clk_menu_tab*));
+    if (!tabs) {
+        clk_menu_destroy(menu);
+        return NULL;
+    }
+    memset(tabs, 0, CLK_MENU_DEFAULT_CAPACITY * sizeof(clk_menu_tab*));
+    menu->tabs = tabs;
+    menu->tab_capacity = CLK_MENU_DEFAULT_CAPACITY;
+    return menu;
 }
 
-void clk_menu_destroy(clk_menu* m) {
-    /* TODO: free all tabs + items + option strings, then free m */
+static void clk_menu_item_destroy(clk_menu_item* item);
+
+static void clk_menu_tab_destroy(clk_menu_tab* tab);
+
+void clk_menu_destroy(clk_menu* menu) {
+    if (!menu)
+        return;
+    for (size_t i = 0; i < menu->tab_count; ++i)
+        clk_menu_tab_destroy(menu->tabs[i]);
+    free(menu->tabs);
+    free(menu);
+}
+
+static void clk_menu_tab_destroy(clk_menu_tab* tab) {
+    if (!tab)
+        return;
+    for (size_t i = 0; i < tab->item_count; ++i)
+        clk_menu_item_destroy(tab->items[i]);
+    free(tab->items);
+    free(tab->name);
+    free(tab);
+}
+
+static void clk_menu_item_destroy(clk_menu_item* item) {
+    if (!item)
+        return;
+
+    free(item->label);
+    item->label = NULL;
+
+    for (int i = 0; i < item->option_count; ++i) {
+        free(item->options[i]);
+    }
+
+    free(item->options);
+    item->options = NULL;
+
+    free(item);
 }
 
 /* ------------------------------------------------------------------

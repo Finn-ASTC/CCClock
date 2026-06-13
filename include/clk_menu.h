@@ -83,7 +83,7 @@ typedef struct {
  * ------------------------------------------------------------------ */
 
 clk_menu* clk_menu_create(void);
-void clk_menu_destroy(clk_menu* m);
+void clk_menu_destroy(clk_menu* menu);
 
 /* ------------------------------------------------------------------
  *  Tabs
