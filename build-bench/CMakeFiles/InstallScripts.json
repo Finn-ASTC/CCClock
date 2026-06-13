@@ -1,7 +1,0 @@
-{
-	"InstallScripts" : 
-	[
-		"D:/VsCode_Project/Cpp/Clock/build-bench/cmake_install.cmake"
-	],
-	"Parallel" : false
-}
