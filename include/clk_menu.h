@@ -50,7 +50,6 @@ typedef struct {
     clk_menu_tab** tabs;
     size_t tab_count;
     size_t tab_capacity;
-    int next_tab_id;
     int active_tab;
     int scroll_offset;
     int posx, posy;
@@ -90,7 +89,9 @@ void clk_menu_destroy(clk_menu* menu);
  *  Tabs
  * ------------------------------------------------------------------ */
 
-int clk_menu_add_tab(clk_menu* m, const char* name);
+/** Add a tab with the given @p tab_id (caller-defined, e.g. enum value).
+ *  Returns the tab_id on success, or -1 on failure. */
+int clk_menu_add_tab(clk_menu* m, int tab_id, const char* name);
 
 /* ------------------------------------------------------------------
  *  Items

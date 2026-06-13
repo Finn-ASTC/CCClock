@@ -12,16 +12,22 @@
  *  Internal helper
  * ------------------------------------------------------------------ */
 
+/** Find a tab by id. Returns NULL if not found. */
+static clk_menu_tab* find_tab(clk_menu* m, int tab_id) {
+    for (size_t i = 0; i < m->tab_count; ++i)
+        if (m->tabs[i]->id == tab_id)
+            return m->tabs[i];
+    return NULL;
+}
+
 /** Find an item by tab_id + item_id. Returns NULL if not found. */
 static clk_menu_item* find_item(clk_menu* m, int tab_id, int item_id) {
-    for (size_t ti = 0; ti < m->tab_count; ++ti) {
-        if (m->tabs[ti]->id != tab_id)
-            continue;
-        for (size_t ii = 0; ii < m->tabs[ti]->item_count; ++ii) {
-            if (m->tabs[ti]->items[ii]->id == item_id)
-                return m->tabs[ti]->items[ii];
-        }
-    }
+    clk_menu_tab* tab = find_tab(m, tab_id);
+    if (!tab)
+        return NULL;
+    for (size_t i = 0; i < tab->item_count; ++i)
+        if (tab->items[i]->id == item_id)
+            return tab->items[i];
     return NULL;
 }
 
@@ -89,7 +95,7 @@ static void clk_menu_item_destroy(clk_menu_item* item) {
  *  Tabs
  * ------------------------------------------------------------------ */
 
-int clk_menu_add_tab(clk_menu* m, const char* name) {
+int clk_menu_add_tab(clk_menu* m, int tab_id, const char* name) {
     if (!m || !name)
         return -1;
 
@@ -124,7 +130,7 @@ int clk_menu_add_tab(clk_menu* m, const char* name) {
 
     tab->item_capacity = CLK_ITEM_DEFAULT_CAPACITY;
 
-    tab->id = m->next_tab_id++;
+    tab->id = tab_id;
 
     m->tabs[m->tab_count++] = tab;
 
@@ -137,7 +143,66 @@ int clk_menu_add_tab(clk_menu* m, const char* name) {
 
 void clk_menu_add_item_str(clk_menu* m, int tab_id, int item_id, const char* label, int default_idx,
                            const char** options, int option_count) {
-    /* TODO: find tab, allocate item, set STR fields, clamp option_idx, add to tab->items[] */
+    if (!m || !label || !options || option_count <= 0)
+        return;
+
+    clk_menu_tab* tab = find_tab(m, tab_id);
+    if (!tab)
+        return;
+
+    if (tab->item_count >= tab->item_capacity) {
+        size_t new_cap = tab->item_capacity * 2;
+        clk_menu_item** tmp = realloc(tab->items, new_cap * sizeof(clk_menu_item*));
+        if (!tmp)
+            return;
+        memset(tmp + tab->item_capacity, 0,
+               (new_cap - tab->item_capacity) * sizeof(clk_menu_item*));
+        tab->items = tmp;
+        tab->item_capacity = new_cap;
+    }
+
+    clk_menu_item* item = malloc(sizeof(clk_menu_item));
+    if (!item)
+        return;
+    memset(item, 0, sizeof(clk_menu_item));
+
+    item->id = item_id;
+    item->tab_id = tab_id;
+    item->type = CLK_MENU_TYPE_STR;
+    item->label = strdup(label);
+    if (!item->label) {
+        free(item);
+        return;
+    }
+
+    item->options = malloc(option_count * sizeof(char*));
+    if (!item->options) {
+        free(item->label);
+        free(item);
+        return;
+    }
+    for (int i = 0; i < option_count; ++i) {
+        item->options[i] = strdup(options[i]);
+        if (!item->options[i]) {
+            /* partial free on failure */
+            for (int j = 0; j < i; ++j)
+                free(item->options[j]);
+            free(item->options);
+            free(item->label);
+            free(item);
+            return;
+        }
+    }
+    item->option_count = option_count;
+
+    if (default_idx < 0)
+        default_idx = 0;
+    if (default_idx >= option_count)
+        default_idx = option_count - 1;
+    item->option_idx = default_idx;
+    item->value.s = item->options[default_idx];
+
+    tab->items[tab->item_count++] = item;
 }
 
 void clk_menu_add_item_int(clk_menu* m, int tab_id, int item_id, const char* label,

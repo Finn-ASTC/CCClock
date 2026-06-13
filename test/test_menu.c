@@ -21,12 +21,12 @@ int main(void) {
     TEST("create visible == false",   !m->visible);
 
     /* === clk_menu_add_tab — invalid args === */
-    TEST("add_tab NULL menu fails",   clk_menu_add_tab(NULL, "test") == -1);
-    TEST("add_tab NULL name fails",   clk_menu_add_tab(m, NULL) == -1);
+    TEST("add_tab NULL menu fails",   clk_menu_add_tab(NULL, 0, "test") == -1);
+    TEST("add_tab NULL name fails",   clk_menu_add_tab(m, 0, NULL) == -1);
 
     /* === clk_menu_add_tab — success === */
-    int tab0 = clk_menu_add_tab(m, "display");
-    TEST("add_tab first returns 0",   tab0 == 0);
+    clk_menu_add_tab(m, 0, "display");
+    TEST("add_tab first ok",          m->tabs[0]->id == 0);
     TEST("tab_count == 1",            m->tab_count == 1);
     TEST("first tab name",            strcmp(m->tabs[0]->name, "display") == 0);
     TEST("first tab id == 0",         m->tabs[0]->id == 0);
@@ -34,8 +34,8 @@ int main(void) {
     TEST("first tab item_cap == 6",   m->tabs[0]->item_capacity == 6);
     TEST("first tab item_count == 0", m->tabs[0]->item_count == 0);
 
-    int tab1 = clk_menu_add_tab(m, "color");
-    TEST("add_tab second returns 1",  tab1 == 1);
+    clk_menu_add_tab(m, 1, "color");
+    TEST("add_tab second ok",         m->tabs[1]->id == 1);
     TEST("tab_count == 2",            m->tab_count == 2);
     TEST("second tab name",           strcmp(m->tabs[1]->name, "color") == 0);
     TEST("second tab id == 1",        m->tabs[1]->id == 1);
@@ -45,8 +45,8 @@ int main(void) {
     for (int i = 0; i < 6; ++i) {
         char name[16];
         snprintf(name, sizeof(name), "tab%d", i);
-        int id = clk_menu_add_tab(m, name);
-        TEST("expand tab no crash", id >= 0);
+        int ret = clk_menu_add_tab(m, 100 + i, name);
+        TEST("expand tab no crash", ret >= 0);
     }
     TEST("tab_count == 8",    m->tab_count == 8);
     TEST("tab_capacity >= 8", m->tab_capacity >= 8);
@@ -62,8 +62,8 @@ int main(void) {
     /* === re-create after destroy === */
     m = clk_menu_create();
     TEST("re-create succeeds", m != NULL);
-    int tab2 = clk_menu_add_tab(m, "settings");
-    TEST("re-create add_tab returns 0", tab2 == 0);
+    int ret = clk_menu_add_tab(m, 0, "settings");
+    TEST("re-create add_tab ok", ret == 0);
     TEST("re-create tab name", strcmp(m->tabs[0]->name, "settings") == 0);
     clk_menu_destroy(m);
 
