@@ -486,15 +486,23 @@ clk_menu_event clk_menu_handle_input(clk_menu* m, clk_menu_input input) {
  * ------------------------------------------------------------------ */
 
 void clk_menu_set_position(clk_menu* m, int x, int y) {
-    /* TODO: set m->posx, m->posy */
+    if (!m)
+        return;
+    m->posx = x;
+    m->posy = y;
 }
 
 void clk_menu_set_size(clk_menu* m, int w, int h) {
-    /* TODO: set m->width, m->height */
+    if (!m || w <= 0 || h <= 0)
+        return;
+    m->width = w;
+    m->height = h;
 }
 
 void clk_menu_set_visible(clk_menu* m, bool v) {
-    /* TODO: set m->visible */
+    if (!m)
+        return;
+    m->visible = v;
 }
 
 /* ------------------------------------------------------------------
