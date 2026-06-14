@@ -141,6 +141,20 @@ int clk_menu_add_tab(clk_menu* m, int tab_id, const char* name) {
  *  Items
  * ------------------------------------------------------------------ */
 
+static bool clk_menu_tab_ensure_items_capacity(clk_menu_tab* tab) {
+    if (tab->item_count < tab->item_capacity)
+        return true;
+    size_t new_cap = tab->item_capacity * 2;
+    clk_menu_item** tmp = realloc(tab->items, new_cap * sizeof(clk_menu_item*));
+    if (!tmp)
+        return false;
+    memset(tmp + tab->item_capacity, 0,
+           (new_cap - tab->item_capacity) * sizeof(clk_menu_item*));
+    tab->items = tmp;
+    tab->item_capacity = new_cap;
+    return true;
+}
+
 void clk_menu_add_item_str(clk_menu* m, int tab_id, int item_id, const char* label, int default_idx,
                            const char** options, int option_count) {
     if (!m || !label || !options || option_count <= 0)
@@ -150,16 +164,8 @@ void clk_menu_add_item_str(clk_menu* m, int tab_id, int item_id, const char* lab
     if (!tab)
         return;
 
-    if (tab->item_count >= tab->item_capacity) {
-        size_t new_cap = tab->item_capacity * 2;
-        clk_menu_item** tmp = realloc(tab->items, new_cap * sizeof(clk_menu_item*));
-        if (!tmp)
-            return;
-        memset(tmp + tab->item_capacity, 0,
-               (new_cap - tab->item_capacity) * sizeof(clk_menu_item*));
-        tab->items = tmp;
-        tab->item_capacity = new_cap;
-    }
+    if (!clk_menu_tab_ensure_items_capacity(tab))
+        return;
 
     clk_menu_item* item = malloc(sizeof(clk_menu_item));
     if (!item)
@@ -207,21 +213,115 @@ void clk_menu_add_item_str(clk_menu* m, int tab_id, int item_id, const char* lab
 
 void clk_menu_add_item_int(clk_menu* m, int tab_id, int item_id, const char* label,
                            double default_val, double min_val, double max_val, double step_val) {
-    /* TODO: find tab, allocate item, set INT fields, clamp value to [min,max], add to tab->items[]
-     */
+    if (!m || !label)
+        return;
+
+    clk_menu_tab* tab = find_tab(m, tab_id);
+    if (!tab)
+        return;
+
+    if (!clk_menu_tab_ensure_items_capacity(tab))
+        return;
+
+    clk_menu_item* item = malloc(sizeof(clk_menu_item));
+    if (!item)
+        return;
+    memset(item, 0, sizeof(clk_menu_item));
+
+    item->id = item_id;
+    item->tab_id = tab_id;
+    item->type = CLK_MENU_TYPE_INT;
+    item->label = strdup(label);
+    if (!item->label) {
+        free(item);
+        return;
+    }
+
+    item->min_val = min_val;
+    item->max_val = max_val;
+    item->step_val = step_val;
+
+    if (default_val < min_val)
+        default_val = min_val;
+    if (default_val > max_val)
+        default_val = max_val;
+    item->value.d = default_val;
+
+    tab->items[tab->item_count++] = item;
 }
 
 void clk_menu_add_item_bool(clk_menu* m, int tab_id, int item_id, const char* label,
                             bool default_val) {
-    /* TODO: find tab, allocate item, set BOOL fields, add to tab->items[] */
+    if (!m || !label)
+        return;
+
+    clk_menu_tab* tab = find_tab(m, tab_id);
+    if (!tab)
+        return;
+
+    if (!clk_menu_tab_ensure_items_capacity(tab))
+        return;
+
+    clk_menu_item* item = malloc(sizeof(clk_menu_item));
+    if (!item)
+        return;
+    memset(item, 0, sizeof(clk_menu_item));
+
+    item->id = item_id;
+    item->tab_id = tab_id;
+    item->type = CLK_MENU_TYPE_BOOL;
+    item->label = strdup(label);
+    if (!item->label) {
+        free(item);
+        return;
+    }
+
+    item->value.b = default_val;
+
+    tab->items[tab->item_count++] = item;
 }
 
 void clk_menu_add_item_action(clk_menu* m, int tab_id, int item_id, const char* label) {
-    /* TODO: find tab, allocate item, set ACTION fields, add to tab->items[] */
+    if (!m || !label)
+        return;
+
+    clk_menu_tab* tab = find_tab(m, tab_id);
+    if (!tab)
+        return;
+
+    if (!clk_menu_tab_ensure_items_capacity(tab))
+        return;
+
+    clk_menu_item* item = malloc(sizeof(clk_menu_item));
+    if (!item)
+        return;
+    memset(item, 0, sizeof(clk_menu_item));
+
+    item->id = item_id;
+    item->tab_id = tab_id;
+    item->type = CLK_MENU_TYPE_ACTION;
+    item->label = strdup(label);
+    if (!item->label) {
+        free(item);
+        return;
+    }
+
+    tab->items[tab->item_count++] = item;
 }
 
 void clk_menu_remove_item(clk_menu* m, int tab_id, int item_id) {
-    /* TODO: find tab, find item index, free item + label + options, shift array, NULL out */
+    clk_menu_tab* tab = find_tab(m, tab_id);
+    if (!tab) return;
+
+    for (size_t i = 0; i < tab->item_count; ++i) {
+        if (tab->items[i]->id == item_id) {
+            clk_menu_item_destroy(tab->items[i]);
+            for (size_t j = i; j + 1 < tab->item_count; ++j)
+                tab->items[j] = tab->items[j + 1];
+            tab->items[--tab->item_count] = NULL;
+            return;
+        }
+    }
 }
 
 /* ------------------------------------------------------------------
