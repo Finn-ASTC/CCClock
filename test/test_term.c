@@ -73,7 +73,7 @@ int main(void) {
     clk_texture_write_cell(&btex, 1, 2, "Z", 99);
     TEST("borrowed set_cell reflected externally",
          !borrowed_cells[1 + 2 * 3].is_empty &&
-         strcmp(borrowed_cells[1 + 2 * 3].cell_tex, "Z") == 0);
+             strcmp(borrowed_cells[1 + 2 * 3].cell_tex, "Z") == 0);
 
     /* destroy borrowed —— 不应 free 外部数据 */
     clk_texture_destroy(&btex);
@@ -244,8 +244,8 @@ int main(void) {
      * ================================================================ */
 
     clk_sprite sp = {.tex = &tex, .posx = 5, .posy = 10, .z_order = 3};
-    TEST("sprite posx",    sp.posx == 5);
-    TEST("sprite posy",    sp.posy == 10);
+    TEST("sprite posx", sp.posx == 5);
+    TEST("sprite posy", sp.posy == 10);
     TEST("sprite z_order", sp.z_order == 3);
     TEST("sprite not invalid default", !sp.is_invalid);
 
@@ -328,7 +328,7 @@ int main(void) {
         clk_term_add_sprite(&s2);
         TEST("term_add_sprite succeeds", 1);
     }
-    TEST("add NULL returns false", 0);  /* clk_term_add_sprite returns void, always safe */
+    TEST("add NULL returns false", 0); /* clk_term_add_sprite returns void, always safe */
 
     clk_texture_destroy(&tex2);
 

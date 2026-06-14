@@ -41,7 +41,8 @@ int main(void) {
     TEST("get_sprite_pos succeeds", clk_clock_get_sprite_pos(&clk, &px, &py));
     TEST("default pos == 0,0", px == 0 && py == 0);
 
-    clk_clock_set_sprite_pos(&clk, 10, 5); clk_clock_get_sprite_pos(&clk, &px, &py);
+    clk_clock_set_sprite_pos(&clk, 10, 5);
+    clk_clock_get_sprite_pos(&clk, &px, &py);
     TEST("set_sprite_pos reflects", px == 10 && py == 5);
 
     /* NULL protection */

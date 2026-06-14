@@ -648,8 +648,8 @@ void clk_menu_clear_options(clk_menu* m, int tab_id, int item_id) {
  *  INT range
  * ------------------------------------------------------------------ */
 
-void clk_menu_set_item_range(clk_menu* m, int tab_id, int item_id,
-                             double min_val, double max_val, double step_val) {
+void clk_menu_set_item_range(clk_menu* m, int tab_id, int item_id, double min_val, double max_val,
+                             double step_val) {
     if (!m)
         return;
     clk_menu_item* item = find_item(m, tab_id, item_id);
