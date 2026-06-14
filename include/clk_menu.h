@@ -4,8 +4,6 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#include "clk_key_io.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -56,6 +54,20 @@ typedef struct {
     int width, height;
     bool visible;
 } clk_menu;
+
+/* ------------------------------------------------------------------
+ *  Input
+ * ------------------------------------------------------------------ */
+
+typedef enum {
+    CLK_MENU_INPUT_NONE,
+    CLK_MENU_INPUT_PREV_ITEM,
+    CLK_MENU_INPUT_NEXT_ITEM,
+    CLK_MENU_INPUT_DEC_VALUE,
+    CLK_MENU_INPUT_INC_VALUE,
+    CLK_MENU_INPUT_NEXT_TAB,
+    CLK_MENU_INPUT_CONFIRM,
+} clk_menu_input;
 
 /* ------------------------------------------------------------------
  *  Events
@@ -114,7 +126,7 @@ void clk_menu_remove_item(clk_menu* m, int tab_id, int item_id);
  *  Interaction
  * ------------------------------------------------------------------ */
 
-clk_menu_event clk_menu_handle_input(clk_menu* m, clk_key_event input);
+clk_menu_event clk_menu_handle_input(clk_menu* m, clk_menu_input input);
 
 /* ------------------------------------------------------------------
  *  Layout

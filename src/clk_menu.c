@@ -1,6 +1,7 @@
 #include "clk_menu.h"
 
 #include <assert.h>
+#include <complex.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
@@ -148,8 +149,7 @@ static bool clk_menu_tab_ensure_items_capacity(clk_menu_tab* tab) {
     clk_menu_item** tmp = realloc(tab->items, new_cap * sizeof(clk_menu_item*));
     if (!tmp)
         return false;
-    memset(tmp + tab->item_capacity, 0,
-           (new_cap - tab->item_capacity) * sizeof(clk_menu_item*));
+    memset(tmp + tab->item_capacity, 0, (new_cap - tab->item_capacity) * sizeof(clk_menu_item*));
     tab->items = tmp;
     tab->item_capacity = new_cap;
     return true;
@@ -311,7 +311,8 @@ void clk_menu_add_item_action(clk_menu* m, int tab_id, int item_id, const char* 
 
 void clk_menu_remove_item(clk_menu* m, int tab_id, int item_id) {
     clk_menu_tab* tab = find_tab(m, tab_id);
-    if (!tab) return;
+    if (!tab)
+        return;
 
     for (size_t i = 0; i < tab->item_count; ++i) {
         if (tab->items[i]->id == item_id) {
@@ -328,17 +329,155 @@ void clk_menu_remove_item(clk_menu* m, int tab_id, int item_id) {
  *  Interaction
  * ------------------------------------------------------------------ */
 
-clk_menu_event clk_menu_handle_input(clk_menu* m, clk_key_event input) {
-    /* TODO:
-     *   visible=false → return NONE
-     *   switch(input.key):
-     *     UP/DOWN   → move active_item (update scroll_offset)
-     *     LEFT/RIGHT→ modify value (INT: ±step, BOOL: flip, STR: cycle option_idx)
-     *     TAB       → cycle active_tab
-     *     ENTER     → if ACTION type → return SUBMIT; else NONE
-     *   emit VALUE_CHANGED event when value actually changes
-     */
+clk_menu_event clk_menu_handle_input(clk_menu* m, clk_menu_input input) {
     clk_menu_event ev = {.type = CLK_MENU_EVENT_NONE};
+
+    if (!m || !m->visible || m->tab_count == 0)
+        return ev;
+
+    clk_menu_tab* tab = m->tabs[m->active_tab];
+    if (!tab)
+        return ev;
+
+    ev.tab_id = tab->id;
+
+    if (tab->item_count > 0 && tab->active_item < (int)tab->item_count) {
+        clk_menu_item* item = tab->items[tab->active_item];
+        if (item)
+            ev.item_id = item->id;
+    }
+
+    switch (input) {
+        case CLK_MENU_INPUT_NONE:
+            break;
+
+        case CLK_MENU_INPUT_PREV_ITEM:
+            if (tab->item_count == 0)
+                break;
+            if (tab->active_item > 0)
+                tab->active_item--;
+            break;
+
+        case CLK_MENU_INPUT_NEXT_ITEM:
+            if (tab->item_count == 0)
+                break;
+            if (tab->active_item < (int)tab->item_count - 1)
+                tab->active_item++;
+            break;
+
+        case CLK_MENU_INPUT_DEC_VALUE: {
+            if (tab->item_count == 0)
+                break;
+            clk_menu_item* item = tab->items[tab->active_item];
+            if (!item)
+                break;
+
+            switch (item->type) {
+                case CLK_MENU_TYPE_STR:
+                    if (item->option_count == 0)
+                        break;
+                    if (item->option_idx > 0)
+                        item->option_idx--;
+                    else
+                        item->option_idx = item->option_count - 1;
+                    item->value.s = item->options[item->option_idx];
+                    ev.type = CLK_MENU_EVENT_VALUE_CHANGED;
+                    ev.value.s = item->value.s;
+                    break;
+                case CLK_MENU_TYPE_INT: {
+                    double new_val = item->value.d - item->step_val;
+                    if (new_val < item->min_val)
+                        new_val = item->min_val;
+                    if (new_val != item->value.d) {
+                        item->value.d = new_val;
+                        ev.type = CLK_MENU_EVENT_VALUE_CHANGED;
+                        ev.value.d = item->value.d;
+                    }
+                    break;
+                }
+                case CLK_MENU_TYPE_BOOL:
+                    item->value.b = !item->value.b;
+                    ev.type = CLK_MENU_EVENT_VALUE_CHANGED;
+                    ev.value.b = item->value.b;
+                    break;
+                case CLK_MENU_TYPE_ACTION:
+                    break;
+            }
+            break;
+        }
+
+        case CLK_MENU_INPUT_INC_VALUE: {
+            if (tab->item_count == 0)
+                break;
+            clk_menu_item* item = tab->items[tab->active_item];
+            if (!item)
+                break;
+
+            switch (item->type) {
+                case CLK_MENU_TYPE_STR:
+                    if (item->option_count == 0)
+                        break;
+                    if (item->option_idx + 1 < item->option_count)
+                        item->option_idx++;
+                    else
+                        item->option_idx = 0;
+                    item->value.s = item->options[item->option_idx];
+                    ev.type = CLK_MENU_EVENT_VALUE_CHANGED;
+                    ev.value.s = item->value.s;
+                    break;
+                case CLK_MENU_TYPE_INT: {
+                    double new_val = item->value.d + item->step_val;
+                    if (new_val > item->max_val)
+                        new_val = item->max_val;
+                    if (new_val != item->value.d) {
+                        item->value.d = new_val;
+                        ev.type = CLK_MENU_EVENT_VALUE_CHANGED;
+                        ev.value.d = item->value.d;
+                    }
+                    break;
+                }
+                case CLK_MENU_TYPE_BOOL:
+                    item->value.b = !item->value.b;
+                    ev.type = CLK_MENU_EVENT_VALUE_CHANGED;
+                    ev.value.b = item->value.b;
+                    break;
+                case CLK_MENU_TYPE_ACTION:
+                    break;
+            }
+            break;
+        }
+
+        case CLK_MENU_INPUT_NEXT_TAB:
+            if (m->active_tab + 1 < (int)m->tab_count)
+                m->active_tab++;
+            else
+                m->active_tab = 0;
+            m->scroll_offset = 0;
+            break;
+
+        case CLK_MENU_INPUT_CONFIRM: {
+            if (tab->item_count == 0)
+                break;
+            clk_menu_item* item = tab->items[tab->active_item];
+            if (item && item->type == CLK_MENU_TYPE_ACTION)
+                ev.type = CLK_MENU_EVENT_SUBMIT;
+            break;
+        }
+    }
+
+    /* refresh tab_id / item_id in case active changed */
+    if (m->tab_count > 0) {
+        tab = m->tabs[m->active_tab];
+        if (tab) {
+            ev.tab_id = tab->id;
+            if (tab->item_count > 0 && tab->active_item < (int)tab->item_count) {
+                clk_menu_item* item = tab->items[tab->active_item];
+                if (item)
+                    ev.item_id = item->id;
+            }
+        }
+    }
+
     return ev;
 }
 
