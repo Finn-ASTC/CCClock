@@ -509,16 +509,48 @@ void clk_menu_set_visible(clk_menu* m, bool v) {
  *  External sync
  * ------------------------------------------------------------------ */
 
-void clk_menu_set_value_str(clk_menu* m, int tab_id, int item_id, const char* val) {
-    /* TODO: find item, find val in options[], set option_idx, update value.s */
+bool clk_menu_set_value_str(clk_menu* m, int tab_id, int item_id, const char* val) {
+    if (!m || !val)
+        return false;
+    clk_menu_item* item = find_item(m, tab_id, item_id);
+    if (!item || item->type != CLK_MENU_TYPE_STR)
+        return false;
+
+    for (size_t i = 0; i < item->option_count; ++i) {
+        if (strcmp(val, item->options[i]) == 0) {
+            item->option_idx = i;
+            item->value.s = item->options[i];
+            return true;
+        }
+    }
+    return false;
 }
 
-void clk_menu_set_value_int(clk_menu* m, int tab_id, int item_id, double val) {
-    /* TODO: find item, clamp to [min,max], set value.d */
+bool clk_menu_set_value_int(clk_menu* m, int tab_id, int item_id, double val) {
+    if (!m)
+        return false;
+    clk_menu_item* item = find_item(m, tab_id, item_id);
+    if (!item || item->type != CLK_MENU_TYPE_INT)
+        return false;
+
+    if (val < item->min_val)
+        item->value.d = item->min_val;
+    else if (val > item->max_val)
+        item->value.d = item->max_val;
+    else
+        item->value.d = val;
+    return true;
 }
 
-void clk_menu_set_value_bool(clk_menu* m, int tab_id, int item_id, bool val) {
-    /* TODO: find item, set value.b */
+bool clk_menu_set_value_bool(clk_menu* m, int tab_id, int item_id, bool val) {
+    if (!m)
+        return false;
+    clk_menu_item* item = find_item(m, tab_id, item_id);
+    if (!item || item->type != CLK_MENU_TYPE_BOOL)
+        return false;
+
+    item->value.b = val;
+    return true;
 }
 
 /* ------------------------------------------------------------------

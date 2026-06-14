@@ -140,9 +140,9 @@ void clk_menu_set_visible(clk_menu* m, bool v);
  *  External sync
  * ------------------------------------------------------------------ */
 
-void clk_menu_set_value_str(clk_menu* m, int tab_id, int item_id, const char* val);
-void clk_menu_set_value_int(clk_menu* m, int tab_id, int item_id, double val);
-void clk_menu_set_value_bool(clk_menu* m, int tab_id, int item_id, bool val);
+bool clk_menu_set_value_str(clk_menu* m, int tab_id, int item_id, const char* val);
+bool clk_menu_set_value_int(clk_menu* m, int tab_id, int item_id, double val);
+bool clk_menu_set_value_bool(clk_menu* m, int tab_id, int item_id, bool val);
 
 /* ------------------------------------------------------------------
  *  Dynamic options
