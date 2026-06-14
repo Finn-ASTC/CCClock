@@ -319,7 +319,24 @@ void clk_menu_remove_item(clk_menu* m, int tab_id, int item_id) {
             clk_menu_item_destroy(tab->items[i]);
             for (size_t j = i; j + 1 < tab->item_count; ++j)
                 tab->items[j] = tab->items[j + 1];
-            tab->items[--tab->item_count] = NULL;
+            tab->item_count--;
+            tab->items[tab->item_count] = NULL;
+
+            if (tab->item_count > 0 && tab->item_count <= tab->item_capacity / 2) {
+                size_t new_cap = tab->item_capacity / 2;
+                clk_menu_item** tmp = realloc(tab->items, new_cap * sizeof(clk_menu_item*));
+                if (tmp) {
+                    tab->items = tmp;
+                    tab->item_capacity = new_cap;
+                }
+            } else if (tab->item_count == 0) {
+                free(tab->items);
+                tab->items = NULL;
+                tab->item_capacity = 0;
+            }
+
+            if (tab->active_item > 0 && tab->active_item >= (int)tab->item_count)
+                tab->active_item = (int)tab->item_count - 1;
             return;
         }
     }
@@ -558,22 +575,93 @@ bool clk_menu_set_value_bool(clk_menu* m, int tab_id, int item_id, bool val) {
  * ------------------------------------------------------------------ */
 
 void clk_menu_add_option(clk_menu* m, int tab_id, int item_id, const char* opt) {
-    /* TODO: find item, realloc options[], strdup opt, increment option_count */
+    if (!m || !opt)
+        return;
+    clk_menu_item* item = find_item(m, tab_id, item_id);
+    if (!item || item->type != CLK_MENU_TYPE_STR)
+        return;
+
+    char* dup = strdup(opt);
+    if (!dup)
+        return;
+
+    int n = item->option_count + 1;
+    char** tmp = realloc(item->options, n * sizeof(char*));
+    if (!tmp) {
+        free(dup);
+        return;
+    }
+
+    tmp[item->option_count] = dup;
+    item->options = tmp;
+    item->option_count = n;
 }
 
 void clk_menu_remove_option(clk_menu* m, int tab_id, int item_id, int idx) {
-    /* TODO: find item, free options[idx], shift array, decrement option_count, clamp option_idx */
+    if (!m)
+        return;
+    clk_menu_item* item = find_item(m, tab_id, item_id);
+    if (!item || item->type != CLK_MENU_TYPE_STR)
+        return;
+    if (idx < 0 || idx >= item->option_count)
+        return;
+
+    free(item->options[idx]);
+
+    for (int i = idx; i + 1 < item->option_count; ++i)
+        item->options[i] = item->options[i + 1];
+
+    item->option_count--;
+
+    if (item->option_count == 0) {
+        free(item->options);
+        item->options = NULL;
+    } else {
+        char** tmp = realloc(item->options, item->option_count * sizeof(char*));
+        if (tmp)
+            item->options = tmp;
+    }
+
+    if (item->option_idx >= item->option_count)
+        item->option_idx = item->option_count > 0 ? item->option_count - 1 : 0;
+    if (item->option_count > 0)
+        item->value.s = item->options[item->option_idx];
 }
 
 void clk_menu_clear_options(clk_menu* m, int tab_id, int item_id) {
-    /* TODO: find item, free all options[], set option_count=0, option_idx=0 */
+    if (!m)
+        return;
+    clk_menu_item* item = find_item(m, tab_id, item_id);
+    if (!item || item->type != CLK_MENU_TYPE_STR)
+        return;
+
+    for (int i = 0; i < item->option_count; ++i)
+        free(item->options[i]);
+    free(item->options);
+
+    item->options = NULL;
+    item->option_count = 0;
+    item->option_idx = 0;
 }
 
 /* ------------------------------------------------------------------
  *  INT range
  * ------------------------------------------------------------------ */
 
-void clk_menu_set_item_range(clk_menu* m, int tab_id, int item_id, double min_val, double max_val,
-                             double step_val) {
-    /* TODO: find item, set min/max/step, clamp current value.d into new range */
+void clk_menu_set_item_range(clk_menu* m, int tab_id, int item_id,
+                             double min_val, double max_val, double step_val) {
+    if (!m)
+        return;
+    clk_menu_item* item = find_item(m, tab_id, item_id);
+    if (!item || item->type != CLK_MENU_TYPE_INT)
+        return;
+
+    item->min_val = min_val;
+    item->max_val = max_val;
+    item->step_val = step_val;
+
+    if (item->value.d < min_val)
+        item->value.d = min_val;
+    else if (item->value.d > max_val)
+        item->value.d = max_val;
 }
