@@ -1,0 +1,259 @@
+{
+    "defs": {
+        "corner_tl": {
+            "type": "string",
+            "string": "┌",
+            "fg": "#888",
+            "bg": "#000"
+        },
+        "corner_tr": {
+            "type": "string",
+            "string": "┐",
+            "fg": "#888",
+            "bg": "#000"
+        },
+        "corner_bl": {
+            "type": "string",
+            "string": "└",
+            "fg": "#888",
+            "bg": "#000"
+        },
+        "corner_br": {
+            "type": "string",
+            "string": "┘",
+            "fg": "#888",
+            "bg": "#000"
+        },
+        "edge_l": {
+            "type": "string",
+            "string": "│",
+            "fg": "#888",
+            "bg": "#000"
+        },
+        "edge_r": {
+            "type": "string",
+            "string": "│",
+            "fg": "#888",
+            "bg": "#000"
+        },
+        "gap": {
+            "type": "string",
+            "string": " ",
+            "fg": "#000",
+            "bg": "#000"
+        },
+        "gap_2": {
+            "type": "string",
+            "string": "  ",
+            "fg": "#000",
+            "bg": "#000"
+        },
+        "br_open": {
+            "type": "string",
+            "string": "[",
+            "fg": "#FFF",
+            "bg": "#000"
+        },
+        "br_close": {
+            "type": "string",
+            "string": "]",
+            "fg": "#FFF",
+            "bg": "#000"
+        },
+        "indicator": {
+            "type": "string",
+            "string": "▶ ",
+            "fg": "#FFF",
+            "bg": "#000"
+        },
+        "indent": {
+            "type": "string",
+            "string": "  ",
+            "fg": "#000",
+            "bg": "#000"
+        },
+        "line_h": {
+            "type": "string",
+            "string": "─",
+            "fg": "#888",
+            "bg": "#000"
+        },
+        "line_s": {
+            "type": "string",
+            "string": "─",
+            "fg": "#444",
+            "bg": "#000"
+        },
+        "blank": {
+            "type": "string",
+            "string": " ",
+            "fg": "#000",
+            "bg": "#000"
+        },
+        "tab_str": {
+            "type": "tab_str",
+            "active": {
+                "fg": "#000",
+                "bg": "#FFF",
+                "attr": "bold"
+            },
+            "inactive": {
+                "fg": "#888",
+                "bg": "#000",
+                "attr": "dim"
+            }
+        },
+        "item_label_str": {
+            "type": "item_label_str",
+            "active": {
+                "fg": "#000",
+                "bg": "#FFF",
+                "attr": "bold"
+            },
+            "inactive": {
+                "fg": "#CCC",
+                "bg": "#000",
+                "attr": "none"
+            }
+        },
+        "item_value_str": {
+            "type": "item_value_str",
+            "active": {
+                "fg": "#0F0",
+                "bg": "#FFF",
+                "attr": "none"
+            },
+            "inactive": {
+                "fg": "#0F0",
+                "bg": "#000",
+                "attr": "none"
+            }
+        },
+        "tab": {
+            "type": "tab",
+            "active": [
+                "br_open",
+                "tab_str",
+                "br_close"
+            ],
+            "inactive": [
+                "gap_2",
+                "tab_str",
+                "gap_2"
+            ]
+        },
+        "item_label": {
+            "type": "item_label",
+            "active": [
+                "indicator",
+                "item_label_str"
+            ],
+            "inactive": [
+                "indent",
+                "item_label_str"
+            ]
+        },
+        "item_value": {
+            "type": "item_value",
+            "active": [
+                "item_value_str"
+            ],
+            "inactive": [
+                "item_value_str"
+            ]
+        },
+        "frame_top": [
+            "corner_tl",
+            "line_h",
+            "corner_tr"
+        ],
+        "frame_bottom": [
+            "corner_bl",
+            "line_h",
+            "corner_br"
+        ],
+        "frame_line": [
+            "edge_l",
+            "blank",
+            "edge_r"
+        ],
+        "sep_line": [
+            "edge_l",
+            "line_s",
+            "edge_r"
+        ],
+        "header_block": [
+            "frame_top",
+            "frame_line"
+        ]
+    },
+    "sections": {
+        "header": {
+            "type": "normal",
+            "rows": [
+                "frame_top",
+                "frame_line"
+            ]
+        },
+        "tab_row": {
+            "type": "tab_bar",
+            "rows": [
+                [
+                    "edge_l",
+                    {
+                        "ref": "tab",
+                        "fill": 0.40
+                    },
+                    "blank",
+                    "edge_r"
+                ]
+            ]
+        },
+        "separator": {
+            "type": "normal",
+            "rows": [
+                "sep_line"
+            ]
+        },
+        "item_block": {
+            "type": "item_list",
+            "template": [
+                [
+                    "edge_l",
+                    {
+                        "ref": "blank",
+                        "fill": 0.10
+                    },
+                    "item_label",
+                    "blank",
+                    "edge_r"
+                ],
+                [
+                    "edge_l",
+                    {
+                        "ref": "blank",
+                        "fill": 0.10
+                    },
+                    "item_value",
+                    "blank",
+                    "edge_r"
+                ]
+            ]
+        },
+        "footer": {
+            "type": "normal",
+            "rows": [
+                "frame_bottom"
+            ]
+        }
+    },
+    "framework": {
+        "layout": [
+            "header",
+            "tab_row",
+            "separator",
+            "item_block",
+            "footer"
+        ]
+    }
+}

@@ -15,7 +15,7 @@ int main(void) {
 
     clk_clock clk;
     if (!clk_clock_create(&clk, "hh:MM:ss",
-                          "assets/ascii_fonts/simple_ascii_num.json")) {
+                          "assets/config/ascii_fonts/simple_ascii_num.json")) {
         printf("clk_clock_create failed\n");
         clk_term_close();
         return 1;

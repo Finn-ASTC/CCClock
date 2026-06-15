@@ -26,8 +26,8 @@ int main() {
     const char* formats[] = {"yyyy:mm:dd\n hh:MM:ss", "hh:MM:ss", "hh:MM"};
     int fmt_idx = 0;
 
-    const char* font_files[] = {"assets/ascii_fonts/simple_ascii_num.json",
-                                "assets/ascii_fonts/single_color_num.json"};
+    const char* font_files[] = {"assets/config/ascii_fonts/simple_ascii_num.json",
+                                "assets/config/ascii_fonts/single_color_num.json"};
     int font_idx = 0;
 
     clk_clock clk;
