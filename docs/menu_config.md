@@ -21,7 +21,7 @@ Layer 4  framework        — 完整菜单框架
 | 形式 | 含义 |
 |------|------|
 | object (leaf) | 叶子渲染单元,`type` 决定渲染行为 |
-| object (tab) | 特殊复合,含 active/inactive 两套布局 |
+| object (special) | 特殊复合,含 active/inactive 两套布局 (`tab` / `item_label` / `item_value`) |
 | array | 普通复合,引用其他 defs,递归展开 |
 
 ---
@@ -50,55 +50,65 @@ Layer 4  framework        — 完整菜单框架
 
 `type: "string"` 也可用于填充——例如内容为 `"─"` 或 `" "` 的叶子,配合 row 层的 `fill: N` 标记实现循环平铺。是否填充不取决于 def 的类型,只取决于 row 引用处是否写了 `fill`。
 
-#### tab_name
+#### tab_str
 
 动态内容:tab 按钮名。内容由代码运行时填入。样式分 active/inactive 两套。
 
 ```jsonc
-"tab_name": {
-    "type": "tab_name",
+"tab_str": {
+    "type": "tab_str",
     "active":   { "fg": "#000", "bg": "#FFF", "attr": "bold" },
     "inactive": { "fg": "#888", "bg": "#000", "attr": "dim"  }
 }
 ```
 
-#### item_label
+#### item_label_str
 
 动态内容:item 的标签名。内容由代码运行时填入。
 
 ```jsonc
-"item_label": {
-    "type": "item_label",
+"item_label_str": {
+    "type": "item_label_str",
     "active":   { "fg": "#000", "bg": "#FFF", "attr": "bold" },
     "inactive": { "fg": "#CCC", "bg": "#000", "attr": "none" }
 }
 ```
 
-#### item_value
+#### item_value_str
 
 动态内容:item 的值。内容由代码运行时填入。
 
 ```jsonc
-"item_value": {
-    "type": "item_value",
+"item_value_str": {
+    "type": "item_value_str",
     "active":   { "fg": "#0F0", "bg": "#FFF", "attr": "none" },
     "inactive": { "fg": "#0F0", "bg": "#000", "attr": "none" }
 }
 ```
 
-### 2.2 特殊复合:tab
+### 2.2 特殊复合
 
-系统内必须且仅一份,名字固定为 `"tab"`。
+系统内每种必须且仅一份,名字固定为 `"tab"` / `"item_label"` / `"item_value"`。
 
 ```jsonc
 "tab": {
     "type": "tab",
-    "active":   ["br_open",  "tab_name", "br_close"],
-    "inactive": ["gap_2",    "tab_name", "gap_2"]
+    "active":   ["br_open",  "tab_str", "br_close"],
+    "inactive": ["gap_2",    "tab_str", "gap_2"]
+},
+"item_label": {
+    "type": "item_label",
+    "active":   ["indicator", "item_label_str"],
+    "inactive": ["indent",    "item_label_str"]
+},
+"item_value": {
+    "type": "item_value",
+    "active":   ["item_value_str"],
+    "inactive": ["item_value_str"]
 }
 ```
 
-渲染时根据该 tab 是否为当前 active tab 选用 `active` 或 `inactive` 布局。
+渲染时根据当前状态选用 `active` 或 `inactive` 布局——tab 选中的那一栏用 active,item 当前选中行用 active,其余用 inactive。
 
 ### 2.3 普通复合
 
@@ -233,26 +243,36 @@ row 内每个元素有三种写法:
         "line_s":  { "type": "string", "string": "─", "fg": "#444", "bg": "#000"             },
         "blank":   { "type": "string", "string": " ", "fg": "#000", "bg": "#000"             },
 
-        "tab_name": {
-            "type": "tab_name",
+        "tab_str": {
+            "type": "tab_str",
             "active":   { "fg": "#000", "bg": "#FFF", "attr": "bold" },
             "inactive": { "fg": "#888", "bg": "#000", "attr": "dim"  }
         },
-        "item_label": {
-            "type": "item_label",
+        "item_label_str": {
+            "type": "item_label_str",
             "active":   { "fg": "#000", "bg": "#FFF", "attr": "bold" },
             "inactive": { "fg": "#CCC", "bg": "#000", "attr": "none" }
         },
-        "item_value": {
-            "type": "item_value",
+        "item_value_str": {
+            "type": "item_value_str",
             "active":   { "fg": "#0F0", "bg": "#FFF", "attr": "none" },
             "inactive": { "fg": "#0F0", "bg": "#000", "attr": "none" }
         },
 
         "tab": {
             "type": "tab",
-            "active":   ["br_open",  "tab_name", "br_close"],
-            "inactive": ["gap_2",    "tab_name", "gap_2"]
+            "active":   ["br_open",  "tab_str", "br_close"],
+            "inactive": ["gap_2",    "tab_str", "gap_2"]
+        },
+        "item_label": {
+            "type": "item_label",
+            "active":   ["indicator", "item_label_str"],
+            "inactive": ["indent",    "item_label_str"]
+        },
+        "item_value": {
+            "type": "item_value",
+            "active":   ["item_value_str"],
+            "inactive": ["item_value_str"]
         },
 
         "frame_top":    ["corner_tl", "line_h", "corner_tr"],
@@ -332,7 +352,7 @@ row 内每个元素有三种写法:
 
 | # | 约束 |
 |---|------|
-| 1 | `tab` 特殊复合必须在 defs 中有且仅有一份 |
+| 1 | `tab` / `item_label` / `item_value` 三种特殊复合必须在 defs 中有且各仅一份 |
 | 2 | `tab_bar` 行内必须含 `tab`,不得含 `item_label` 或 `item_value` |
 | 3 | `item_list` template 内必须同时含 `item_label` 和 `item_value`,不得含 `tab` |
 | 4 | `normal` 行内不得含 `tab` / `item_label` / `item_value` |
@@ -354,17 +374,17 @@ clk_menu_render_to_texture(menu, tex)
 │   │     → 将叶子内容写入 texture 对应位置
 │   │
 │   ├─ type = tab_bar:
-│   │     逐行展开 rows[],遇 "tab" 复合时:
+│   │     逐行展开 rows[],遇 "tab" 特殊复合时:
 │   │       → 遍历所有 tab,当前 tab 用 active 布局,其余用 inactive
-│   │       → 每个 tab 展开成 [tab_name 的 active/inactive 样式 + 前后缀]
+│   │       → 每个 tab 展开成 [tab_str 的 active/inactive 样式 + 前后缀]
 │   │       → tab 之间插入空白分隔
 │   │
 │   ├─ type = item_list:
 │   │     对当前 tab 的每个可见 item (从 scroll_offset 开始):
 │   │       → 重复 template 行
-│   │       → 当前选中 item 用 active 样式,其余用 inactive
-│   │       → "item_label" 替换为实际 label 字符串
-│   │       → "item_value" 替换为实际 value 字符串
+│   │       → 当前选中 item 用 active 布局,其余用 inactive
+│   │       → "item_label" 特殊复合展开时,item_label_str 替换为实际 label 字符串
+│   │       → "item_value" 特殊复合展开时,item_value_str 替换为实际 value 字符串
 │   │       → 超出菜单高度的截断不渲染
 │   │
 │   └─ section 之间垂直紧接,总高度 = 各 section 行数之和
