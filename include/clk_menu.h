@@ -4,6 +4,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#include "clk_term.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -127,6 +129,17 @@ void clk_menu_remove_item(clk_menu* m, int tab_id, int item_id);
  * ------------------------------------------------------------------ */
 
 clk_menu_event clk_menu_handle_input(clk_menu* m, clk_menu_input input);
+
+/* ------------------------------------------------------------------
+ *  Render
+ * ------------------------------------------------------------------ */
+
+struct clk_menu_theme;
+
+/** Render the entire menu to a pre-allocated texture.
+ *  tex must have been created with clk_texture_create(menu->width, menu->height). */
+void clk_menu_render_to_texture(const clk_menu* menu, const struct clk_menu_theme* theme,
+                                clk_texture* tex);
 
 /* ------------------------------------------------------------------
  *  Layout

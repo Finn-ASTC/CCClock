@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "clk_menu_theme.h"
+
 #define CLK_TAB_DEFAULT_CAPACITY 6
 #define CLK_ITEM_DEFAULT_CAPACITY 6
 
@@ -664,4 +666,23 @@ void clk_menu_set_item_range(clk_menu* m, int tab_id, int item_id, double min_va
         item->value.d = min_val;
     else if (item->value.d > max_val)
         item->value.d = max_val;
+}
+
+/* ------------------------------------------------------------------
+ *  Render
+ * ------------------------------------------------------------------ */
+
+void clk_menu_render_to_texture(const clk_menu* menu, const clk_menu_theme* theme,
+                                clk_texture* tex) {
+    /* TODO:
+     *   if (!menu || !theme || !tex || !menu->visible) return;
+     *   clear entire tex to empty
+     *   for each section name in theme->framework.layout:
+     *     if NORMAL:  render rows one by one
+     *     if TAB_BAR: expand tab special composite for each tab
+     *     if ITEM_LIST: expand item_label/item_value for each visible item
+     *   compute fill anchors (incremental, last decays to end)
+     *   resolve composites recursively via def->members
+     *   dynamic strings from menu state
+     */
 }

@@ -21,6 +21,7 @@ add_library(libclock STATIC
     src/clk_term.c
     src/clk_clock.c
     src/clk_menu.c
+    src/clk_menu_theme.c
 )
 
 target_include_directories(libclock PRIVATE include)
