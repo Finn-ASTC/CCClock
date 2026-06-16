@@ -521,6 +521,22 @@ static bool validate_theme(const clk_menu_theme* theme) {
             if (has_tab || has_il || has_iv)
                 return false;
         }
+
+        /* fill required on special composites */
+        for (int ri = 0; ri < sec->row_count; ++ri) {
+            for (int ei = 0; ei < sec->rows[ri].count; ++ei) {
+                clk_menu_def_type t = sec->rows[ri].elems[ei].def->type;
+                double f = sec->rows[ri].elems[ei].fill;
+                if (sec->type == CLK_MENU_SEC_TAB_BAR) {
+                    if (t == CLK_MENU_DEF_TAB && f < 0.0)
+                        return false;
+                }
+                if (sec->type == CLK_MENU_SEC_ITEM_LIST) {
+                    if ((t == CLK_MENU_DEF_ITEM_LABEL || t == CLK_MENU_DEF_ITEM_VALUE) && f < 0.0)
+                        return false;
+                }
+            }
+        }
     }
 
     /* pass 3: fill anchors increment */

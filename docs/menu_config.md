@@ -175,8 +175,10 @@ row 内每个元素有三种写法:
 | 目标类型 | `fill: N` 的行为 |
 |----------|-------------------|
 | string 叶子 / 普通复合 | 将该单元渲染后的字符串循环平铺,填到 N% |
-| `tab` 特殊复合 | **例外**：不循环平铺。tab 栏限制在 N% 宽度内渲染,超出截断 |
-| `item_label` / `item_value` | **禁止使用 `fill`**,解析报错 |
+| `tab` 特殊复合 | 不循环平铺。tab 栏限制在 N% 宽度内渲染,超出截断 |
+| `item_label` / `item_value` | 不循环平铺。内容短于 N% → 用最后成员的背景色补空白到锚点;长于 N% → 截断 |
+
+> 如需自定义补空颜色,在 `item_label` / `item_value` 的 `active`/`inactive` 布局末尾加一个带目标背景色的空白 string 叶子。
 
 不加 `fill` 的引用使用单元自身固定宽度(如 `"│"` = 1 格)。
 
@@ -313,14 +315,14 @@ row 内每个元素有三种写法:
                 [
                     "edge_l",
                     { "ref": "blank", "fill": 0.10 },
-                    "item_label",
+                    { "ref": "item_label", "fill": 0.35 },
                     "blank",
                     "edge_r"
                 ],
                 [
                     "edge_l",
                     { "ref": "blank", "fill": 0.10 },
-                    "item_value",
+                    { "ref": "item_value", "fill": 0.45 },
                     "blank",
                     "edge_r"
                 ]
@@ -357,8 +359,9 @@ row 内每个元素有三种写法:
 | 3 | `item_list` rows 内必须同时含 `item_label` 和 `item_value`,不得含 `tab` |
 | 4 | `normal` 行内不得含 `tab` / `item_label` / `item_value` |
 | 5 | row 内 `fill: N` 值必须严格递增;最后一个可不写(默认行尾) |
-| 6 | `fill` 不得加在 `item_label` 或 `item_value` 的引用上 |
-| 7 | 被 `fill` 修饰过的 ref,其对应的 def 不得再出现在任何 composite 数组成员中 |
+| 6 | 被 `fill` 修饰过的 ref,其对应的 def 不得再出现在任何 composite 数组成员中 |
+| 7 | `tab_bar` 行内对 `tab` 的引用必须带 `fill` 锚点 |
+| 8 | `item_list` 行内对 `item_label` 和 `item_value` 的引用必须带 `fill` 锚点 |
 
 ---
 

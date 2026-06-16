@@ -224,7 +224,7 @@
                         "ref": "blank",
                         "fill": 0.10
                     },
-                    "item_label",
+                    { "ref": "item_label", "fill": 0.35 },
                     "blank",
                     "edge_r"
                 ],
@@ -234,7 +234,7 @@
                         "ref": "blank",
                         "fill": 0.10
                     },
-                    "item_value",
+                    { "ref": "item_value", "fill": 0.45 },
                     "blank",
                     "edge_r"
                 ]
