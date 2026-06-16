@@ -48,10 +48,27 @@ static char* read_file(const char* path) {
  * ================================================================ */
 
 static int register_style_obj(const clk_json_value* style) {
-    /* TODO: read fg, bg, attr from JSON style object,
-     *       call clk_term_register_style_hex */
-    (void)style;
-    return 0;
+    if (!clk_term_is_init() || !style)
+        return -1;
+
+    const clk_json_value* fg_json = clk_json_object_get(style, "fg");
+    const clk_json_value* bg_json = clk_json_object_get(style, "bg");
+    if (!fg_json || !bg_json)
+        return -1;
+
+    const char* fg = NULL;
+    const char* bg = NULL;
+    const char* attr = NULL;
+
+    if (clk_json_get_string(fg_json, &fg) || clk_json_get_string(bg_json, &bg))
+        return -1;
+
+    const clk_json_value* attr_json = clk_json_object_get(style, "attr");
+    if (attr_json)
+        clk_json_get_string(attr_json, &attr);
+
+    int style_id = clk_term_register_style_hex(fg, bg, attr);
+    return style_id == 0 ? -1 : style_id;
 }
 
 /* ================================================================
@@ -286,7 +303,7 @@ static bool validate_theme(const clk_menu_theme* theme) {
  * ================================================================ */
 
 bool clk_menu_theme_load(const char* json_path, clk_menu_theme* theme) {
-    if (!json_path || !theme)
+    if (!json_path || !theme || !clk_term_is_init())
         return false;
 
     char* file_content = read_file(json_path);

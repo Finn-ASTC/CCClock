@@ -1,6 +1,7 @@
 #include <stdio.h>
 
 #include "clk_clock.h"
+#include "clk_term.h"
 #include "test_utils.h"
 
 #define TEST_FONT_PATH "../test/test_clock_config.json"
@@ -25,6 +26,12 @@ int main(void) {
 
     ok = clk_clock_create(&clk, "%H:%M:%S", "nonexistent.json");
     TEST("clock_create missing file fails", !ok);
+
+    /* term must be initialised for style registration */
+    if (!clk_term_init()) {
+        printf("  [SKIP] No terminal — remaining tests skipped\n");
+        goto test_cleanup;
+    }
 
     /* === clk_clock_create — success === */
     ok = clk_clock_create(&clk, "%H:%M:%S", TEST_FONT_PATH);

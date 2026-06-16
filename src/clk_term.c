@@ -191,6 +191,10 @@ void clk_term_close(void) {
     fflush(stdout);
 }
 
+bool clk_term_is_init(void) {
+    return clk_is_term_init;
+}
+
 /* ================================================================
  *  Style registry
  * ================================================================ */

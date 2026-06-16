@@ -237,6 +237,8 @@ static bool clk_clock_register_config_style(const clk_json_value* styles_json,
             return false;
 
         int id = clk_term_register_style_hex(fg_str, bg_str, attr_str);
+        if (id == 0)
+            return false;
 
         if (clk_json_object_set_number(translator, name, id) != 0)
             return false;

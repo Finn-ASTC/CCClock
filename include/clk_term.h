@@ -68,11 +68,11 @@ typedef struct {
 /** A texture instance placed on screen at a specific position.
  *  Multiple sprites can reference the same clk_texture. */
 typedef struct clk_sprite {
-    clk_texture* tex;       /* referenced texture (not owned); may be NULL */
-    int posx, posy;         /* screen coordinates */
-    int z_order;            /* higher = on top */
-    bool is_invalid;        /* permanently dead — compact() will remove */
-    bool is_hidden;         /* alive but skip rendering this frame */
+    clk_texture* tex; /* referenced texture (not owned); may be NULL */
+    int posx, posy;   /* screen coordinates */
+    int z_order;      /* higher = on top */
+    bool is_invalid;  /* permanently dead — compact() will remove */
+    bool is_hidden;   /* alive but skip rendering this frame */
 } clk_sprite;
 
 /* ------------------------------------------------------------------
@@ -85,6 +85,9 @@ bool clk_term_init(void);
 
 /** Release all terminal resources and restore cursor visibility. */
 void clk_term_close(void);
+
+/** Return true if clk_term_init() has been called successfully. */
+bool clk_term_is_init(void);
 
 /* ------------------------------------------------------------------
  *  Styles
