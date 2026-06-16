@@ -63,25 +63,70 @@ static clk_menu_def* resolve_def(clk_menu_theme* theme, const clk_json_value* js
 
 static bool resolve_composite_members(clk_menu_theme* theme, const clk_json_value* json_defs,
                                       const clk_json_value* members_json, clk_menu_def* def) {
-    /* TODO: iterate members_json array, resolve each name via
-     *       resolve_def(), store in def->members[] */
-    (void)theme;
-    (void)json_defs;
-    (void)members_json;
-    (void)def;
+    int cnt = clk_json_array_count(members_json);
+    if (cnt == 0) {
+        def->members = NULL;
+        def->member_cnt = 0;
+        return true;
+    }
+
+    clk_menu_def** arr = malloc(cnt * sizeof(clk_menu_def*));
+    if (!arr)
+        return false;
+
+    for (size_t i = 0; i < cnt; ++i) {
+        const clk_json_value* elem = clk_json_array_get(members_json, i);
+        const char* name = NULL;
+        if (!elem || !clk_json_is_string(elem) || clk_json_get_string(elem, &name) != 0) {
+            free(arr);
+            return false;
+        }
+
+        const clk_menu_def* found = clk_menu_theme_find_def(theme, name);
+        arr[i] = found ? (clk_menu_def*)found : resolve_def(theme, json_defs, name);
+        if (!arr[i]) {
+            free(arr);
+            return false;
+        }
+    }
+
+    def->members = arr;
+    def->member_cnt = (int)cnt;
     return true;
 }
 
 static bool resolve_special_members(clk_menu_theme* theme, const clk_json_value* json_defs,
                                     const clk_json_value* layout_json, clk_menu_def*** out_members,
                                     int* out_cnt) {
-    /* TODO: iterate layout_json array, resolve each name → def*,
-     *       allocate array, store in *out_members / *out_cnt */
-    (void)theme;
-    (void)json_defs;
-    (void)layout_json;
-    (void)out_members;
-    (void)out_cnt;
+    int cnt = clk_json_array_count(layout_json);
+    if (cnt == 0) {
+        *out_members = NULL;
+        *out_cnt = 0;
+        return true;
+    }
+
+    clk_menu_def** arr = malloc(cnt * sizeof(clk_menu_def*));
+    if (!arr)
+        return false;
+
+    for (size_t i = 0; i < cnt; ++i) {
+        const clk_json_value* elem = clk_json_array_get(layout_json, i);
+        const char* name = NULL;
+        if (!elem || !clk_json_is_string(elem) || clk_json_get_string(elem, &name) != 0) {
+            free(arr);
+            return false;
+        }
+
+        const clk_menu_def* found = clk_menu_theme_find_def(theme, name);
+        arr[i] = found ? (clk_menu_def*)found : resolve_def(theme, json_defs, name);
+        if (!arr[i]) {
+            free(arr);
+            return false;
+        }
+    }
+
+    *out_members = arr;
+    *out_cnt = (int)cnt;
     return true;
 }
 
@@ -144,11 +189,6 @@ static clk_menu_def* resolve_leaf_string(clk_menu_def* def, const clk_json_value
 
 static clk_menu_def* resolve_def(clk_menu_theme* theme, const clk_json_value* json_defs,
                                  const char* name) {
-    /* already cached? */
-    const clk_menu_def* cached = clk_menu_theme_find_def(theme, name);
-    if (cached)
-        return (clk_menu_def*)cached;
-
     const clk_json_value* json_def = clk_json_object_get(json_defs, name);
     if (!json_def)
         return NULL;
