@@ -137,9 +137,9 @@ Layer 4  framework        — 完整菜单框架
 
 ### 3.3 item_list
 
-`template` 按当前可见 item 数量纵向重复。
+`rows` 按当前可见 item 数量纵向重复每个 item。
 
-约束:template 内必须**同时**含 `item_label` 和 `item_value`,不得含 `tab`。
+约束:rows 内必须**同时**含 `item_label` 和 `item_value`,不得含 `tab`。
 
 ---
 
@@ -309,7 +309,7 @@ row 内每个元素有三种写法:
         },
         "item_block": {
             "type": "item_list",
-            "template": [
+            "rows": [
                 [
                     "edge_l",
                     { "ref": "blank", "fill": 0.10 },
@@ -354,7 +354,7 @@ row 内每个元素有三种写法:
 |---|------|
 | 1 | `tab` / `item_label` / `item_value` 三种特殊复合必须在 defs 中有且各仅一份 |
 | 2 | `tab_bar` 行内必须含 `tab`,不得含 `item_label` 或 `item_value` |
-| 3 | `item_list` template 内必须同时含 `item_label` 和 `item_value`,不得含 `tab` |
+| 3 | `item_list` rows 内必须同时含 `item_label` 和 `item_value`,不得含 `tab` |
 | 4 | `normal` 行内不得含 `tab` / `item_label` / `item_value` |
 | 5 | row 内 `fill: N` 值必须严格递增;最后一个可不写(默认行尾) |
 | 6 | `fill` 不得加在 `item_label` 或 `item_value` 的引用上 |
@@ -381,7 +381,7 @@ clk_menu_render_to_texture(menu, tex)
 │   │
 │   ├─ type = item_list:
 │   │     对当前 tab 的每个可见 item (从 scroll_offset 开始):
-│   │       → 重复 template 行
+│   │       → 重复 rows 整个块（含装饰行）
 │   │       → 当前选中 item 用 active 布局,其余用 inactive
 │   │       → "item_label" 特殊复合展开时,item_label_str 替换为实际 label 字符串
 │   │       → "item_value" 特殊复合展开时,item_value_str 替换为实际 value 字符串

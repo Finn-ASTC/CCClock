@@ -47,12 +47,12 @@ static char* read_file(const char* path) {
  *  Internal helpers — style registration
  * ================================================================ */
 
-static int register_style_obj(const clk_json_value* style) {
-    if (!clk_term_is_init() || !style)
+static int register_inline_style(const clk_json_value* obj) {
+    if (!clk_term_is_init() || !obj)
         return -1;
 
-    const clk_json_value* fg_json = clk_json_object_get(style, "fg");
-    const clk_json_value* bg_json = clk_json_object_get(style, "bg");
+    const clk_json_value* fg_json = clk_json_object_get(obj, "fg");
+    const clk_json_value* bg_json = clk_json_object_get(obj, "bg");
     if (!fg_json || !bg_json)
         return -1;
 
@@ -63,7 +63,7 @@ static int register_style_obj(const clk_json_value* style) {
     if (clk_json_get_string(fg_json, &fg) || clk_json_get_string(bg_json, &bg))
         return -1;
 
-    const clk_json_value* attr_json = clk_json_object_get(style, "attr");
+    const clk_json_value* attr_json = clk_json_object_get(obj, "attr");
     if (attr_json)
         clk_json_get_string(attr_json, &attr);
 
@@ -161,8 +161,8 @@ static clk_menu_def* resolve_leaf_dyn(clk_menu_def* def, const clk_json_value* j
     else
         def->type = CLK_MENU_DEF_ITEM_VALUE_STR;
 
-    def->active_style_id = register_style_obj(act);
-    def->inactive_style_id = register_style_obj(inact);
+    def->active_style_id = register_inline_style(act);
+    def->inactive_style_id = register_inline_style(inact);
     return def;
 }
 
@@ -198,7 +198,7 @@ static clk_menu_def* resolve_leaf_string(clk_menu_def* def, const clk_json_value
         clk_json_get_string(jstr, &str);
     def->string_val = str ? strdup(str) : NULL;
 
-    def->style_id = register_style_obj(json_def);
+    def->style_id = register_inline_style(json_def);
     return def;
 }
 
@@ -262,24 +262,188 @@ static clk_menu_def* resolve_def(clk_menu_theme* theme, const clk_json_value* js
  *  Section parsing
  * ================================================================ */
 
+static bool parse_single_row(clk_menu_theme* theme, const clk_json_value* json_defs,
+                             const clk_json_value* json_row, clk_menu_row* row_out) {
+    int cnt = clk_json_array_count(json_row);
+    if (cnt == 0) {
+        row_out->elems = NULL;
+        row_out->count = 0;
+        return true;
+    }
+
+    clk_menu_row_elem* elems = malloc(cnt * sizeof(clk_menu_row_elem));
+    if (!elems)
+        return false;
+
+    for (int i = 0; i < cnt; ++i) {
+        const clk_json_value* elem = clk_json_array_get(json_row, i);
+        memset(&elems[i], 0, sizeof(elems[i]));
+        elems[i].fill = -1.0;
+
+        if (clk_json_is_string(elem)) {
+            /* shorthand: "name" */
+            const char* name = NULL;
+            if (clk_json_get_string(elem, &name) != 0) {
+                free(elems);
+                return false;
+            }
+            const clk_menu_def* d = clk_menu_theme_find_def(theme, name);
+            elems[i].def = d ? (clk_menu_def*)d : resolve_def(theme, json_defs, name);
+
+        } else if (clk_json_is_object(elem)) {
+            /* { "ref": "name", "fill": 0.30 } */
+            const clk_json_value* ref = clk_json_object_get(elem, "ref");
+            if (!ref || !clk_json_is_string(ref)) {
+                free(elems);
+                return false;
+            }
+            const char* name = NULL;
+            if (clk_json_get_string(ref, &name) != 0) {
+                free(elems);
+                return false;
+            }
+            const clk_menu_def* d = clk_menu_theme_find_def(theme, name);
+            elems[i].def = d ? (clk_menu_def*)d : resolve_def(theme, json_defs, name);
+
+            const clk_json_value* fill = clk_json_object_get(elem, "fill");
+            if (fill && clk_json_is_number(fill))
+                clk_json_get_number(fill, &elems[i].fill);
+        } else {
+            free(elems);
+            return false;
+        }
+
+        if (!elems[i].def) {
+            free(elems);
+            return false;
+        }
+    }
+
+    row_out->elems = elems;
+    row_out->count = cnt;
+    return true;
+}
+
 static bool parse_sections(clk_menu_theme* theme, const clk_json_value* json_defs,
                            const clk_json_value* json_sections) {
-    /* TODO: iterate json_sections, parse each section's rows,
-     *       for each row_elem resolve name → def pointer */
-    (void)theme;
-    (void)json_defs;
-    (void)json_sections;
+    /* count sections */
+    int sec_cnt = (int)clk_json_object_count(json_sections);
+
+    clk_menu_section* secs = malloc(sec_cnt * sizeof(clk_menu_section));
+    if (!secs)
+        return false;
+    memset(secs, 0, sec_cnt * sizeof(clk_menu_section));
+
+    /* parse each section */
+    clk_json_object_iterator iter;
+    clk_json_key_value_pair pair;
+    if (clk_json_object_iterator_init(json_sections, &iter) != 0) {
+        free(secs);
+        return false;
+    }
+
+    int si = 0;
+    while (clk_json_object_iterator_next(&iter, &pair) && si < sec_cnt) {
+        secs[si].name = strdup(pair.key);
+        if (!secs[si].name) {
+            si++;
+            continue;
+        }
+        const clk_json_value* sec = pair.value;
+        if (!clk_json_is_object(sec)) {
+            free(secs[si].name);
+            si++;
+            continue;
+        }
+
+        const char* type_str = NULL;
+        const clk_json_value* jt = clk_json_object_get(sec, "type");
+        if (!jt || !clk_json_is_string(jt) || clk_json_get_string(jt, &type_str) != 0) {
+            free(secs[si].name);
+            si++;
+            continue;
+        }
+
+        if (strcmp(type_str, "tab_bar") == 0)
+            secs[si].type = CLK_MENU_SEC_TAB_BAR;
+        else if (strcmp(type_str, "item_list") == 0)
+            secs[si].type = CLK_MENU_SEC_ITEM_LIST;
+        else
+            secs[si].type = CLK_MENU_SEC_NORMAL;
+
+        const clk_json_value* rows = clk_json_object_get(sec, "rows");
+
+        if (rows && clk_json_is_array(rows)) {
+            int row_cnt = clk_json_array_count(rows);
+            clk_menu_row* row_arr = calloc(row_cnt, sizeof(clk_menu_row));
+            if (!row_arr) {
+                free(secs[si].name);
+                si++;
+                continue;
+            }
+            bool ok = true;
+            for (int ri = 0; ri < row_cnt; ++ri) {
+                const clk_json_value* json_row = clk_json_array_get(rows, ri);
+                if (!json_row || !clk_json_is_array(json_row)) {
+                    ok = false;
+                    break;
+                }
+                if (!parse_single_row(theme, json_defs, json_row, &row_arr[ri])) {
+                    ok = false;
+                    break;
+                }
+            }
+            if (!ok) {
+                for (int ri = 0; ri < row_cnt; ++ri)
+                    free(row_arr[ri].elems);
+                free(row_arr);
+                free(secs[si].name);
+                si++;
+                continue;
+            }
+            secs[si].rows = row_arr;
+            secs[si].row_count = row_cnt;
+        }
+
+        si++;
+    }
+
+    theme->sections = secs;
+    theme->section_count = si;
     return true;
 }
 
 /* ================================================================
  *  Framework parsing
  * ================================================================ */
-
 static bool parse_framework(clk_menu_theme* theme, const clk_json_value* json_framework) {
-    /* TODO: read json_framework["layout"], store section names in theme->layout[] */
-    (void)theme;
-    (void)json_framework;
+    const clk_json_value* layout = clk_json_object_get(json_framework, "layout");
+    if (!layout || !clk_json_is_array(layout))
+        return false;
+
+    int cnt = clk_json_array_count(layout);
+    char** names = calloc(cnt, sizeof(char*));
+    if (!names)
+        return false;
+
+    for (int i = 0; i < cnt; ++i) {
+        const clk_json_value* elem = clk_json_array_get(layout, i);
+        const char* str = NULL;
+        if (!elem || !clk_json_is_string(elem) || clk_json_get_string(elem, &str) != 0) {
+            for (int j = 0; j < i; ++j) free(names[j]);
+            free(names);
+            return false;
+        }
+        names[i] = strdup(str);
+        if (!names[i]) {
+            for (int j = 0; j < i; ++j) free(names[j]);
+            free(names);
+            return false;
+        }
+    }
+
+    theme->layout = names;
+    theme->layout_count = cnt;
     return true;
 }
 
@@ -288,12 +452,11 @@ static bool parse_framework(clk_menu_theme* theme, const clk_json_value* json_fr
  * ================================================================ */
 
 static bool validate_theme(const clk_menu_theme* theme) {
-    /* TODO:
-     *   tab / item_label / item_value unique in defs
-     *   tab_bar contains tab, no item_label/item_value
-     *   item_list contains item_label + item_value, no tab
-     *   normal contains no special composites
-     *   fill values increment */
+    /* TODO: tab / item_label / item_value unique;
+     *       tab_bar contains tab, no item_label/item_value;
+     *       item_list contains item_label + item_value, no tab;
+     *       normal contains no special composites;
+     *       fill values increment */
     (void)theme;
     return true;
 }
@@ -324,9 +487,6 @@ bool clk_menu_theme_load(const char* json_path, clk_menu_theme* theme) {
         return false;
     }
 
-    /* resolve all defs referenced from sections and framework */
-    /* TODO: parse sections and framework first, triggering resolve_def,
-     *       then validate */
     bool ok = parse_sections(theme, json_defs, json_sections) &&
               parse_framework(theme, json_framework) && validate_theme(theme);
 
@@ -343,9 +503,33 @@ bool clk_menu_theme_reload(const char* json_path, clk_menu_theme* theme) {
 }
 
 void clk_menu_theme_destroy(clk_menu_theme* theme) {
-    /* TODO: free all defs (name, string_val, members/active_members arrays),
-     *       free all sections (name, rows.elems), free layout strings */
-    (void)theme;
+    if (!theme)
+        return;
+
+    for (int i = 0; i < theme->def_count; ++i) {
+        clk_menu_def* def = theme->defs[i];
+        free(def->name);
+        free(def->string_val);
+        free(def->members);
+        free(def->active_members);
+        free(def->inactive_members);
+        free(def);
+    }
+    free(theme->defs);
+
+    for (int i = 0; i < theme->section_count; ++i) {
+        free(theme->sections[i].name);
+        for (int j = 0; j < theme->sections[i].row_count; ++j)
+            free(theme->sections[i].rows[j].elems);
+        free(theme->sections[i].rows);
+    }
+    free(theme->sections);
+
+    for (int i = 0; i < theme->layout_count; ++i)
+        free(theme->layout[i]);
+    free(theme->layout);
+
+    memset(theme, 0, sizeof(*theme));
 }
 
 const clk_menu_def* clk_menu_theme_find_def(const clk_menu_theme* theme, const char* name) {

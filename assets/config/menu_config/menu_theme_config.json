@@ -217,7 +217,7 @@
         },
         "item_block": {
             "type": "item_list",
-            "template": [
+            "rows": [
                 [
                     "edge_l",
                     {
