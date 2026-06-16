@@ -1,5 +1,6 @@
 #include "clk_menu_theme.h"
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -430,13 +431,15 @@ static bool parse_framework(clk_menu_theme* theme, const clk_json_value* json_fr
         const clk_json_value* elem = clk_json_array_get(layout, i);
         const char* str = NULL;
         if (!elem || !clk_json_is_string(elem) || clk_json_get_string(elem, &str) != 0) {
-            for (int j = 0; j < i; ++j) free(names[j]);
+            for (int j = 0; j < i; ++j)
+                free(names[j]);
             free(names);
             return false;
         }
         names[i] = strdup(str);
         if (!names[i]) {
-            for (int j = 0; j < i; ++j) free(names[j]);
+            for (int j = 0; j < i; ++j)
+                free(names[j]);
             free(names);
             return false;
         }
@@ -451,13 +454,97 @@ static bool parse_framework(clk_menu_theme* theme, const clk_json_value* json_fr
  *  Validation
  * ================================================================ */
 
+static bool composite_contains(const clk_menu_def* def, clk_menu_def_type expected, int min_count) {
+    int act = 0, inact = 0;
+    for (int i = 0; i < def->active_cnt; ++i)
+        if (def->active_members[i]->type == expected)
+            act++;
+    for (int i = 0; i < def->inactive_cnt; ++i)
+        if (def->inactive_members[i]->type == expected)
+            inact++;
+    return act >= min_count && inact >= min_count;
+}
+
 static bool validate_theme(const clk_menu_theme* theme) {
-    /* TODO: tab / item_label / item_value unique;
-     *       tab_bar contains tab, no item_label/item_value;
-     *       item_list contains item_label + item_value, no tab;
-     *       normal contains no special composites;
-     *       fill values increment */
-    (void)theme;
+    int tab_cnt = 0, il_cnt = 0, iv_cnt = 0;
+
+    /* pass 1: unique special composites + internal structure */
+    for (int i = 0; i < theme->def_count; ++i) {
+        const clk_menu_def* def = theme->defs[i];
+        switch (def->type) {
+            case CLK_MENU_DEF_TAB:
+                if (!composite_contains(def, CLK_MENU_DEF_TAB_STR, 1))
+                    return false;
+                tab_cnt++;
+                break;
+            case CLK_MENU_DEF_ITEM_LABEL:
+                if (!composite_contains(def, CLK_MENU_DEF_ITEM_LABEL_STR, 1))
+                    return false;
+                il_cnt++;
+                break;
+            case CLK_MENU_DEF_ITEM_VALUE:
+                if (!composite_contains(def, CLK_MENU_DEF_ITEM_VALUE_STR, 1))
+                    return false;
+                iv_cnt++;
+                break;
+            default:
+                break;
+        }
+    }
+    if (tab_cnt != 1 || il_cnt != 1 || iv_cnt != 1)
+        return false;
+
+    /* pass 2: section constraints */
+    for (int si = 0; si < theme->section_count; ++si) {
+        const clk_menu_section* sec = &theme->sections[si];
+        bool has_tab = false, has_il = false, has_iv = false;
+
+        for (int ri = 0; ri < sec->row_count; ++ri) {
+            for (int ei = 0; ei < sec->rows[ri].count; ++ei) {
+                clk_menu_def_type t = sec->rows[ri].elems[ei].def->type;
+                if (t == CLK_MENU_DEF_TAB)
+                    has_tab = true;
+                if (t == CLK_MENU_DEF_ITEM_LABEL)
+                    has_il = true;
+                if (t == CLK_MENU_DEF_ITEM_VALUE)
+                    has_iv = true;
+            }
+        }
+
+        if (sec->type == CLK_MENU_SEC_TAB_BAR) {
+            if (!has_tab || has_il || has_iv)
+                return false;
+        } else if (sec->type == CLK_MENU_SEC_ITEM_LIST) {
+            if (!has_il || !has_iv || has_tab)
+                return false;
+        } else {
+            if (has_tab || has_il || has_iv)
+                return false;
+        }
+    }
+
+    /* pass 3: fill anchors increment */
+    for (int si = 0; si < theme->section_count; ++si) {
+        for (int ri = 0; ri < theme->sections[si].row_count; ++ri) {
+            const clk_menu_row* row = &theme->sections[si].rows[ri];
+            double prev = -1.0;
+            for (int ei = 0; ei < row->count; ++ei) {
+                double f = row->elems[ei].fill;
+                if (f >= 0.0) {
+                    if (f <= prev)
+                        return false;
+                    prev = f;
+                }
+            }
+        }
+    }
+
+    /* pass 4: layout references must exist */
+    for (int i = 0; i < theme->layout_count; ++i) {
+        if (!clk_menu_theme_find_section(theme, theme->layout[i]))
+            return false;
+    }
+
     return true;
 }
 
