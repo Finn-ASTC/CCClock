@@ -451,6 +451,63 @@ static bool parse_framework(clk_menu_theme* theme, const clk_json_value* json_fr
 }
 
 /* ================================================================
+ *  Min-size computation
+ * ================================================================ */
+
+static int leaf_width(const clk_menu_def* def) {
+    if (!def)
+        return 0;
+    switch (def->type) {
+        case CLK_MENU_DEF_STRING:
+            return def->string_val ? (int)strlen(def->string_val) : 0;
+        case CLK_MENU_DEF_COMPOSITE: {
+            int w = 0;
+            for (int i = 0; i < def->member_cnt; ++i)
+                w += leaf_width(def->members[i]);
+            return w;
+        }
+        case CLK_MENU_DEF_TAB:
+        case CLK_MENU_DEF_ITEM_LABEL:
+        case CLK_MENU_DEF_ITEM_VALUE:
+            /* dynamic fill — estimated */
+            return 15;
+        default:
+            /* dynamic leaf without fill (rare) — tiny estimate */
+            return 2;
+    }
+}
+
+static void compute_min_size(clk_menu_theme* theme) {
+    int min_w = 0, min_h = 0;
+
+    for (int si = 0; si < theme->section_count; ++si) {
+        const clk_menu_section* sec = &theme->sections[si];
+        min_h += sec->row_count;
+
+        for (int ri = 0; ri < sec->row_count; ++ri) {
+            int row_w = 0;
+            for (int ei = 0; ei < sec->rows[ri].count; ++ei) {
+                const clk_menu_row_elem* elem = &sec->rows[ri].elems[ei];
+                if (elem->fill >= 0.0) {
+                    clk_menu_def_type t = elem->def->type;
+                    if (t == CLK_MENU_DEF_TAB || t == CLK_MENU_DEF_ITEM_LABEL ||
+                        t == CLK_MENU_DEF_ITEM_VALUE)
+                        row_w += 15;
+                    /* plain fill leaves contribute 0 */
+                } else {
+                    row_w += leaf_width(elem->def);
+                }
+            }
+            if (row_w > min_w)
+                min_w = row_w;
+        }
+    }
+
+    theme->min_width = min_w;
+    theme->min_height = min_h;
+}
+
+/* ================================================================
  *  Validation
  * ================================================================ */
 
@@ -592,6 +649,9 @@ bool clk_menu_theme_load(const char* json_path, clk_menu_theme* theme) {
 
     bool ok = parse_sections(theme, json_defs, json_sections) &&
               parse_framework(theme, json_framework) && validate_theme(theme);
+
+    if (ok)
+        compute_min_size(theme);
 
     clk_json_free(json);
     return ok;

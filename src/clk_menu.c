@@ -1,12 +1,8 @@
 #include "clk_menu.h"
 
-#include <assert.h>
-#include <complex.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include "clk_menu_theme.h"
 
 #define CLK_TAB_DEFAULT_CAPACITY 6
 #define CLK_ITEM_DEFAULT_CAPACITY 6
@@ -351,7 +347,7 @@ void clk_menu_remove_item(clk_menu* m, int tab_id, int item_id) {
 clk_menu_event clk_menu_handle_input(clk_menu* m, clk_menu_input input) {
     clk_menu_event ev = {.type = CLK_MENU_EVENT_NONE};
 
-    if (!m || !m->visible || m->tab_count == 0)
+    if (!m || m->tab_count == 0)
         return ev;
 
     clk_menu_tab* tab = m->tabs[m->active_tab];
@@ -471,7 +467,6 @@ clk_menu_event clk_menu_handle_input(clk_menu* m, clk_menu_input input) {
                 m->active_tab++;
             else
                 m->active_tab = 0;
-            m->scroll_offset = 0;
             break;
 
         case CLK_MENU_INPUT_CONFIRM: {
@@ -498,30 +493,6 @@ clk_menu_event clk_menu_handle_input(clk_menu* m, clk_menu_input input) {
     }
 
     return ev;
-}
-
-/* ------------------------------------------------------------------
- *  Layout
- * ------------------------------------------------------------------ */
-
-void clk_menu_set_position(clk_menu* m, int x, int y) {
-    if (!m)
-        return;
-    m->posx = x;
-    m->posy = y;
-}
-
-void clk_menu_set_size(clk_menu* m, int w, int h) {
-    if (!m || w <= 0 || h <= 0)
-        return;
-    m->width = w;
-    m->height = h;
-}
-
-void clk_menu_set_visible(clk_menu* m, bool v) {
-    if (!m)
-        return;
-    m->visible = v;
 }
 
 /* ------------------------------------------------------------------
@@ -666,23 +637,4 @@ void clk_menu_set_item_range(clk_menu* m, int tab_id, int item_id, double min_va
         item->value.d = min_val;
     else if (item->value.d > max_val)
         item->value.d = max_val;
-}
-
-/* ------------------------------------------------------------------
- *  Render
- * ------------------------------------------------------------------ */
-
-void clk_menu_render_to_texture(const clk_menu* menu, const clk_menu_theme* theme,
-                                clk_texture* tex) {
-    /* TODO:
-     *   if (!menu || !theme || !tex || !menu->visible) return;
-     *   clear entire tex to empty
-     *   for each section name in theme->framework.layout:
-     *     if NORMAL:  render rows one by one
-     *     if TAB_BAR: expand tab special composite for each tab
-     *     if ITEM_LIST: expand item_label/item_value for each visible item
-     *   compute fill anchors (incremental, last decays to end)
-     *   resolve composites recursively via def->members
-     *   dynamic strings from menu state
-     */
 }

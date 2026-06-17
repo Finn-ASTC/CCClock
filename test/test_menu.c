@@ -23,8 +23,6 @@ int main(void) {
     TEST("create tab_count == 0", m->tab_count == 0);
     TEST("create tabs != NULL", m->tabs != NULL);
     TEST("create active_tab == 0", m->active_tab == 0);
-    TEST("create scroll_offset == 0", m->scroll_offset == 0);
-    TEST("create visible == false", !m->visible);
 
     /* ================================================================
      *  add_tab
@@ -123,13 +121,6 @@ int main(void) {
         TEST("hnd NULL input", ev.type == CLK_MENU_EVENT_NONE);
     }
     {
-        /* invisible → NONE even with items */
-        m->visible = false;
-        clk_menu_event ev = clk_menu_handle_input(m, CLK_MENU_INPUT_NEXT_ITEM);
-        TEST("hnd invisible", ev.type == CLK_MENU_EVENT_NONE);
-        m->visible = true;
-    }
-    {
         /* empty menu → NONE */
         clk_menu* empty_m = clk_menu_create();
         clk_menu_event ev = clk_menu_handle_input(empty_m, CLK_MENU_INPUT_NEXT_ITEM);
@@ -165,7 +156,6 @@ int main(void) {
     m->active_tab = 0;
     clk_menu_handle_input(m, CLK_MENU_INPUT_NEXT_TAB);
     TEST("tab → 1", m->active_tab == 1);
-    TEST("scroll reset to 0", m->scroll_offset == 0);
 
     clk_menu_handle_input(m, CLK_MENU_INPUT_NEXT_TAB);
     TEST("tab → 2", m->active_tab == 2);
