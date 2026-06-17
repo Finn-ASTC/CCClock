@@ -31,7 +31,6 @@ int main(void) {
 
     TEST("def_count > 0",       theme.def_count > 0);
     TEST("section_count > 0",   theme.section_count > 0);
-    TEST("layout_count > 0",    theme.layout_count > 0);
 
     /* === find_def === */
     const clk_menu_def* d = clk_menu_theme_find_def(&theme, "frame_top");
@@ -72,8 +71,8 @@ int main(void) {
     d = clk_menu_theme_find_def(&theme, "corner_tl");
     TEST("corner_tl string",    d != NULL && d->type == CLK_MENU_DEF_STRING && d->string_val != NULL);
 
-    /* === framework layout === */
-    TEST("layout[0] = header",  strcmp(theme.layout[0], "header") == 0);
+    /* === section order === */
+    TEST("section[0] = header", strcmp(theme.sections[0].name, "header") == 0);
 
     /* === reload === */
     ok = clk_menu_theme_reload(THEME_JSON, &theme);

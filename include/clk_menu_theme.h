@@ -85,8 +85,6 @@ typedef struct clk_menu_theme {
     int def_count;
     clk_menu_section* sections;
     int section_count;
-    char** layout;
-    int layout_count;
     int min_width;
     int min_height;
 } clk_menu_theme;
