@@ -1,0 +1,12 @@
+{
+  "clock": {
+    "fonts_dir": "assets/config/ascii_fonts",
+    "time_formats": ["hh:MM:ss","yyyy:mm:dd\n  hh:ss","hh:MM","dd:hh:MM"]
+  },
+  "menu": {
+    "themes_dir": "assets/config/menu_config"
+  },
+  "selected_fmt": 2,
+  "selected_font": 0,
+  "selected_theme": 1
+}

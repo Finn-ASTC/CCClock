@@ -1,5 +1,7 @@
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "clk_key_io.h"
 #include "clk_menu.h"
@@ -8,7 +10,13 @@
 #include "clk_term.h"
 
 #define THEME_PATH "assets/config/menu_config/menu_theme_pinkblue.json"
-#define THEME2_PATH "assets/config/menu_config/menu_theme_vivid.json"
+
+static const char* theme_list[] = {
+    "assets/config/menu_config/menu_theme_pinkblue.json",
+    "assets/config/menu_config/menu_theme_vivid.json",
+    "assets/config/menu_config/menu_theme_config.json"
+};
+static const char* theme_names[] = {"pinkblue", "vivid", "grey"};
 
 enum { TAB_APPEARANCE, TAB_ADVANCED, TAB_ACTIONS, TAB_SPARSE, TAB_LAYOUT };
 enum {
@@ -24,7 +32,8 @@ enum {
     ITEM_POS_X = 40,
     ITEM_POS_Y = 41,
     ITEM_WIDTH = 42,
-    ITEM_HEIGHT = 43
+    ITEM_HEIGHT = 43,
+    ITEM_THEME = 44
 };
 
 static const char* time_formats[] = {"hh:MM:ss", "yyyy:mm:dd\n  hh:ss", "hh:MM", "ss:MM:hh"};
@@ -115,6 +124,7 @@ int main(void) {
     clk_menu_add_item_int(menu, TAB_LAYOUT, ITEM_POS_Y, "pos y", 1, 0, 200, 1);
     clk_menu_add_item_int(menu, TAB_LAYOUT, ITEM_WIDTH, "width", 100, 30, 300, 1);
     clk_menu_add_item_int(menu, TAB_LAYOUT, ITEM_HEIGHT, "height", 30, 10, 100, 1);
+    clk_menu_add_item_str(menu, TAB_LAYOUT, ITEM_THEME, "theme", 0, theme_names, 3);
 
     clk_menu_instance* inst = clk_menu_instance_create(menu, &theme);
     if (!inst) {
@@ -171,6 +181,27 @@ int main(void) {
                 case ITEM_HEIGHT:
                     clk_menu_instance_set_size(inst, inst->tex.tex_w, (int)mev.value.d);
                     break;
+                case ITEM_THEME: {
+                    /* reload theme and recreate instance */
+                    int px = inst->sprite->posx, py = inst->sprite->posy;
+                    int tw = inst->tex.tex_w, th = inst->tex.tex_h;
+                    clk_menu_instance_remove_from_term(inst);
+                    clk_menu_instance_destroy(inst);
+                    clk_menu_theme_destroy(&theme);
+                    memset(&theme, 0, sizeof(theme));
+                    for (int ti = 0; ti < 3; ++ti) {
+                        if (strcmp(mev.value.s, theme_names[ti]) == 0) {
+                            clk_menu_theme_load(theme_list[ti], &theme);
+                            break;
+                        }
+                    }
+                    inst = clk_menu_instance_create(menu, &theme);
+                    clk_menu_instance_set_position(inst, px, py);
+                    clk_menu_instance_set_size(inst, tw, th);
+                    clk_menu_instance_set_visible(inst, true);
+                    clk_menu_instance_add_to_term(inst);
+                    break;
+                }
             }
         }
 

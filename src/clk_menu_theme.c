@@ -330,10 +330,8 @@ static bool parse_single_row(clk_menu_theme* theme, const clk_json_value* json_d
 static bool parse_sections(clk_menu_theme* theme, const clk_json_value* json_defs,
                            const clk_json_value* json_sections, const clk_json_value* json_layout) {
     int sec_cnt = clk_json_array_count(json_layout);
-    if (sec_cnt <= 0) {
-        fprintf(stderr, "  parse_sections: sec_cnt=%d\n", sec_cnt);
+    if (sec_cnt <= 0)
         return false;
-    }
 
     clk_menu_section* secs = calloc(sec_cnt, sizeof(clk_menu_section));
     if (!secs)
@@ -344,18 +342,12 @@ static bool parse_sections(clk_menu_theme* theme, const clk_json_value* json_def
         const clk_json_value* name_elem = clk_json_array_get(json_layout, si);
         const char* name = NULL;
         if (!name_elem || !clk_json_is_string(name_elem) ||
-            clk_json_get_string(name_elem, &name) != 0) {
-            fprintf(stderr, "  parse_sections: [%d] bad layout elem\n", si);
+            clk_json_get_string(name_elem, &name) != 0)
             goto fail_sections;
-        }
-
-        fprintf(stderr, "  parse_sections: [%d] '%s'\n", si, name);
 
         const clk_json_value* json_sec = clk_json_object_get(json_sections, name);
-        if (!json_sec || !clk_json_is_object(json_sec)) {
-            fprintf(stderr, "  parse_sections: '%s' not in sections\n", name);
+        if (!json_sec || !clk_json_is_object(json_sec))
             goto fail_sections;
-        }
 
         secs[si].name = strdup(name);
         if (!secs[si].name)
@@ -363,10 +355,8 @@ static bool parse_sections(clk_menu_theme* theme, const clk_json_value* json_def
 
         const char* type_str = NULL;
         const clk_json_value* jt = clk_json_object_get(json_sec, "type");
-        if (!jt || !clk_json_is_string(jt) || clk_json_get_string(jt, &type_str) != 0) {
-            fprintf(stderr, "  parse_sections: '%s' bad type\n", name);
+        if (!jt || !clk_json_is_string(jt) || clk_json_get_string(jt, &type_str) != 0)
             goto fail_sections;
-        }
 
         if (strcmp(type_str, "tab_bar") == 0)
             secs[si].type = CLK_MENU_SEC_TAB_BAR;
@@ -376,10 +366,8 @@ static bool parse_sections(clk_menu_theme* theme, const clk_json_value* json_def
             secs[si].type = CLK_MENU_SEC_NORMAL;
 
         const clk_json_value* rows = clk_json_object_get(json_sec, "rows");
-        if (!rows || !clk_json_is_array(rows)) {
-            fprintf(stderr, "  parse_sections: '%s' rows missing/bad\n", name);
+        if (!rows || !clk_json_is_array(rows))
             goto fail_sections;
-        }
 
         int row_cnt = clk_json_array_count(rows);
         clk_menu_row* row_arr = calloc(row_cnt, sizeof(clk_menu_row));
@@ -399,24 +387,10 @@ static bool parse_sections(clk_menu_theme* theme, const clk_json_value* json_def
                 row_arr[ri].elems[0].fill = -1.0;
                 const clk_menu_def* d = clk_menu_theme_find_def(theme, n);
                 row_arr[ri].elems[0].def = d ? (clk_menu_def*)d : resolve_def(theme, json_defs, n);
-                if (!row_arr[ri].elems[0].def) {
-                    fprintf(stderr, "  parse_sections: '%s' row[%d] def '%s' not found\n", name, ri,
-                            n);
-                    ok = false;
-                    break;
-                }
+                if (!row_arr[ri].elems[0].def) { ok = false; break; }
             } else if (clk_json_is_array(json_row)) {
-                if (!parse_single_row(theme, json_defs, json_row, &row_arr[ri])) {
-                    fprintf(stderr, "  parse_sections: '%s' row[%d] parse_single_row failed\n",
-                            name, ri);
-                    ok = false;
-                    break;
-                }
-            } else {
-                fprintf(stderr, "  parse_sections: '%s' row[%d] not string or array\n", name, ri);
-                ok = false;
-                break;
-            }
+                if (!parse_single_row(theme, json_defs, json_row, &row_arr[ri])) { ok = false; break; }
+            } else { ok = false; break; }
         }
         if (!ok) {
             for (int ri = 0; ri < row_cnt; ++ri)
@@ -617,42 +591,30 @@ bool clk_menu_theme_load(const char* json_path, clk_menu_theme* theme) {
         return false;
 
     char* file_content = read_file(json_path);
-    if (!file_content) {
-        fprintf(stderr, "theme_load: read_file failed\n");
+    if (!file_content)
         return false;
-    }
 
     clk_json_value* json = clk_json_parse(file_content);
     free(file_content);
-    if (!json) {
-        fprintf(stderr, "theme_load: parse failed\n");
+    if (!json)
         return false;
-    }
 
     const clk_json_value* json_defs = clk_json_object_get(json, "defs");
     const clk_json_value* json_sections = clk_json_object_get(json, "sections");
     const clk_json_value* json_framework = clk_json_object_get(json, "framework");
     if (!json_defs || !json_sections || !json_framework) {
-        fprintf(stderr, "theme_load: missing defs/sections/framework\n");
         clk_json_free(json);
         return false;
     }
 
     const clk_json_value* layout_order = clk_json_object_get(json_framework, "layout");
     if (!layout_order || !clk_json_is_array(layout_order)) {
-        fprintf(stderr, "theme_load: layout missing or not array\n");
         clk_json_free(json);
         return false;
     }
 
-    bool ok = parse_sections(theme, json_defs, json_sections, layout_order);
-    if (!ok) {
-        fprintf(stderr, "  parse_sections failed\n");
-    } else {
-        ok = validate_theme(theme);
-        if (!ok)
-            fprintf(stderr, "  validate_theme failed\n");
-    }
+    bool ok = parse_sections(theme, json_defs, json_sections, layout_order) &&
+              validate_theme(theme);
 
     if (ok)
         compute_min_size(theme);

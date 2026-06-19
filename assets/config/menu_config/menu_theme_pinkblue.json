@@ -94,7 +94,7 @@
             "type": "tab_str",
             "active": {
                 "fg": "#FFFFFF",
-                "bg": "#AA88FF",
+                "bg": "#2A2A2A",
                 "attr": "bold"
             },
             "inactive": {
@@ -262,7 +262,7 @@
                     "edge_l",
                     {
                         "ref": "blank",
-                        "fill": 0.30
+                        "fill": 0.20
                     },
                     {
                         "ref": "item_label",
@@ -270,7 +270,7 @@
                     },
                     {
                         "ref": "item_value",
-                        "fill": 0.7
+                        "fill": 0.8
                     },
                     {
                         "ref": "blank",

@@ -3,129 +3,129 @@
         "corner_tl": {
             "type": "string",
             "string": "┌",
-            "fg": "#888",
-            "bg": "#000"
+            "fg": "#888888",
+            "bg": "#1E1E1E"
         },
         "corner_tr": {
             "type": "string",
             "string": "┐",
-            "fg": "#888",
-            "bg": "#000"
+            "fg": "#888888",
+            "bg": "#1E1E1E"
         },
         "corner_bl": {
             "type": "string",
             "string": "└",
-            "fg": "#888",
-            "bg": "#000"
+            "fg": "#888888",
+            "bg": "#1E1E1E"
         },
         "corner_br": {
             "type": "string",
             "string": "┘",
-            "fg": "#888",
-            "bg": "#000"
+            "fg": "#888888",
+            "bg": "#1E1E1E"
         },
         "edge_l": {
             "type": "string",
             "string": "│",
-            "fg": "#888",
-            "bg": "#000"
+            "fg": "#888888",
+            "bg": "#1E1E1E"
         },
         "edge_r": {
             "type": "string",
             "string": "│",
-            "fg": "#888",
-            "bg": "#000"
+            "fg": "#888888",
+            "bg": "#1E1E1E"
         },
         "gap": {
             "type": "string",
             "string": " ",
-            "fg": "#000",
-            "bg": "#000"
+            "fg": "#1E1E1E",
+            "bg": "#1E1E1E"
         },
         "gap_2": {
             "type": "string",
             "string": "  ",
-            "fg": "#000",
-            "bg": "#000"
+            "fg": "#1E1E1E",
+            "bg": "#1E1E1E"
         },
         "br_open": {
             "type": "string",
             "string": "[",
-            "fg": "#FFF",
-            "bg": "#000"
+            "fg": "#FFFFFF",
+            "bg": "#1E1E1E"
         },
         "br_close": {
             "type": "string",
             "string": "]",
-            "fg": "#FFF",
-            "bg": "#000"
+            "fg": "#FFFFFF",
+            "bg": "#1E1E1E"
         },
         "indicator": {
             "type": "string",
             "string": "▶ ",
-            "fg": "#FFF",
-            "bg": "#000"
+            "fg": "#FFFFFF",
+            "bg": "#1E1E1E"
         },
         "indent": {
             "type": "string",
             "string": "  ",
-            "fg": "#000",
-            "bg": "#000"
+            "fg": "#1E1E1E",
+            "bg": "#1E1E1E"
         },
         "line_h": {
             "type": "string",
             "string": "─",
-            "fg": "#888",
-            "bg": "#000"
+            "fg": "#888888",
+            "bg": "#1E1E1E"
         },
         "line_s": {
             "type": "string",
             "string": "─",
-            "fg": "#444",
-            "bg": "#000"
+            "fg": "#444444",
+            "bg": "#1E1E1E"
         },
         "blank": {
             "type": "string",
             "string": " ",
-            "fg": "#000",
-            "bg": "#000"
+            "fg": "#1E1E1E",
+            "bg": "#1E1E1E"
         },
         "tab_str": {
             "type": "tab_str",
             "active": {
-                "fg": "#000",
-                "bg": "#FFF",
+                "fg": "#FFFFFF",
+                "bg": "#1E1E1E",
                 "attr": "bold"
             },
             "inactive": {
-                "fg": "#888",
-                "bg": "#000",
+                "fg": "#888888",
+                "bg": "#1E1E1E",
                 "attr": "dim"
             }
         },
         "item_label_str": {
             "type": "item_label_str",
             "active": {
-                "fg": "#000",
-                "bg": "#FFF",
+                "fg": "#FFFFFF",
+                "bg": "#1E1E1E",
                 "attr": "bold"
             },
             "inactive": {
-                "fg": "#CCC",
-                "bg": "#000",
+                "fg": "#CCCCCC",
+                "bg": "#1E1E1E",
                 "attr": "none"
             }
         },
         "item_value_str": {
             "type": "item_value_str",
             "active": {
-                "fg": "#0F0",
-                "bg": "#FFF",
+                "fg": "#00FF00",
+                "bg": "#1E1E1E",
                 "attr": "none"
             },
             "inactive": {
-                "fg": "#0F0",
-                "bg": "#000",
+                "fg": "#00FF00",
+                "bg": "#1E1E1E",
                 "attr": "none"
             }
         },
