@@ -191,8 +191,22 @@
         "header": {
             "type": "normal",
             "rows": [
-                "frame_top",
-                "frame_line"
+                [
+                    "corner_tl",
+                    {
+                        "ref": "line_h",
+                        "fill": 1.0
+                    },
+                    "corner_tr"
+                ],
+                [
+                    "edge_l",
+                    {
+                        "ref": "blank",
+                        "fill": 1.0
+                    },
+                    "edge_r"
+                ]
             ]
         },
         "tab_row": {
@@ -204,7 +218,10 @@
                         "ref": "tab",
                         "fill": 0.40
                     },
-                    "blank",
+                    {
+                        "ref": "blank",
+                        "fill": 1.0
+                    },
                     "edge_r"
                 ]
             ]
@@ -212,12 +229,27 @@
         "separator": {
             "type": "normal",
             "rows": [
-                "sep_line"
+                [
+                    "edge_l",
+                    {
+                        "ref": "line_s",
+                        "fill": 1.0
+                    },
+                    "edge_r"
+                ]
             ]
         },
         "item_block": {
             "type": "item_list",
             "rows": [
+                [
+                    "edge_l",
+                    {
+                        "ref": "blank",
+                        "fill": 1.0
+                    },
+                    "edge_r"
+                ],
                 [
                     "edge_l",
                     {
@@ -228,7 +260,10 @@
                         "ref": "item_label",
                         "fill": 0.35
                     },
-                    "blank",
+                    {
+                        "ref": "blank",
+                        "fill": 1.0
+                    },
                     "edge_r"
                 ],
                 [
@@ -241,7 +276,18 @@
                         "ref": "item_value",
                         "fill": 0.45
                     },
-                    "blank",
+                    {
+                        "ref": "blank",
+                        "fill": 1.0
+                    },
+                    "edge_r"
+                ],
+                [
+                    "edge_l",
+                    {
+                        "ref": "blank",
+                        "fill": 1.0
+                    },
                     "edge_r"
                 ]
             ]
@@ -249,7 +295,14 @@
         "footer": {
             "type": "normal",
             "rows": [
-                "frame_bottom"
+                [
+                    "corner_bl",
+                    {
+                        "ref": "line_h",
+                        "fill": 1.0
+                    },
+                    "corner_br"
+                ]
             ]
         }
     },

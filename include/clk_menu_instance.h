@@ -22,6 +22,9 @@ typedef struct {
     clk_texture tex;
     clk_sprite* sprite;
     bool sprite_added;
+    int active_item_pos_idx;
+    int last_active_item_pos_idx;
+    bool align_top;
 } clk_menu_instance;
 
 /* ------------------------------------------------------------------

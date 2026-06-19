@@ -42,6 +42,11 @@ add_executable(json_benchmark sandbox/json_benchmark.c)
 target_link_libraries(json_benchmark PRIVATE libclock)
 target_include_directories(json_benchmark PRIVATE include)
 
+add_executable(menu_demo sandbox/menu_demo.c)
+
+target_link_libraries(menu_demo PRIVATE libclock)
+target_include_directories(menu_demo PRIVATE include)
+
 enable_testing()
 
 add_clk_test(key_io)
@@ -50,3 +55,4 @@ add_clk_test(term)
 add_clk_test(clock)
 add_clk_test(menu)
 add_clk_test(menu_theme)
+add_clk_test(menu_instance)
