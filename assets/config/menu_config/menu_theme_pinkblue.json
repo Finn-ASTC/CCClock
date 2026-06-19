@@ -262,27 +262,15 @@
                     "edge_l",
                     {
                         "ref": "blank",
-                        "fill": 0.10
+                        "fill": 0.30
                     },
                     {
                         "ref": "item_label",
-                        "fill": 0.35
-                    },
-                    {
-                        "ref": "blank",
-                        "fill": 1.0
-                    },
-                    "edge_r"
-                ],
-                [
-                    "edge_l",
-                    {
-                        "ref": "blank",
-                        "fill": 0.10
+                        "fill": 0.50
                     },
                     {
                         "ref": "item_value",
-                        "fill": 0.45
+                        "fill": 0.7
                     },
                     {
                         "ref": "blank",

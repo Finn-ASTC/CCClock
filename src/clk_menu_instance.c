@@ -562,14 +562,6 @@ static int render_item_list_section(clk_menu_instance* inst, const clk_menu* men
 
     int total = (int)menu->tabs[menu->active_tab]->item_count;
 
-    /* clamp P to [0, total-1] — don't let it wander past actual items */
-    if (inst->active_item_pos_idx < 0)
-        inst->active_item_pos_idx = 0;
-    if (inst->active_item_pos_idx > total - 1)
-        inst->active_item_pos_idx = total - 1;
-    if (inst->active_item_pos_idx < 0)
-        inst->active_item_pos_idx = 0;
-
     int scroll = menu->tabs[menu->active_tab]->active_item - inst->active_item_pos_idx;
     if (scroll < 0)
         scroll = 0;

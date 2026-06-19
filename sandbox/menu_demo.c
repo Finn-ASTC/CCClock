@@ -10,7 +10,7 @@
 #define THEME_PATH "assets/config/menu_config/menu_theme_pinkblue.json"
 #define THEME2_PATH "assets/config/menu_config/menu_theme_vivid.json"
 
-enum { TAB_APPEARANCE, TAB_ADVANCED, TAB_ACTIONS, TAB_SPARSE };
+enum { TAB_APPEARANCE, TAB_ADVANCED, TAB_ACTIONS, TAB_SPARSE, TAB_LAYOUT };
 enum {
     ITEM_TIME_FORMAT = 1,
     ITEM_Z_ORDER = 2,
@@ -20,7 +20,11 @@ enum {
     ITEM_QUIT = 20,
     ITEM_RESET = 21,
     ITEM_SP_ON = 30,
-    ITEM_SP_OFF = 31
+    ITEM_SP_OFF = 31,
+    ITEM_POS_X = 40,
+    ITEM_POS_Y = 41,
+    ITEM_WIDTH = 42,
+    ITEM_HEIGHT = 43
 };
 
 static const char* time_formats[] = {"hh:MM:ss", "yyyy:mm:dd\n  hh:ss", "hh:MM", "ss:MM:hh"};
@@ -105,6 +109,13 @@ int main(void) {
     clk_menu_add_item_bool(menu, TAB_SPARSE, ITEM_SP_ON, "enable", true);
     clk_menu_add_item_bool(menu, TAB_SPARSE, ITEM_SP_OFF, "verbose", false);
 
+    /* ── tab layout — self-modifying: move / resize the menu ── */
+    clk_menu_add_tab(menu, TAB_LAYOUT, "layout");
+    clk_menu_add_item_int(menu, TAB_LAYOUT, ITEM_POS_X, "pos x", 1, 0, 200, 1);
+    clk_menu_add_item_int(menu, TAB_LAYOUT, ITEM_POS_Y, "pos y", 1, 0, 200, 1);
+    clk_menu_add_item_int(menu, TAB_LAYOUT, ITEM_WIDTH, "width", 100, 30, 300, 1);
+    clk_menu_add_item_int(menu, TAB_LAYOUT, ITEM_HEIGHT, "height", 30, 10, 100, 1);
+
     clk_menu_instance* inst = clk_menu_instance_create(menu, &theme);
     if (!inst) {
         printf("instance create fail\n");
@@ -123,8 +134,7 @@ int main(void) {
     printf(
         "=== Menu Test ===\n"
         "  UP/DOWN : items   LEFT/RIGHT : change value\n"
-        "  TAB     : tab     ENTER/q   : quit\n"
-        "  Size    : 50 x 70\n\n"
+        "  TAB     : tab     ENTER/q   : quit\n\n"
         "Press Enter...\n");
     fflush(stdout);
 
@@ -146,35 +156,26 @@ int main(void) {
         if (mev.type == CLK_MENU_EVENT_SUBMIT && mev.item_id == ITEM_QUIT)
             running = false;
 
-        clk_menu_instance_render(inst);
-        clk_term_draw();
-
-        /* debug overlay */
-        {
-            int total = menu->tabs[menu->active_tab]->item_count;
-            int active = menu->tabs[menu->active_tab]->active_item;
-            int fixed = 0;
-            for (int s = 0; s < inst->theme->section_count; s++)
-                if (inst->theme->sections[s].type != CLK_MENU_SEC_ITEM_LIST)
-                    fixed += inst->theme->sections[s].row_count;
-            int avail = inst->tex.tex_h - fixed;
-            int rc = 0;
-            for (int s = 0; s < inst->theme->section_count; s++)
-                if (inst->theme->sections[s].type == CLK_MENU_SEC_ITEM_LIST) {
-                    rc = inst->theme->sections[s].row_count;
+        /* apply layout changes to the instance itself */
+        if (mev.type == CLK_MENU_EVENT_VALUE_CHANGED) {
+            switch (mev.item_id) {
+                case ITEM_POS_X:
+                    clk_menu_instance_set_position(inst, (int)mev.value.d, inst->sprite->posy);
                     break;
-                }
-            int cnt = (avail + rc - 1) / rc;
-            int A = active, P = inst->active_item_pos_idx;
-
-            printf(
-                "\033[34;1H\033[2K"
-                "active=%d  pos=%d  last=%d  cnt=%d  align=%s  A-P=%d  total=%d  avail=%d",
-                A, P, inst->last_active_item_pos_idx, cnt, inst->align_top ? "top" : "bot", A - P,
-                total, avail);
-            fflush(stdout);
+                case ITEM_POS_Y:
+                    clk_menu_instance_set_position(inst, inst->sprite->posx, (int)mev.value.d);
+                    break;
+                case ITEM_WIDTH:
+                    clk_menu_instance_set_size(inst, (int)mev.value.d, inst->tex.tex_h);
+                    break;
+                case ITEM_HEIGHT:
+                    clk_menu_instance_set_size(inst, inst->tex.tex_w, (int)mev.value.d);
+                    break;
+            }
         }
 
+        clk_menu_instance_render(inst);
+        clk_term_draw();
         clk_term_sleep_ms(50);
     }
 
