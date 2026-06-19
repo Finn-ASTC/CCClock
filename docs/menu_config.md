@@ -137,7 +137,7 @@ Layer 4  framework        — 完整菜单框架
 
 ### 3.3 item_list
 
-`rows` 按当前可见 item 数量纵向重复每个 item。
+`rows` 按当前可见 item 数量纵向重复每个 item。当实际 item 数不足以填满可用高度时,余下空间自动用仅有边框的空白 item 补齐。
 
 约束:rows 内必须**同时**含 `item_label` 和 `item_value`,不得含 `tab`。
 
@@ -164,18 +164,19 @@ row 内每个元素有三种写法:
 
 | 规则 | 说明 |
 |------|------|
-| 含义 | `fill: N` = 循环平铺到 N% 位置,不是增量 |
+| 含义 | `fill: N` = 循环平铺到行宽 N% 位置,不是增量 |
 | 递增 | 同一行中 `fill` 值必须严格递增,否则解析报错 |
-| 末位 | 最后一个 fill 可不写锚点数据,默认填到行尾，并为最后单元留出位置 |
+| 末位 | 最后一个 fill 若设为 `1.0`,渲染时自动为尾部的固定宽度单元留出空间 |
+| 必显式 | 只有 `{"ref":"name","fill":N}` 形式有 fill 行为。`"name"` 简写和 `{"ref":"name"}`（无 fill key）永远无 fill |
 | 越界 | 若当前位置已超过 `fill` 对应的位置,填 0 格 |
-| 可给多数 ref | 任意 string 叶子 / 普通复合 / `tab` 特殊复合 都可用 `fill` |
+| 可给多数 ref | 任意 string 叶子 / 普通复合 / `tab` 特殊复合 / `item_label` / `item_value` 都可用 `fill` |
 
 `fill: N` 的具体效果取决于目标类型：
 
 | 目标类型 | `fill: N` 的行为 |
 |----------|-------------------|
 | string 叶子 / 普通复合 | 将该单元渲染后的字符串循环平铺,填到 N% |
-| `tab` 特殊复合 | 不循环平铺。tab 栏限制在 N% 宽度内渲染,超出截断 |
+| `tab` 特殊复合 | 不循环平铺。tab 栏限制在 N% 宽度内渲染,超出截断。截断后未填满的空白用最后一个渲染单元的**背景色**补齐 |
 | `item_label` / `item_value` | 不循环平铺。内容短于 N% → 用最后成员的背景色补空白到锚点;长于 N% → 截断 |
 
 > 如需自定义补空颜色,在 `item_label` / `item_value` 的 `active`/`inactive` 布局末尾加一个带目标背景色的空白 string 叶子。
@@ -196,10 +197,10 @@ row 内每个元素有三种写法:
     "edge_l",
     { "ref": "blank", "fill": 0.10 },
     { "ref": "tab",   "fill": 0.40 },
-    "blank",
+    { "ref": "blank", "fill": 1.0 },
     "edge_r"
 ]
-// 左边框 → 空格平铺到 10% → tab 栏限宽 40% → 剩余空白填到底 → 右边框
+// 左边框 → 空格平铺到 10% → tab 栏限宽 40% → 空白填到底（留 edge_r 位置）→ 右边框
 ```
 
 ---
@@ -288,8 +289,8 @@ row 内每个元素有三种写法:
         "header": {
             "type": "normal",
             "rows": [
-                "frame_top",
-                "frame_line"
+                ["corner_tl", {"ref":"line_h","fill":1.0}, "corner_tr"],
+                ["edge_l",    {"ref":"blank","fill":1.0},  "edge_r"]
             ]
         },
         "tab_row": {
@@ -298,7 +299,7 @@ row 内每个元素有三种写法:
                 [
                     "edge_l",
                     { "ref": "tab", "fill": 0.40 },
-                    "blank",
+                    { "ref": "blank", "fill": 1.0 },
                     "edge_r"
                 ]
             ]
@@ -306,32 +307,36 @@ row 内每个元素有三种写法:
         "separator": {
             "type": "normal",
             "rows": [
-                "sep_line"
+                ["edge_l", {"ref":"line_s","fill":1.0}, "edge_r"]
             ]
         },
         "item_block": {
             "type": "item_list",
             "rows": [
+                ["edge_l", {"ref":"blank","fill":1.0}, "edge_r"],
+                ["edge_l", {"ref":"blank","fill":1.0}, "edge_r"],
                 [
                     "edge_l",
                     { "ref": "blank", "fill": 0.10 },
                     { "ref": "item_label", "fill": 0.35 },
-                    "blank",
+                    { "ref": "blank", "fill": 1.0 },
                     "edge_r"
                 ],
                 [
                     "edge_l",
                     { "ref": "blank", "fill": 0.10 },
                     { "ref": "item_value", "fill": 0.45 },
-                    "blank",
+                    { "ref": "blank", "fill": 1.0 },
                     "edge_r"
-                ]
+                ],
+                ["edge_l", {"ref":"blank","fill":1.0}, "edge_r"],
+                ["edge_l", {"ref":"blank","fill":1.0}, "edge_r"]
             ]
         },
         "footer": {
             "type": "normal",
             "rows": [
-                "frame_bottom"
+                ["corner_bl", {"ref":"line_h","fill":1.0}, "corner_br"]
             ]
         }
     },
@@ -358,8 +363,11 @@ row 内每个元素有三种写法:
 | 2 | `tab_bar` 行内必须含 `tab`,不得含 `item_label` 或 `item_value` |
 | 3 | `item_list` rows 内必须同时含 `item_label` 和 `item_value`,不得含 `tab` |
 | 4 | `normal` 行内不得含 `tab` / `item_label` / `item_value` |
-| 5 | row 内 `fill: N` 值必须严格递增;最后一个可不写(默认行尾) |
+| 5 | row 内 `fill: N` 值必须严格递增; fill 必须通过 `{"ref":"name","fill":N}` 显式声明 |
 | 6 | 被 `fill` 修饰过的 ref,其对应的 def 不得再出现在任何 composite 数组成员中 |
+| 7 | `tab_bar` 行内对 `tab` 的引用必须带 `fill` 锚点 |
+| 8 | `item_list` 行内对 `item_label` 和 `item_value` 的引用必须带 `fill` 锚点 |
+| 9 | 最后一个 fill 若为 `1.0`,自动为行尾固定宽度单元留出空间 |
 | 7 | `tab_bar` 行内对 `tab` 的引用必须带 `fill` 锚点 |
 | 8 | `item_list` 行内对 `item_label` 和 `item_value` 的引用必须带 `fill` 锚点 |
 

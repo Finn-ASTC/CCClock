@@ -1,5 +1,3 @@
-#include "clk_json.h"
-
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -7,14 +5,16 @@
 #include <string.h>
 #include <time.h>
 
+#include "clk_json.h"
+
 #ifndef __unix__
 #define _POSIX_
 #endif
 
 #define ROUNDS (10)
 
-static char *read_whole_file(const char *path, size_t *out_size) {
-    FILE *f = fopen(path, "rb");
+static char* read_whole_file(const char* path, size_t* out_size) {
+    FILE* f = fopen(path, "rb");
     if (!f) {
         fprintf(stderr, "Failed to open: %s\n", path);
         return NULL;
@@ -26,7 +26,7 @@ static char *read_whole_file(const char *path, size_t *out_size) {
         return NULL;
     }
     rewind(f);
-    char *buf = malloc((size_t)size + 1);
+    char* buf = malloc((size_t)size + 1);
     if (!buf) {
         fclose(f);
         return NULL;
@@ -42,13 +42,15 @@ static char *read_whole_file(const char *path, size_t *out_size) {
     return buf;
 }
 
-static double now_sec(void) { return (double)clock() / (double)CLOCKS_PER_SEC; }
+static double now_sec(void) {
+    return (double)clock() / (double)CLOCKS_PER_SEC;
+}
 
-int main(int argc, char **argv) {
-    const char *path = (argc > 1) ? argv[1] : "../assets/bench_19mb.json";
+int main(int argc, char** argv) {
+    const char* path = (argc > 1) ? argv[1] : "../assets/bench_19mb.json";
 
     size_t file_size = 0;
-    char *json_text = read_whole_file(path, &file_size);
+    char* json_text = read_whole_file(path, &file_size);
     if (!json_text)
         return 1;
 
@@ -60,7 +62,7 @@ int main(int argc, char **argv) {
      * ================================================================ */
     {
         /* warm-up */
-        clk_json_value *v = clk_json_parse(json_text);
+        clk_json_value* v = clk_json_parse(json_text);
         if (!v) {
             fprintf(stderr, "Parse warm-up failed\n");
             free(json_text);
@@ -75,15 +77,14 @@ int main(int argc, char **argv) {
         }
         double elapsed = now_sec() - start;
         double avg_s = elapsed / (double)ROUNDS;
-        printf("Parse:  %.3f s/round  (%.1f MB/s)\n",
-               avg_s, mb / avg_s);
+        printf("Parse:  %.3f s/round  (%.1f MB/s)\n", avg_s, mb / avg_s);
     }
 
     /* ================================================================
      *  Stringify (compact) benchmark
      * ================================================================ */
     {
-        clk_json_value *v = clk_json_parse(json_text);
+        clk_json_value* v = clk_json_parse(json_text);
         if (!v) {
             fprintf(stderr, "Parse for stringify failed\n");
             free(json_text);
@@ -91,7 +92,7 @@ int main(int argc, char **argv) {
         }
 
         /* warm-up — measure output size */
-        char *s = clk_json_stringify(v);
+        char* s = clk_json_stringify(v);
         if (!s) {
             fprintf(stderr, "Stringify warm-up failed\n");
             clk_json_free(v);
@@ -108,8 +109,8 @@ int main(int argc, char **argv) {
         }
         double elapsed = now_sec() - start;
         double avg_s = elapsed / (double)ROUNDS;
-        printf("Strfy:  %.3f s/round  (output: %.2f MB)\n",
-               avg_s, (double)out_len / (1024.0 * 1024.0));
+        printf("Strfy:  %.3f s/round  (output: %.2f MB)\n", avg_s,
+               (double)out_len / (1024.0 * 1024.0));
 
         clk_json_free(v);
     }

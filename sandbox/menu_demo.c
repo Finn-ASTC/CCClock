@@ -1,6 +1,5 @@
 #include <stdbool.h>
 #include <stdio.h>
-#include <stdlib.h>
 
 #include "clk_key_io.h"
 #include "clk_menu.h"
@@ -8,8 +7,8 @@
 #include "clk_menu_theme.h"
 #include "clk_term.h"
 
-#define THEME_PATH   "assets/config/menu_config/menu_theme_pinkblue.json"
-#define THEME2_PATH  "assets/config/menu_config/menu_theme_vivid.json"
+#define THEME_PATH "assets/config/menu_config/menu_theme_pinkblue.json"
+#define THEME2_PATH "assets/config/menu_config/menu_theme_vivid.json"
 
 enum { TAB_APPEARANCE, TAB_ADVANCED, TAB_ACTIONS, TAB_SPARSE };
 enum {
@@ -116,7 +115,7 @@ int main(void) {
     }
 
     clk_menu_instance_set_position(inst, 1, 1);
-    clk_menu_instance_set_size(inst, 150, 30);
+    clk_menu_instance_set_size(inst, 100, 30);
     clk_menu_instance_set_visible(inst, true);
     clk_menu_instance_add_to_term(inst);
 
@@ -161,16 +160,18 @@ int main(void) {
             int avail = inst->tex.tex_h - fixed;
             int rc = 0;
             for (int s = 0; s < inst->theme->section_count; s++)
-                if (inst->theme->sections[s].type == CLK_MENU_SEC_ITEM_LIST)
-                    { rc = inst->theme->sections[s].row_count; break; }
+                if (inst->theme->sections[s].type == CLK_MENU_SEC_ITEM_LIST) {
+                    rc = inst->theme->sections[s].row_count;
+                    break;
+                }
             int cnt = (avail + rc - 1) / rc;
             int A = active, P = inst->active_item_pos_idx;
 
-            printf("\033[34;1H\033[2K"
-                   "active=%d  pos=%d  last=%d  cnt=%d  align=%s  A-P=%d  total=%d  avail=%d",
-                   A, P, inst->last_active_item_pos_idx,
-                   cnt, inst->align_top ? "top" : "bot",
-                   A - P, total, avail);
+            printf(
+                "\033[34;1H\033[2K"
+                "active=%d  pos=%d  last=%d  cnt=%d  align=%s  A-P=%d  total=%d  avail=%d",
+                A, P, inst->last_active_item_pos_idx, cnt, inst->align_top ? "top" : "bot", A - P,
+                total, avail);
             fflush(stdout);
         }
 
