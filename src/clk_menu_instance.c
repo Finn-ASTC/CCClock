@@ -150,7 +150,8 @@ static int render_def(const clk_menu* menu, clk_texture* tex, const clk_menu_def
 static int render_dyn_str(const clk_menu* menu, clk_texture* tex, const clk_menu_def* def,
                           int tab_idx, int item_idx, int x, int y, int max_chars, int max_x);
 
-/* count display cells (code points), not bytes */
+/** Counts display cells (Unicode code points) in a UTF-8 string by skipping
+ *  continuation bytes. Returns the cell width. */
 static int utf8_cell_width(const char* s) {
     int w = 0;
     for (const unsigned char* p = (const unsigned char*)s; *p; ++p)
@@ -159,6 +160,9 @@ static int utf8_cell_width(const char* s) {
     return w;
 }
 
+/** Recursively measures the rendered cell width of a def for the given tab/item.
+ *  Strings use their UTF-8 width, composites sum their members, and the tab/item
+ *  leaves resolve to the live name, label, or formatted value length. Returns the width in cells. */
 static int measure_def(const clk_menu* menu, const clk_menu_def* def, int tab_idx, int item_idx) {
     if (!def)
         return 0;
@@ -207,6 +211,7 @@ static int measure_def(const clk_menu* menu, const clk_menu_def* def, int tab_id
 
 /* ── render_* helpers ── */
 
+/** Draws a static string def at (x,y) in its own style. Returns the cell width drawn. */
 static int render_string(const clk_menu* menu, clk_texture* tex, const clk_menu_def* def, int x,
                          int y, int max_x) {
     (void)menu;
@@ -215,6 +220,8 @@ static int render_string(const clk_menu* menu, clk_texture* tex, const clk_menu_
     return utf8_cell_width(def->string_val);
 }
 
+/** Renders each member of a composite def left to right, stopping once x reaches max_x.
+ *  Returns the total cells drawn. */
 static int render_composite(const clk_menu* menu, clk_texture* tex, const clk_menu_def* def,
                             int tab_idx, int item_idx, int x, int y, int max_x) {
     int total = 0;
@@ -226,6 +233,9 @@ static int render_composite(const clk_menu* menu, clk_texture* tex, const clk_me
     return total;
 }
 
+/** Renders the whole tab bar by iterating every tab and drawing its active or
+ *  inactive member defs. Each tab is measured first and skipped as a whole if
+ *  it would overflow max_x. Returns the total cells drawn. */
 static int render_tab_special(const clk_menu* menu, clk_texture* tex, const clk_menu_def* def,
                               int item_idx, int x, int y, int max_x) {
     int total = 0;
@@ -248,6 +258,10 @@ static int render_tab_special(const clk_menu* menu, clk_texture* tex, const clk_
     return total;
 }
 
+/** Renders an item label/value group, picking active or inactive members.
+ *  Fixed-width members are measured up front so the remaining space caps the
+ *  dynamic label/value strings; any leftover gap up to max_x is padded with
+ *  the trailing member's background style. Returns the total cells drawn. */
 static int render_item_label_value_special(const clk_menu* menu, clk_texture* tex,
                                            const clk_menu_def* def, int tab_idx, int item_idx,
                                            int x, int y, int max_x) {
@@ -301,6 +315,7 @@ static int render_item_label_value_special(const clk_menu* menu, clk_texture* te
     return total;
 }
 
+/** Draws a single tab's name at (x,y) using its active or inactive style. Returns the name length in cells. */
 static int render_tab_str(const clk_menu* menu, clk_texture* tex, const clk_menu_def* def,
                           int tab_idx, int x, int y, int max_x) {
     (void)max_x;
@@ -313,6 +328,7 @@ static int render_tab_str(const clk_menu* menu, clk_texture* tex, const clk_menu
     return (int)strlen(name);
 }
 
+/** Draws an item's label at (x,y) using its active or inactive style. Returns the label length in cells. */
 static int render_item_label_str(const clk_menu* menu, clk_texture* tex, const clk_menu_def* def,
                                  int tab_idx, int item_idx, int x, int y, int max_x) {
     (void)max_x;
@@ -327,6 +343,8 @@ static int render_item_label_str(const clk_menu* menu, clk_texture* tex, const c
     return (int)strlen(it->label);
 }
 
+/** Draws an item's value (int, bool, or string) formatted to text at (x,y) using
+ *  its active or inactive style. Returns the value length in cells. */
 static int render_item_value_str(const clk_menu* menu, clk_texture* tex, const clk_menu_def* def,
                                  int tab_idx, int item_idx, int x, int y, int max_x) {
     (void)max_x;
@@ -359,6 +377,9 @@ static int render_item_value_str(const clk_menu* menu, clk_texture* tex, const c
 
 /* ── render_def: dispatch ── */
 
+/** Dispatches a def to its type-specific renderer at (x,y), clipping at max_x.
+ *  Handles plain strings, composites, the tab bar, label/value groups, and the
+ *  individual tab/label/value leaf strings. Returns the cells drawn. */
 static int render_def(const clk_menu* menu, clk_texture* tex, const clk_menu_def* def, int tab_idx,
                       int item_idx, int x, int y, int max_x) {
     if (!def || x >= max_x)
@@ -385,6 +406,9 @@ static int render_def(const clk_menu* menu, clk_texture* tex, const clk_menu_def
     }
 }
 
+/** Renders a tab/item label or value string clipped to both max_chars and max_x,
+ *  resolving the live text and active/inactive style. It writes one cell at a
+ *  time so the string can be cut off mid-way. Returns the full untruncated length in cells. */
 static int render_dyn_str(const clk_menu* menu, clk_texture* tex, const clk_menu_def* def,
                           int tab_idx, int item_idx, int x, int y, int max_chars, int max_x) {
     if (!def || x >= max_x || max_chars <= 0)
@@ -442,7 +466,8 @@ static int render_dyn_str(const clk_menu* menu, clk_texture* tex, const clk_menu
 
 /* ── clk_render_row ── */
 
-/* walk to the rightmost leaf of a def and return its style_id */
+/** Walks to the rightmost leaf of a def, recursing into the last composite
+ *  member, and returns that leaf's style id. */
 static int last_leaf_style(const clk_menu_def* def) {
     if (!def)
         return 0;
@@ -460,6 +485,11 @@ static int last_leaf_style(const clk_menu_def* def) {
     }
 }
 
+/** Lays out one row of elements across the texture width for the given tab/item.
+ *  Fill elements are stretched to fill*width, with the last fill element capped
+ *  to leave room for trailing fixed-width elements; for a tab group the gap up
+ *  to the target is padded with the last leaf's background. Non-fill elements
+ *  render at their natural width. Returns 1. */
 static int clk_render_row(const clk_menu* menu, clk_texture* tex, const clk_menu_row* row, int y,
                           int tab_idx, int item_idx) {
     /* pre-scan: last element with fill:1.0 caps its target to leave
@@ -529,6 +559,7 @@ static int clk_render_row(const clk_menu* menu, clk_texture* tex, const clk_menu
 
 /* ── section renderers ── */
 
+/** Renders every row of a normal or tab-bar section starting at y. Returns the number of rows drawn. */
 static int render_normal_or_tab_section(const clk_menu* menu, clk_texture* tex,
                                         const clk_menu_section* sec, int y) {
     int tab_idx = (sec->type == CLK_MENU_SEC_TAB_BAR) ? (int)menu->active_tab : -1;
@@ -537,12 +568,20 @@ static int render_normal_or_tab_section(const clk_menu* menu, clk_texture* tex,
     return sec->row_count;
 }
 
+/** Renders rows [start_row, end_row) of a single list item at the given y offset,
+ *  used to draw items that are partially clipped at the top or bottom edge. */
 static void render_single_item_list_section(const clk_menu* menu, clk_texture* tex,
                                             const clk_menu_section* sec, int y, int tab_idx,
                                             int item_idx, int start_row, int end_row) {
     for (int ri = start_row; ri < end_row; ++ri)
         clk_render_row(menu, tex, &sec->rows[ri], y + (ri - start_row), tab_idx, item_idx);
 }
+
+/** Renders the scrolling item list within avail_rows, fitting as many items as
+ *  possible while tracking the active item's on-screen slot (active_item_pos_idx).
+ *  align_top decides whether a partial item is clipped at the top or bottom as
+ *  the selection scrolls past either edge; scroll offsets the first visible item
+ *  and any leftover height is filled with empty item frames. Returns rows used. */
 static int render_item_list_section(clk_menu_instance* inst, const clk_menu* menu, clk_texture* tex,
                                     const clk_menu_section* sec, int y, int avail_rows) {
     int item_cnt = (avail_rows + sec->row_count - 1) / sec->row_count;

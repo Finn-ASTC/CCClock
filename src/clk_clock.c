@@ -19,6 +19,7 @@
  *  literally so they appear in the formatted output.
  * ================================================================ */
 
+/** Translate user-friendly time tokens into strftime format tokens. */
 static bool translate_time_format(const char* fmt, char* out, size_t out_size) {
     int i = 0, o = 0;
     int end = (int)strlen(fmt);
@@ -89,6 +90,7 @@ static bool translate_time_format(const char* fmt, char* out, size_t out_size) {
     return true;
 }
 
+/** Format the current local time using the user-supplied format string. */
 static bool clk_clock_format_current_time(const char* time_format, char* buffer,
                                           size_t buffer_size) {
     if (!time_format || !buffer || buffer_size == 0)
@@ -116,6 +118,7 @@ static bool clk_clock_format_current_time(const char* time_format, char* buffer,
  *  File I/O helper
  * ================================================================ */
 
+/** Read an entire file into a newly allocated null-terminated buffer. */
 static bool clk_clock_read_file(const char* path, char** out_content, size_t* out_size) {
     *out_content = NULL;
     *out_size = 0;
@@ -294,6 +297,8 @@ static bool clk_clock_load_font_texture(const clk_json_value* json, clk_clock* c
     }
 
     /* helper: lookup cell by UTF-8 string key */
+    /* NOTE: This macro uses the ({ ... }) GNU C statement-expression
+     * extension. It is NOT portable to MSVC or strict ISO C. */
     #define CELL_LOOKUP(ch_buf) \
         ({ const clk_cell* _c_ = NULL; \
            for (int _i = 0; _i < cell_entry_count; ++_i) \
@@ -500,7 +505,6 @@ bool clk_clock_change_time_format(clk_clock* clk, const char* new_time_format) {
 
     size_t old_count = clk->clk_clock_sprite_count;
 
-    /* copy format string */
     memset(clk->clk_clock_time_format, 0, sizeof(clk->clk_clock_time_format));
     memcpy(clk->clk_clock_time_format, new_time_format, new_len + 1);
 

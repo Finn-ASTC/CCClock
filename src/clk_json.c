@@ -155,11 +155,9 @@ static void clk_json_lexer_next(clk_json_lexer* lexer, clk_json_token* token) {
     if (!token)
         return;
 
-    /* free previous token's string buffer */
     free(token->str_value);
     memset(token, 0, sizeof(clk_json_token));
 
-    /* skip whitespace */
     while (1) {
         if (lexer->pos >= lexer->json_len)
             break;
@@ -258,7 +256,6 @@ static void clk_json_lexer_next(clk_json_lexer* lexer, clk_json_token* token) {
             size_t len = 0;
             char* buf = malloc(capacity);
 
-            /* skip opening quote */
             lexer->pos++;
             lexer->col++;
 
@@ -324,7 +321,6 @@ static void clk_json_lexer_next(clk_json_lexer* lexer, clk_json_token* token) {
                                 goto string_error;
                             }
 
-                            /* advance past 4 hex digits */
                             lexer->pos += 4;
                             lexer->col += 4;
 
@@ -394,7 +390,6 @@ static void clk_json_lexer_next(clk_json_lexer* lexer, clk_json_token* token) {
             token->type = TOKEN_STRING;
             token->str_value = buf;
             token->str_len = len;
-            /* skip closing quote */
             lexer->pos++;
             lexer->col++;
             break;
@@ -481,7 +476,6 @@ static clk_json_value* clk_parse_object(clk_json_lexer* lexer) {
     clk_json_token token = {0};
     clk_json_lexer_next(lexer, &token);
 
-    /* empty object */
     if (token.type == TOKEN_RIGHT_BRACE)
         return obj;
 
@@ -520,7 +514,6 @@ static clk_json_value* clk_parse_object(clk_json_lexer* lexer) {
             return NULL;
         }
 
-        /* read next key */
         clk_json_lexer_next(lexer, &token);
     }
 }
@@ -533,7 +526,6 @@ static clk_json_value* clk_parse_array(clk_json_lexer* lexer) {
     clk_json_token token = {0};
     clk_json_lexer_next(lexer, &token);
 
-    /* empty array */
     if (token.type == TOKEN_RIGHT_BRACKET)
         return arr;
 
@@ -558,10 +550,8 @@ static clk_json_value* clk_parse_array(clk_json_lexer* lexer) {
             return NULL;
         }
 
-        /* read next value */
         clk_json_lexer_next(lexer, &token);
 
-        /* trailing comma */
         if (token.type == TOKEN_RIGHT_BRACKET) {
             SET_ERROR("Trailing comma in array at line %d, col %d", token.line, token.col);
             clk_json_free(arr);
@@ -786,7 +776,6 @@ int clk_json_object_set(clk_json_value* object, const char* key, clk_json_value*
     if (!object || object->type != JSON_OBJECT || !key || !value)
         return -1;
 
-    /* overwrite existing key */
     for (size_t i = 0; i < object->object_value.count; ++i) {
         if (strcmp(object->object_value.pairs[i].key, key) == 0) {
             clk_json_free(object->object_value.pairs[i].value);
@@ -795,7 +784,6 @@ int clk_json_object_set(clk_json_value* object, const char* key, clk_json_value*
         }
     }
 
-    /* expand if needed */
     if (object->object_value.count >= object->object_value.capacity) {
         size_t new_cap = object->object_value.capacity * 2;
         clk_json_key_value_pair* temp =
@@ -1081,7 +1069,6 @@ static bool clk_json_append_string_to_str(char** buf, size_t* len, size_t* capac
     return true;
 }
 
-/* forward declarations needed by the dispatch function */
 static bool clk_json_append_array_to_str(char** buf, size_t* len, size_t* cap,
                                          const clk_json_value* root);
 static bool clk_json_append_object_to_str(char** buf, size_t* len, size_t* cap,

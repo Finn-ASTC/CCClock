@@ -98,7 +98,6 @@ bool clk_term_init(void) {
 
     clk_cell empty_cell = {.is_empty = true};
 
-    /* screen buffer */
     clk_cell* temp_s = malloc(screen_size * sizeof(clk_cell));
     if (!temp_s)
         return false;
@@ -106,7 +105,6 @@ bool clk_term_init(void) {
     for (int i = 0; i < screen_size; ++i)
         screen_buffer[i] = empty_cell;
 
-    /* sprite render list */
     clk_sprite** temp_l = malloc(sprite_list_capacity * sizeof(clk_sprite*));
     if (!temp_l) {
         free(screen_buffer);
@@ -125,7 +123,6 @@ bool clk_term_init(void) {
     }
     if_rendered_sign = temp_sign;
 
-    /* ANSI output buffer */
     char* temp_a = calloc(1, screen_size * CLK_ANSI_OUTPUT_ESTIMATE_PER_CELL);
     if (!temp_a) {
         free(screen_buffer);
@@ -153,7 +150,6 @@ bool clk_term_init(void) {
 
     clk_is_term_init = true;
 
-    /* clear screen & hide cursor */
     printf("\033[2J\033[H\033[?25l");
     fflush(stdout);
     return true;
@@ -186,7 +182,6 @@ void clk_term_close(void) {
 
     clk_is_term_init = false;
 
-    /* clear screen & show cursor */
     printf("\033[2J\033[H\033[?25h");
     fflush(stdout);
 }

@@ -15,6 +15,8 @@
  *  Internal helpers — file I/O
  * ================================================================ */
 
+/** Reads an entire file into a newly allocated, NUL-terminated buffer.
+ *  Returns the buffer (caller frees), or NULL on open/read/alloc failure. */
 static char* read_file(const char* path) {
     FILE* f = fopen(path, "rb");
     if (!f)
@@ -50,6 +52,8 @@ static char* read_file(const char* path) {
  *  Internal helpers — style registration
  * ================================================================ */
 
+/** Registers a terminal style from an inline JSON object's fg/bg/attr fields.
+ *  Returns the new style id, or -1 if the terminal is uninitialised or fg/bg are missing. */
 static int register_inline_style(const clk_json_value* obj) {
     if (!clk_term_is_init() || !obj)
         return -1;
@@ -81,6 +85,8 @@ static int register_inline_style(const clk_json_value* obj) {
 static clk_menu_def* resolve_def(clk_menu_theme* theme, const clk_json_value* json_defs,
                                  const char* name);
 
+/** Resolves the member defs of a composite, reusing existing defs or resolving them on demand.
+ *  Stores the member array on def. Returns true on success, false on alloc/resolution failure. */
 static bool resolve_composite_members(clk_menu_theme* theme, const clk_json_value* json_defs,
                                       const clk_json_value* members_json, clk_menu_def* def) {
     int cnt = clk_json_array_count(members_json);
@@ -115,6 +121,8 @@ static bool resolve_composite_members(clk_menu_theme* theme, const clk_json_valu
     return true;
 }
 
+/** Resolves the active/inactive layout members of a special composite from a JSON array.
+ *  Outputs the member array and count. Returns true on success, false on failure. */
 static bool resolve_special_members(clk_menu_theme* theme, const clk_json_value* json_defs,
                                     const clk_json_value* layout_json, clk_menu_def*** out_members,
                                     int* out_cnt) {
@@ -150,6 +158,8 @@ static bool resolve_special_members(clk_menu_theme* theme, const clk_json_value*
     return true;
 }
 
+/** Resolves a dynamic string leaf (tab_str / item_label_str / item_value_str) with active/inactive styles.
+ *  Returns def on success, or NULL when the active/inactive fields are missing. */
 static clk_menu_def* resolve_leaf_dyn(clk_menu_def* def, const clk_json_value* json_def,
                                       const char* type_str) {
     const clk_json_value* act = clk_json_object_get(json_def, "active");
@@ -169,6 +179,8 @@ static clk_menu_def* resolve_leaf_dyn(clk_menu_def* def, const clk_json_value* j
     return def;
 }
 
+/** Resolves a special composite (tab / item_label / item_value) and its active/inactive member layouts.
+ *  Returns def on success, or NULL on missing fields or member-resolution failure. */
 static clk_menu_def* resolve_special(clk_menu_theme* theme, const clk_json_value* json_defs,
                                      clk_menu_def* def, const clk_json_value* json_def,
                                      const char* type_str) {
@@ -192,6 +204,7 @@ static clk_menu_def* resolve_special(clk_menu_theme* theme, const clk_json_value
     return def;
 }
 
+/** Resolves a plain string leaf, copying its literal text and registering its inline style. Returns def. */
 static clk_menu_def* resolve_leaf_string(clk_menu_def* def, const clk_json_value* json_def) {
     def->type = CLK_MENU_DEF_STRING;
 
@@ -205,8 +218,12 @@ static clk_menu_def* resolve_leaf_string(clk_menu_def* def, const clk_json_value
     return def;
 }
 
-/* ---------------------------------------------------------------- */
+/* ================================================================
+ *  Internal helpers — def dispatch
+ * ================================================================ */
 
+/** Resolves a def by name, allocating and registering it in the theme before recursing so that
+ *  members may reference defs still under construction. Returns the def, or NULL on failure. */
 static clk_menu_def* resolve_def(clk_menu_theme* theme, const clk_json_value* json_defs,
                                  const char* name) {
     const clk_json_value* json_def = clk_json_object_get(json_defs, name);
@@ -219,7 +236,6 @@ static clk_menu_def* resolve_def(clk_menu_theme* theme, const clk_json_value* js
     memset(def, 0, sizeof(clk_menu_def));
     def->name = strdup(name);
 
-    /* insert into theme defs[] */
     clk_menu_def** tmp = realloc(theme->defs, (theme->def_count + 1) * sizeof(clk_menu_def*));
     if (!tmp) {
         free(def->name);
@@ -265,6 +281,8 @@ static clk_menu_def* resolve_def(clk_menu_theme* theme, const clk_json_value* js
  *  Section parsing
  * ================================================================ */
 
+/** Parses one layout row (an array of def names or {ref,fill} objects) into a row of elements.
+ *  Returns true on success, false on allocation or unresolved-reference failure. */
 static bool parse_single_row(clk_menu_theme* theme, const clk_json_value* json_defs,
                              const clk_json_value* json_row, clk_menu_row* row_out) {
     int cnt = clk_json_array_count(json_row);
@@ -327,6 +345,8 @@ static bool parse_single_row(clk_menu_theme* theme, const clk_json_value* json_d
     return true;
 }
 
+/** Parses every section listed in the framework layout order into the theme's section array.
+ *  Returns true on success; on failure frees any partially built sections and returns false. */
 static bool parse_sections(clk_menu_theme* theme, const clk_json_value* json_defs,
                            const clk_json_value* json_sections, const clk_json_value* json_layout) {
     int sec_cnt = clk_json_array_count(json_layout);
@@ -421,6 +441,8 @@ fail_sections:
  *  Min-size computation
  * ================================================================ */
 
+/** Computes the rendered width of a leaf def, summing members for composites.
+ *  Returns the width in columns; dynamic special defs use a fixed estimate. */
 static int leaf_width(const clk_menu_def* def) {
     if (!def)
         return 0;
@@ -444,6 +466,7 @@ static int leaf_width(const clk_menu_def* def) {
     }
 }
 
+/** Computes the theme's minimum width and height from its sections and rows, storing both on the theme. */
 static void compute_min_size(clk_menu_theme* theme) {
     int min_w = 0, min_h = 0;
 
@@ -478,6 +501,8 @@ static void compute_min_size(clk_menu_theme* theme) {
  *  Validation
  * ================================================================ */
 
+/** Checks that the active and inactive member lists of a special composite each hold at least
+ *  min_count members of the expected type. Returns true when both satisfy the count. */
 static bool composite_contains(const clk_menu_def* def, clk_menu_def_type expected, int min_count) {
     int act = 0, inact = 0;
     for (int i = 0; i < def->active_cnt; ++i)
@@ -489,6 +514,8 @@ static bool composite_contains(const clk_menu_def* def, clk_menu_def_type expect
     return act >= min_count && inact >= min_count;
 }
 
+/** Validates structural invariants: exactly one of each special composite, per-section type
+ *  constraints, required fills, and strictly increasing fill anchors. Returns true if valid. */
 static bool validate_theme(const clk_menu_theme* theme) {
     int tab_cnt = 0, il_cnt = 0, iv_cnt = 0;
 

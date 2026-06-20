@@ -24,6 +24,12 @@
 /* ── cross-platform directory scanner ── */
 
 #if defined(_WIN32) || defined(_WIN64)
+/**
+ * Scan a directory for *.json files and return their full paths.
+ * Writes the number of matches to *out_count.
+ * Returns NULL on error or when nothing matches.
+ * Ownership: caller must free each returned string and the array itself.
+ */
 static char** scan_json_dir(const char* dir_path, int* out_count) {
     *out_count = 0;
     char pattern[1024];
@@ -63,6 +69,12 @@ static char** scan_json_dir(const char* dir_path, int* out_count) {
     return list;
 }
 #else
+/**
+ * Scan a directory for *.json files and return their full paths.
+ * Writes the number of matches to *out_count.
+ * Returns NULL on error or when nothing matches.
+ * Ownership: caller must free each returned string and the array itself.
+ */
 static char** scan_json_dir(const char* dir_path, int* out_count) {
     *out_count = 0;
     DIR* dir = opendir(dir_path);
@@ -98,6 +110,11 @@ static char** scan_json_dir(const char* dir_path, int* out_count) {
 }
 #endif
 
+/**
+ * Build a human-readable label from a file path.
+ * Strips the leading directory and the trailing ".json" extension.
+ * Returns a malloc'd string the caller must free.
+ */
 static char* make_display_name(const char* path) {
     const char* last_slash = NULL;
     for (const char* p = path; *p; ++p)
@@ -111,6 +128,10 @@ static char* make_display_name(const char* path) {
     return display_name;
 }
 
+/**
+ * Wrap a char** array as a const char** view of the same pointers.
+ * Returns a malloc'd array (the caller must free); the strings are not copied.
+ */
 static const char** str_array_to_const(char** array, int count) {
     const char** result = calloc(count, sizeof(const char*));
     for (int i = 0; i < count; ++i)
@@ -120,6 +141,31 @@ static const char** str_array_to_const(char** array, int count) {
 
 /* ── hot-reload dir scan ── */
 
+/**
+ * Re-scan a directory and, if its set of *.json files changed, rebuild the
+ * matching menu options in place.
+ *
+ * The current state is compared against a fresh scan; if the count differs or
+ * any path differs, the change is applied. When nothing changed (or the new
+ * scan is empty) the fresh scan is freed and the function returns.
+ *
+ * On a real change the old paths and display names are freed, the in/out
+ * pointers are repointed at the freshly scanned data, new display names are
+ * generated, the selection index is clamped, and the menu item's options are
+ * cleared and repopulated.
+ *
+ * Parameters:
+ *   dir_path      - directory to scan; if NULL the function is a no-op.
+ *   paths         - in/out: address of the owned path array (freed/replaced).
+ *   count         - in/out: number of entries in *paths.
+ *   display_names - in/out: address of the owned display-name array.
+ *   index         - in/out: current selection; clamped to 0 if out of range.
+ *   menu          - menu whose options are rebuilt.
+ *   item_id       - id of the menu item (on tab 0) to update.
+ *
+ * Side effects: frees and reallocates *paths and *display_names, mutates
+ * *count and *index, and mutates the menu's options for item_id.
+ */
 static void check_dir_changed(const char* dir_path, char*** paths, int* count,
                               const char*** display_names, int* index, clk_menu* menu,
                               int item_id) {
@@ -165,6 +211,9 @@ static void check_dir_changed(const char* dir_path, char*** paths, int* count,
 
 /* ── recenter ── */
 
+/**
+ * Center the clock sprite within the given terminal dimensions.
+ */
 static void recenter_clock(clk_clock* clock, int term_width, int term_height) {
     int clock_width, clock_height;
     if (!clk_clock_get_clock_size(clock, &clock_width, &clock_height))
@@ -173,6 +222,9 @@ static void recenter_clock(clk_clock* clock, int term_width, int term_height) {
                              (term_height - clock_height) / 2);
 }
 
+/**
+ * Center the menu instance within the given terminal dimensions.
+ */
 static void recenter_menu(clk_menu_instance* instance, int term_width, int term_height) {
     if (!instance)
         return;
@@ -184,6 +236,10 @@ static void recenter_menu(clk_menu_instance* instance, int term_width, int term_
 
 typedef enum { FOCUS_CLOCK, FOCUS_MENU } focus_t;
 
+/**
+ * Translate a raw key event into the corresponding menu input action.
+ * Returns CLK_MENU_INPUT_NONE for keys the menu does not handle.
+ */
 static clk_menu_input map_menu_input(clk_key_event key_event) {
     switch (key_event.key) {
         case CLK_KEY_UP:
@@ -204,6 +260,10 @@ static clk_menu_input map_menu_input(clk_key_event key_event) {
     }
 }
 
+/**
+ * Application entry point: loads config, builds the clock and menu, runs the
+ * main input/render loop with hot-reload, then persists state and cleans up.
+ */
 int main(void) {
     if (!clk_term_init()) {
         printf("term init fail\n");
@@ -447,7 +507,12 @@ int main(void) {
         clk_term_sleep_ms(100);
 
         /* ── hot reload (every ~3s) ──────────────────────── */
-        if (++hot_tick > 30) {
+        /* Three layers are checked on each tick:
+         *   1. the app config file itself (re-parsed, menu rebuilt below);
+         *   2. the individual selected font/theme files (re-loaded in place);
+         *   3. the fonts/themes directories (rescanned for added/removed files).
+         */
+        if (++hot_tick > 30) { /* ~3 seconds at 100ms frame */
             hot_tick = 0;
             struct stat stat_buf;
 
@@ -491,6 +556,37 @@ int main(void) {
                                 clk_json_get_string(json_val, &dir_str);
                             themes_dir = dir_str;
                         }
+                        /* time_formats[i] are borrowed pointers into the old
+                         * JSON tree, which clk_json_free(config) above just
+                         * freed. Drop the stale arrays and re-extract the
+                         * strings from the new tree to avoid dangling pointers. */
+                        free(time_formats);
+                        free(time_format_options);
+                        {
+                            clk_json_value* array =
+                                clk_json_object_get(clock_section, "time_formats");
+                            if (array && clk_json_is_array(array)) {
+                                time_format_count = clk_json_array_count(array);
+                                time_formats = calloc(time_format_count, sizeof(char*));
+                                for (int i = 0; i < time_format_count; ++i) {
+                                    clk_json_value* element = clk_json_array_get(array, i);
+                                    const char* str = NULL;
+                                    if (element && clk_json_is_string(element) &&
+                                        clk_json_get_string(element, &str) == 0)
+                                        time_formats[i] = (char*)str;
+                                }
+                            } else {
+                                time_formats = NULL;
+                                time_format_count = 0;
+                            }
+                        }
+                        time_format_options = str_array_to_const(time_formats, time_format_count);
+                        if (time_format_index >= time_format_count)
+                            time_format_index = 0;
+                        clk_menu_clear_options(menu, 0, ITEM_TFMT);
+                        for (int i = 0; i < time_format_count; ++i)
+                            clk_menu_add_option(menu, 0, ITEM_TFMT, time_format_options[i]);
+                        clk_menu_set_value_str(menu, 0, ITEM_TFMT, time_formats[time_format_index]);
                     }
                 }
             }

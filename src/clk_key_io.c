@@ -2,23 +2,34 @@
 
 #include <stdint.h>
 
+/* ================================================================
+ *  Shared State
+ * ================================================================ */
+
 static bool clk_key_io_is_init = false;
 
 #if defined(_WIN32) || defined(_WIN64)
 
+/* ================================================================
+ *  Windows Implementation
+ * ================================================================ */
+
 #include <conio.h>
 #include <stdbool.h>
 
+/** Initialize the keyboard input subsystem. */
 void clk_key_io_init(void) {
     if (!clk_key_io_is_init)
         clk_key_io_is_init = true;
 }
 
+/** Shut down the keyboard input subsystem. */
 void clk_key_io_close(void) {
     if (clk_key_io_is_init)
         clk_key_io_is_init = false;
 }
 
+/** Poll for and decode a single key event. */
 clk_key_event clk_get_key_event(void) {
     clk_key_event res = {CLK_KEY_NONE, CLK_KEY_NONE, {0, 0}};
     if (!_kbhit() || !clk_key_io_is_init)
@@ -27,7 +38,6 @@ clk_key_event clk_get_key_event(void) {
     int ch = _getch();
     res.raw = (uint32_t)ch;
 
-    /* ESC key */
     if (ch == 27) {
         res.key = CLK_KEY_ESC;
         return res;
@@ -47,12 +57,15 @@ clk_key_event clk_get_key_event(void) {
         return res;
     }
 
-    /* regular ASCII character */
     res.key = (uint32_t)ch;
     return res;
 }
 
 #else  /* Linux / macOS / Unix */
+
+/* ================================================================
+ *  POSIX Implementation
+ * ================================================================ */
 
 #include <sys/select.h>
 #include <termios.h>
@@ -60,6 +73,7 @@ clk_key_event clk_get_key_event(void) {
 
 static struct termios old_tio;
 
+/** Return non-zero if a key press is waiting to be read. */
 static int linux_kbhit(void) {
     struct timeval tv = {0, 0};
     fd_set fds;
@@ -68,11 +82,13 @@ static int linux_kbhit(void) {
     return select(STDIN_FILENO + 1, &fds, NULL, NULL, &tv) > 0;
 }
 
+/** Read a single raw byte from standard input. */
 static int linux_getch(void) {
     unsigned char ch;
     return (read(STDIN_FILENO, &ch, 1) == 1) ? (int)ch : CLK_KEY_NONE;
 }
 
+/** Initialize the keyboard input subsystem. */
 void clk_key_io_init(void) {
     struct termios new_tio;
     tcgetattr(STDIN_FILENO, &old_tio);
@@ -82,6 +98,7 @@ void clk_key_io_init(void) {
     clk_key_io_is_init = true;
 }
 
+/** Shut down the keyboard input subsystem. */
 void clk_key_io_close(void) {
     if (clk_key_io_is_init) {
         tcsetattr(STDIN_FILENO, TCSANOW, &old_tio);
@@ -89,6 +106,7 @@ void clk_key_io_close(void) {
     }
 }
 
+/** Poll for and decode a single key event. */
 clk_key_event clk_get_key_event(void) {
     clk_key_event res = {CLK_KEY_NONE, 0, {0, 0}};
     if (!linux_kbhit() || !clk_key_io_is_init)

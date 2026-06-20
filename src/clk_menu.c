@@ -63,6 +63,7 @@ void clk_menu_destroy(clk_menu* menu) {
     free(menu);
 }
 
+/** Free a tab and all of its items. */
 static void clk_menu_tab_destroy(clk_menu_tab* tab) {
     if (!tab)
         return;
@@ -73,6 +74,7 @@ static void clk_menu_tab_destroy(clk_menu_tab* tab) {
     free(tab);
 }
 
+/** Free an item and all of its allocated fields. */
 static void clk_menu_item_destroy(clk_menu_item* item) {
     if (!item)
         return;
@@ -140,6 +142,7 @@ int clk_menu_add_tab(clk_menu* m, int tab_id, const char* name) {
  *  Items
  * ------------------------------------------------------------------ */
 
+/** Grow a tab's item array if it is full. Returns false on allocation failure. */
 static bool clk_menu_tab_ensure_items_capacity(clk_menu_tab* tab) {
     if (tab->item_count < tab->item_capacity)
         return true;
