@@ -84,6 +84,24 @@ void clk_menu_instance_set_visible(clk_menu_instance* inst, bool v) {
 }
 
 /* ================================================================
+ *  Dynamic rebind
+ * ================================================================ */
+
+void clk_menu_instance_change_menu(clk_menu_instance* inst, clk_menu* menu) {
+    if (!inst || !menu) return;
+    inst->menu = menu;
+    inst->active_item_pos_idx = 1;
+    inst->last_active_item_pos_idx = 1;
+    inst->align_top = true;
+}
+
+bool clk_menu_instance_change_theme(clk_menu_instance* inst, const char* theme_path) {
+    if (!inst || !theme_path) return false;
+    return clk_menu_theme_reload(theme_path,
+                                 (clk_menu_theme*)inst->theme);
+}
+
+/* ================================================================
  *  Render list
  * ================================================================ */
 

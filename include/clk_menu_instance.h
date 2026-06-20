@@ -56,6 +56,17 @@ void clk_menu_instance_remove_from_term(clk_menu_instance* inst);
 clk_menu_event clk_menu_instance_handle_input(clk_menu_instance* inst, clk_menu_input input);
 
 /* ------------------------------------------------------------------
+ *  Dynamic rebind
+ * ------------------------------------------------------------------ */
+
+/** Swap the menu data pointer without changing theme or display state. */
+void clk_menu_instance_change_menu(clk_menu_instance* inst, clk_menu* menu);
+
+/** Hot-reload the theme from @p path. The instance stays alive,
+ *  texture and sprite are retained. Returns false on failure. */
+bool clk_menu_instance_change_theme(clk_menu_instance* inst, const char* theme_path);
+
+/* ------------------------------------------------------------------
  *  Render
  * ------------------------------------------------------------------ */
 

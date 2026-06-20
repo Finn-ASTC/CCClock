@@ -268,16 +268,12 @@ static bool clk_clock_load_font_texture(const clk_json_value* json, clk_clock* c
         return false;
     }
 
-    /* --- build cell lookup table: char → clk_cell --- */
-    clk_cell cell_table[256] = {0};
-    for (int i = 0; i < 256; i++)
-        cell_table[i].is_empty = true;
+    /* --- build cell lookup table: string-keyed --- */
+    struct { char key[5]; clk_cell cell; }* cell_entries = NULL;
+    int cell_entry_count = 0;
 
     struct clk_json_value* json_cells = clk_json_object_get(json, "cells");
-    if (!json_cells) {
-        clk_json_free(translator);
-        return false;
-    }
+    if (!json_cells) { clk_json_free(translator); return false; }
 
     clk_json_object_iterator cell_iter;
     if (clk_json_object_iterator_init(json_cells, &cell_iter) != 0) {
@@ -286,55 +282,73 @@ static bool clk_clock_load_font_texture(const clk_json_value* json, clk_clock* c
     }
     clk_json_key_value_pair cp;
     while (clk_json_object_iterator_next(&cell_iter, &cp)) {
-        unsigned char idx = (unsigned char)cp.key[0];
-        if (!clk_clock_trans_json_cell_to_clk_cell(cp.value, &cell_table[idx], translator)) {
-            clk_json_free(translator);
-            return false;
+        cell_entries = realloc(cell_entries, (cell_entry_count + 1) * sizeof(*cell_entries));
+        if (!cell_entries) { clk_json_free(translator); return false; }
+        memset(cell_entries[cell_entry_count].key, 0, 5);
+        strncpy(cell_entries[cell_entry_count].key, cp.key, 4);
+        if (!clk_clock_trans_json_cell_to_clk_cell(cp.value,
+                &cell_entries[cell_entry_count].cell, translator)) {
+            free(cell_entries); clk_json_free(translator); return false;
         }
+        cell_entry_count++;
     }
+
+    /* helper: lookup cell by UTF-8 string key */
+    #define CELL_LOOKUP(ch_buf) \
+        ({ const clk_cell* _c_ = NULL; \
+           for (int _i = 0; _i < cell_entry_count; ++_i) \
+               if (strcmp(cell_entries[_i].key, ch_buf) == 0) { _c_ = &cell_entries[_i].cell; break; } \
+           if (!_c_) { static clk_cell _empty = {.is_empty = true}; _c_ = &_empty; } \
+           _c_; })
 
     /* --- populate glyph textures --- */
     clk_json_object_iterator iter;
     if (clk_json_object_iterator_init(json_glyphs, &iter) != 0) {
-        clk_json_free(translator);
-        return false;
+        clk_json_free(translator); free(cell_entries); return false;
     }
 
     clk_json_key_value_pair pair;
     while (clk_json_object_iterator_next(&iter, &pair)) {
         char key = pair.key[0];
         int slot = (key >= '0' && key <= '9') ? (key - '0') : (key == ':' ? 10 : -1);
-        if (slot == -1) {
-            clk_json_free(translator);
-            return false;
-        }
+        if (slot == -1) { clk_json_free(translator); free(cell_entries); return false; }
 
         clk->clk_clock_num_font_texture[slot] = clk_texture_create(glyph_w, glyph_h);
 
         struct clk_json_value* gv = pair.value;
         if (clk_json_get_type(gv) != JSON_ARRAY) {
-            clk_json_free(translator);
-            return false;
+            clk_json_free(translator); free(cell_entries); return false;
         }
 
         for (int y = 0; y < glyph_h; ++y) {
             struct clk_json_value* row = clk_json_array_get(gv, y);
             const char* str = NULL;
             if (clk_json_get_string(row, &str) != 0) {
-                clk_json_free(translator);
-                return false;
+                clk_json_free(translator); free(cell_entries); return false;
             }
-            for (int x = 0; x < glyph_w; ++x) {
-                const clk_cell* c = &cell_table[(unsigned char)str[x]];
+            int bx = 0, cx = 0;
+            while (cx < glyph_w && str[bx]) {
+                unsigned char b0 = (unsigned char)str[bx];
+                int clen = 1;
+                if ((b0 & 0x80) == 0) clen = 1;
+                else if ((b0 & 0xE0) == 0xC0) clen = 2;
+                else if ((b0 & 0xF0) == 0xE0) clen = 3;
+                else if ((b0 & 0xF8) == 0xF0) clen = 4;
+
+                char ch_buf[5] = {0};
+                memcpy(ch_buf, str + bx, clen);
+                const clk_cell* c = CELL_LOOKUP(ch_buf);
                 if (!c->is_empty)
-                    clk_texture_set_cell(&clk->clk_clock_num_font_texture[slot], x, y, c);
-                /* wide pair: skip the trailing marker */
+                    clk_texture_set_cell(&clk->clk_clock_num_font_texture[slot], cx, y, c);
                 if (c->type == CELL_WIDE_LEAD)
-                    ++x;
+                    cx++;
+                bx += clen;
+                cx++;
             }
         }
     }
 
+    free(cell_entries);
     clk_json_free(translator);
     return true;
 }

@@ -27,7 +27,8 @@ int main() {
     int fmt_idx = 0;
 
     const char* font_files[] = {"assets/config/ascii_fonts/simple_ascii_num.json",
-                                "assets/config/ascii_fonts/single_color_num.json"};
+                                "assets/config/ascii_fonts/single_color_num.json",
+                                "assets/config/ascii_fonts/ascii_num.json"};
     int font_idx = 0;
 
     clk_clock clk;
