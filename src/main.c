@@ -504,7 +504,7 @@ int main(void) {
         clk_clock_update(&clock);
         clk_menu_instance_render(menu_inst);
         clk_term_draw();
-        clk_term_sleep_ms(100);
+        clk_term_sleep_ms(16);
 
         /* ── hot reload (every ~3s) ──────────────────────── */
         /* Three layers are checked on each tick:

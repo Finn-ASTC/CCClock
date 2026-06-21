@@ -6,7 +6,7 @@
   "menu": {
     "themes_dir": "assets/config/menu_config"
   },
-  "selected_fmt": 0,
-  "selected_font": 0,
+  "selected_fmt": 3,
+  "selected_font": 1,
   "selected_theme": 1
 }

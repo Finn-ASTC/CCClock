@@ -88,7 +88,8 @@ void clk_menu_instance_set_visible(clk_menu_instance* inst, bool v) {
  * ================================================================ */
 
 void clk_menu_instance_change_menu(clk_menu_instance* inst, clk_menu* menu) {
-    if (!inst || !menu) return;
+    if (!inst || !menu)
+        return;
     inst->menu = menu;
     inst->active_item_pos_idx = 1;
     inst->last_active_item_pos_idx = 1;
@@ -96,9 +97,9 @@ void clk_menu_instance_change_menu(clk_menu_instance* inst, clk_menu* menu) {
 }
 
 bool clk_menu_instance_change_theme(clk_menu_instance* inst, const char* theme_path) {
-    if (!inst || !theme_path) return false;
-    return clk_menu_theme_reload(theme_path,
-                                 (clk_menu_theme*)inst->theme);
+    if (!inst || !theme_path)
+        return false;
+    return clk_menu_theme_reload(theme_path, (clk_menu_theme*)inst->theme);
 }
 
 /* ================================================================
@@ -162,7 +163,8 @@ static int utf8_cell_width(const char* s) {
 
 /** Recursively measures the rendered cell width of a def for the given tab/item.
  *  Strings use their UTF-8 width, composites sum their members, and the tab/item
- *  leaves resolve to the live name, label, or formatted value length. Returns the width in cells. */
+ *  leaves resolve to the live name, label, or formatted value length. Returns the width in cells.
+ */
 static int measure_def(const clk_menu* menu, const clk_menu_def* def, int tab_idx, int item_idx) {
     if (!def)
         return 0;
@@ -315,7 +317,8 @@ static int render_item_label_value_special(const clk_menu* menu, clk_texture* te
     return total;
 }
 
-/** Draws a single tab's name at (x,y) using its active or inactive style. Returns the name length in cells. */
+/** Draws a single tab's name at (x,y) using its active or inactive style. Returns the name length
+ * in cells. */
 static int render_tab_str(const clk_menu* menu, clk_texture* tex, const clk_menu_def* def,
                           int tab_idx, int x, int y, int max_x) {
     (void)max_x;
@@ -328,7 +331,8 @@ static int render_tab_str(const clk_menu* menu, clk_texture* tex, const clk_menu
     return (int)strlen(name);
 }
 
-/** Draws an item's label at (x,y) using its active or inactive style. Returns the label length in cells. */
+/** Draws an item's label at (x,y) using its active or inactive style. Returns the label length in
+ * cells. */
 static int render_item_label_str(const clk_menu* menu, clk_texture* tex, const clk_menu_def* def,
                                  int tab_idx, int item_idx, int x, int y, int max_x) {
     (void)max_x;
@@ -559,7 +563,8 @@ static int clk_render_row(const clk_menu* menu, clk_texture* tex, const clk_menu
 
 /* ── section renderers ── */
 
-/** Renders every row of a normal or tab-bar section starting at y. Returns the number of rows drawn. */
+/** Renders every row of a normal or tab-bar section starting at y. Returns the number of rows
+ * drawn. */
 static int render_normal_or_tab_section(const clk_menu* menu, clk_texture* tex,
                                         const clk_menu_section* sec, int y) {
     int tab_idx = (sec->type == CLK_MENU_SEC_TAB_BAR) ? (int)menu->active_tab : -1;
