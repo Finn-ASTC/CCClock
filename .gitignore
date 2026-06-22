@@ -1,7 +1,7 @@
-# 编译产物
+# Build outputs
 build/
 build-wsl/
-build-bench/
+vcpkg_installed/
 *.exe
 *.out
 *.o
@@ -12,12 +12,15 @@ build-bench/
 *.lib
 *.so
 *.dylib
-# IDE / 工具
-.clang-format    # 如果你想分享格式化配置的话删这行
+
+# IDE / tools
 .vscode/*
 !.vscode/settings.json
-# clangd 索引缓存
+
+# clangd index cache
 .cache/
-# 系统杂项
+
+# Misc
+log/
 Thumbs.db
 .DS_Store

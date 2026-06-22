@@ -1,0 +1,82 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 25,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "base-win",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "x64-mingw-dynamic",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "base-wsl",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "$env{HOME}/vcpkg/scripts/buildsystems/vcpkg.cmake",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "win-debug",
+      "displayName": "Windows Debug (MSYS2/MinGW)",
+      "inherits": "base-win",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "win-release",
+      "displayName": "Windows Release",
+      "inherits": "base-win",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "wsl-debug",
+      "displayName": "WSL Debug (Arch Linux)",
+      "inherits": "base-wsl",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "wsl-release",
+      "displayName": "WSL Release",
+      "inherits": "base-wsl",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "win-debug",   "configurePreset": "win-debug" },
+    { "name": "win-release", "configurePreset": "win-release" },
+    { "name": "wsl-debug",   "configurePreset": "wsl-debug" },
+    { "name": "wsl-release", "configurePreset": "wsl-release" }
+  ],
+  "testPresets": [
+    { "name": "win-debug", "configurePreset": "win-debug" },
+    { "name": "wsl-debug", "configurePreset": "wsl-debug" }
+  ]
+}
