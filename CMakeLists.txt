@@ -19,7 +19,9 @@ add_library(libclock STATIC
     src/clk_json.c
     src/clk_key_io.c
     src/clk_term.c
+    src/clk_file_util.c
     src/clk_clock.c
+    src/clk_ascii_render.c
     src/clk_menu.c
     src/clk_menu_theme.c
     src/clk_menu_instance.c

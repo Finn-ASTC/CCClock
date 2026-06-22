@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "clk_file_util.h"
 #include "clk_json.h"
 #include "clk_term.h"
 
@@ -18,34 +19,7 @@
 /** Reads an entire file into a newly allocated, NUL-terminated buffer.
  *  Returns the buffer (caller frees), or NULL on open/read/alloc failure. */
 static char* read_file(const char* path) {
-    FILE* f = fopen(path, "rb");
-    if (!f)
-        return NULL;
-
-    fseek(f, 0, SEEK_END);
-    long sz = ftell(f);
-    if (sz < 0) {
-        fclose(f);
-        return NULL;
-    }
-    rewind(f);
-
-    char* buf = malloc(sz + 1);
-    if (!buf) {
-        fclose(f);
-        return NULL;
-    }
-
-    size_t n = fread(buf, 1, sz, f);
-    fclose(f);
-
-    if (n != (size_t)sz) {
-        free(buf);
-        return NULL;
-    }
-
-    buf[sz] = '\0';
-    return buf;
+    return clk_file_read_all(path, NULL);
 }
 
 /* ================================================================
@@ -162,9 +136,9 @@ static bool resolve_special_members(clk_menu_theme* theme, const clk_json_value*
  *  Returns def on success, or NULL when the active/inactive fields are missing. */
 static clk_menu_def* resolve_leaf_dyn(clk_menu_def* def, const clk_json_value* json_def,
                                       const char* type_str) {
-    const clk_json_value* act = clk_json_object_get(json_def, "active");
-    const clk_json_value* inact = clk_json_object_get(json_def, "inactive");
-    if (!act || !inact)
+    const clk_json_value* active = clk_json_object_get(json_def, "active");
+    const clk_json_value* inactive = clk_json_object_get(json_def, "inactive");
+    if (!active || !inactive)
         return NULL;
 
     if (strcmp(type_str, "tab_str") == 0)
@@ -174,8 +148,8 @@ static clk_menu_def* resolve_leaf_dyn(clk_menu_def* def, const clk_json_value* j
     else
         def->type = CLK_MENU_DEF_ITEM_VALUE_STR;
 
-    def->active_style_id = register_inline_style(act);
-    def->inactive_style_id = register_inline_style(inact);
+    def->active_style_id = register_inline_style(active);
+    def->inactive_style_id = register_inline_style(inactive);
     return def;
 }
 
@@ -184,9 +158,9 @@ static clk_menu_def* resolve_leaf_dyn(clk_menu_def* def, const clk_json_value* j
 static clk_menu_def* resolve_special(clk_menu_theme* theme, const clk_json_value* json_defs,
                                      clk_menu_def* def, const clk_json_value* json_def,
                                      const char* type_str) {
-    const clk_json_value* act = clk_json_object_get(json_def, "active");
-    const clk_json_value* inact = clk_json_object_get(json_def, "inactive");
-    if (!act || !inact)
+    const clk_json_value* active = clk_json_object_get(json_def, "active");
+    const clk_json_value* inactive = clk_json_object_get(json_def, "inactive");
+    if (!active || !inactive)
         return NULL;
 
     if (strcmp(type_str, "tab") == 0)
@@ -196,9 +170,9 @@ static clk_menu_def* resolve_special(clk_menu_theme* theme, const clk_json_value
     else
         def->type = CLK_MENU_DEF_ITEM_VALUE;
 
-    if (!resolve_special_members(theme, json_defs, act, &def->active_members, &def->active_cnt))
+    if (!resolve_special_members(theme, json_defs, active, &def->active_members, &def->active_cnt))
         return NULL;
-    if (!resolve_special_members(theme, json_defs, inact, &def->inactive_members,
+    if (!resolve_special_members(theme, json_defs, inactive, &def->inactive_members,
                                  &def->inactive_cnt))
         return NULL;
     return def;
@@ -504,14 +478,14 @@ static void compute_min_size(clk_menu_theme* theme) {
 /** Checks that the active and inactive member lists of a special composite each hold at least
  *  min_count members of the expected type. Returns true when both satisfy the count. */
 static bool composite_contains(const clk_menu_def* def, clk_menu_def_type expected, int min_count) {
-    int act = 0, inact = 0;
+    int active = 0, inactive = 0;
     for (int i = 0; i < def->active_cnt; ++i)
         if (def->active_members[i]->type == expected)
-            act++;
+            active++;
     for (int i = 0; i < def->inactive_cnt; ++i)
         if (def->inactive_members[i]->type == expected)
-            inact++;
-    return act >= min_count && inact >= min_count;
+            inactive++;
+    return active >= min_count && inactive >= min_count;
 }
 
 /** Validates structural invariants: exactly one of each special composite, per-section type

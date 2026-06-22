@@ -70,7 +70,7 @@ int main(void) {
     TEST("str item[0].label", strcmp(m->tabs[0]->items[0]->label, "format") == 0);
     TEST("str option_count == 3", m->tabs[0]->items[0]->option_count == 3);
     TEST("str option_idx == 2", m->tabs[0]->items[0]->option_idx == 2);
-    TEST("str value.s == opt_c", strcmp(m->tabs[0]->items[0]->value.s, "opt_c") == 0);
+    TEST("str value.str == opt_c", strcmp(m->tabs[0]->items[0]->value.str, "opt_c") == 0);
 
     /* default_idx clamp */
     clk_menu_add_item_str(m, 10, 2, "clamp_lo", -5, str_opts, 3);
@@ -86,17 +86,17 @@ int main(void) {
     TEST("int item_count == 4", m->tabs[0]->item_count == 4);
     TEST("int item[3].id == 10", m->tabs[0]->items[3]->id == 10);
     TEST("int item[3].type", m->tabs[0]->items[3]->type == CLK_MENU_TYPE_INT);
-    TEST("int item[3].value.d == 0", m->tabs[0]->items[3]->value.d == 0.0);
+    TEST("int item[3].value.num == 0", m->tabs[0]->items[3]->value.num == 0.0);
     TEST("int item[3].min == -2", m->tabs[0]->items[3]->min_val == -2);
     TEST("int item[3].max == 2", m->tabs[0]->items[3]->max_val == 2);
     TEST("int item[3].step == 1", m->tabs[0]->items[3]->step_val == 1);
 
     /* int default clamp */
     clk_menu_add_item_int(m, 10, 11, "clamp", 100, 0, 10, 1);
-    TEST("int clamp value == 10", m->tabs[0]->items[4]->value.d == 10);
+    TEST("int clamp value == 10", m->tabs[0]->items[4]->value.num == 10);
 
     clk_menu_add_item_int(m, 10, 12, "clamp2", -100, 0, 10, 1);
-    TEST("int clamp2 value == 0", m->tabs[0]->items[5]->value.d == 0);
+    TEST("int clamp2 value == 0", m->tabs[0]->items[5]->value.num == 0);
 
     /* ================================================================
      *  add_item_bool
@@ -178,12 +178,12 @@ int main(void) {
     TEST("int inc event type", ev.type == CLK_MENU_EVENT_VALUE_CHANGED);
     TEST("int inc tab_id=10", ev.tab_id == 10);
     TEST("int inc item_id=10", ev.item_id == 10);
-    TEST("int inc val=1.0", ev.value.d == 1.0);
-    TEST("int inc item val=1.0", m->tabs[0]->items[3]->value.d == 1.0);
+    TEST("int inc val=1.0", ev.value.num == 1.0);
+    TEST("int inc item val=1.0", m->tabs[0]->items[3]->value.num == 1.0);
 
     /* inc again */
     ev = clk_menu_handle_input(m, CLK_MENU_INPUT_INC_VALUE);
-    TEST("int inc2 val=2.0", ev.value.d == 2.0);
+    TEST("int inc2 val=2.0", ev.value.num == 2.0);
 
     /* inc at max → no event */
     ev = clk_menu_handle_input(m, CLK_MENU_INPUT_INC_VALUE);
@@ -191,15 +191,15 @@ int main(void) {
 
     /* dec */
     ev = clk_menu_handle_input(m, CLK_MENU_INPUT_DEC_VALUE);
-    TEST("int dec val=1.0", ev.value.d == 1.0);
+    TEST("int dec val=1.0", ev.value.num == 1.0);
 
     /* dec to min */
     clk_menu_handle_input(m, CLK_MENU_INPUT_DEC_VALUE); /* 0 */
     ev = clk_menu_handle_input(m, CLK_MENU_INPUT_DEC_VALUE);
-    TEST("int dec val=-1.0", ev.value.d == -1.0);
+    TEST("int dec val=-1.0", ev.value.num == -1.0);
 
     ev = clk_menu_handle_input(m, CLK_MENU_INPUT_DEC_VALUE);
-    TEST("int dec val=-2.0", ev.value.d == -2.0);
+    TEST("int dec val=-2.0", ev.value.num == -2.0);
 
     /* dec at min → no event */
     ev = clk_menu_handle_input(m, CLK_MENU_INPUT_DEC_VALUE);
@@ -225,7 +225,7 @@ int main(void) {
     /* dec: 2 → 1 */
     ev = clk_menu_handle_input(m, CLK_MENU_INPUT_DEC_VALUE);
     TEST("str dec event", ev.type == CLK_MENU_EVENT_VALUE_CHANGED);
-    TEST("str dec val=opt_b", strcmp(ev.value.s, "opt_b") == 0);
+    TEST("str dec val=opt_b", strcmp(ev.value.str, "opt_b") == 0);
     TEST("str dec idx=1", m->tabs[0]->items[0]->option_idx == 1);
 
     /* dec: 1 → 0 */
@@ -272,9 +272,9 @@ int main(void) {
     TEST("set_str idx=0", m->tabs[0]->items[0]->option_idx == 0);
 
     TEST("set_int success", clk_menu_set_value_int(m, 10, 10, 2.0));
-    TEST("set_int val=2.0", m->tabs[0]->items[3]->value.d == 2.0);
+    TEST("set_int val=2.0", m->tabs[0]->items[3]->value.num == 2.0);
     TEST("set_int clamp", clk_menu_set_value_int(m, 10, 10, 999.0));
-    TEST("set_int clamped=2.0", m->tabs[0]->items[3]->value.d == 2.0);
+    TEST("set_int clamped=2.0", m->tabs[0]->items[3]->value.num == 2.0);
 
     TEST("set_bool success", clk_menu_set_value_bool(m, 10, 20, false));
     TEST("set_bool val=false", m->tabs[0]->items[6]->value.b == false);
@@ -310,11 +310,11 @@ int main(void) {
     TEST("range max=10", m->tabs[0]->items[3]->max_val == 10);
     TEST("range step=2", m->tabs[0]->items[3]->step_val == 2);
     /* current value 2.0 is still within [-10, 10] */
-    TEST("range val kept", m->tabs[0]->items[3]->value.d == 2.0);
+    TEST("range val kept", m->tabs[0]->items[3]->value.num == 2.0);
 
     /* shrink range so current value is out → clamp */
     clk_menu_set_item_range(m, 10, 10, 0, 1, 1);
-    TEST("range clamp to max", m->tabs[0]->items[3]->value.d == 1.0);
+    TEST("range clamp to max", m->tabs[0]->items[3]->value.num == 1.0);
 
     /* ================================================================
      *  remove_item

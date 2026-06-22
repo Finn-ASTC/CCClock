@@ -1,19 +1,20 @@
 #include <stddef.h>
 #include <stdio.h>
+#include <string.h>
 
+#include "clk_ascii_render.h"
 #include "clk_clock.h"
 #include "clk_key_io.h"
 #include "clk_term.h"
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 
-static void recenter_clock(clk_clock* clk, int term_w, int term_h) {
+static void recenter_clock(clk_ascii_render* render, const char* time_format, int term_w,
+                            int term_h) {
     int cw = 0, ch = 0;
-    if (!clk_clock_get_clock_size(clk, &cw, &ch))
+    if (!clk_ascii_render_get_size(render, time_format, &cw, &ch))
         return;
-    int px = (term_w - cw) / 2;
-    int py = (term_h - ch) / 2;
-    clk_clock_set_sprite_pos(clk, px, py);
+    clk_ascii_render_set_pos(render, (term_w - cw) / 2, (term_h - ch) / 2);
 }
 
 int main() {
@@ -31,8 +32,15 @@ int main() {
                                 "assets/config/ascii_fonts/ascii_num.json"};
     int font_idx = 0;
 
-    clk_clock clk;
-    if (!clk_clock_create(&clk, formats[fmt_idx], font_files[font_idx])) {
+    char time_format[64];
+    size_t len = strlen(formats[fmt_idx]);
+    if (len >= sizeof(time_format))
+        len = sizeof(time_format) - 1;
+    memcpy(time_format, formats[fmt_idx], len);
+    time_format[len] = '\0';
+
+    clk_ascii_render render;
+    if (!clk_ascii_render_create(&render, font_files[font_idx])) {
         clk_term_close();
         return -1;
     }
@@ -41,12 +49,11 @@ int main() {
     if (!clk_term_get_size(&term_w, &term_h))
         goto fail;
 
-    recenter_clock(&clk, term_w, term_h);
+    recenter_clock(&render, time_format, term_w, term_h);
 
-    if (!clk_clock_add_to_term(&clk))
+    if (!clk_ascii_render_add_to_term(&render))
         goto fail;
 
-    /* two overlapping coloured blocks for z-order demo */
     int red_style = clk_term_register_style_rgb(255, 0, 0, 0, 0, 0, "bold");
     int green_style = clk_term_register_style_rgb(0, 255, 0, 0, 0, 0, "bold");
 
@@ -75,8 +82,6 @@ int main() {
         "  q  : quit\n\n"
         "Press any key to start...\n");
 
-    /* drain any stale input (e.g. leftover Enter from command line),
-     * then wait for a fresh key press */
     while (clk_get_key_event().key != CLK_KEY_NONE)
         ;
     while (clk_get_key_event().key == CLK_KEY_NONE)
@@ -84,33 +89,38 @@ int main() {
 
     printf("\033[2J\033[H");
 
-    /* main loop */
     for (;;) {
-        clk_key_event ev = clk_get_key_event();
-        if (ev.key == 'q' || ev.key == 'Q')
+        clk_key_event event = clk_get_key_event();
+        if (event.key == 'q' || event.key == 'Q')
             break;
 
-        switch (ev.key) {
+        switch (event.key) {
             case 'f':
             case 'F':
                 fmt_idx = (fmt_idx + 1) % ARRAY_SIZE(formats);
-                clk_clock_change_time_format(&clk, formats[fmt_idx]);
-                recenter_clock(&clk, term_w, term_h);
+                {
+                    size_t l = strlen(formats[fmt_idx]);
+                    if (l >= sizeof(time_format))
+                        l = sizeof(time_format) - 1;
+                    memcpy(time_format, formats[fmt_idx], l);
+                    time_format[l] = '\0';
+                }
+                recenter_clock(&render, time_format, term_w, term_h);
                 break;
 
             case 'r':
             case 'R':
                 font_idx = (font_idx + 1) % ARRAY_SIZE(font_files);
-                clk_clock_change_font_path(&clk, font_files[font_idx]);
-                recenter_clock(&clk, term_w, term_h);
+                clk_ascii_render_change_font(&render, font_files[font_idx]);
+                recenter_clock(&render, time_format, term_w, term_h);
                 break;
 
             case CLK_KEY_UP:
-                clk_clock_set_z_order(&clk, clk_clock_get_z_order(&clk) + 1);
+                clk_ascii_render_set_z_order(&render, clk_ascii_render_get_z_order(&render) + 1);
                 break;
 
             case CLK_KEY_DOWN:
-                clk_clock_set_z_order(&clk, clk_clock_get_z_order(&clk) - 1);
+                clk_ascii_render_set_z_order(&render, clk_ascii_render_get_z_order(&render) - 1);
                 break;
         }
 
@@ -118,16 +128,23 @@ int main() {
             clk_term_resize();
             if (!clk_term_get_size(&term_w, &term_h))
                 break;
-            recenter_clock(&clk, term_w, term_h);
+            recenter_clock(&render, time_format, term_w, term_h);
         }
 
-        clk_clock_update(&clk);
+        {
+            char translated[128];
+            char time_str[64];
+            if (clk_clock_translate_format(time_format, translated, sizeof(translated)) &&
+                clk_clock_format_now(translated, time_str, sizeof(time_str)))
+                clk_ascii_render_update(&render, time_str);
+        }
+
         clk_term_update();
         clk_term_draw();
         clk_term_sleep_ms(16);
     }
 
-    clk_clock_destroy(&clk);
+    clk_ascii_render_destroy(&render);
     clk_sprite_destroy(red_sp);
     clk_sprite_destroy(green_sp);
     clk_texture_destroy(&red_tex);
@@ -136,7 +153,7 @@ int main() {
     return 0;
 
 fail:
-    clk_clock_destroy(&clk);
+    clk_ascii_render_destroy(&render);
     clk_sprite_destroy(red_sp);
     clk_sprite_destroy(green_sp);
     clk_texture_destroy(&red_tex);

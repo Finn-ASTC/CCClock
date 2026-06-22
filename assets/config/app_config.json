@@ -1,12 +1,17 @@
 {
-  "clock": {
-    "fonts_dir": "assets/config/ascii_fonts",
-    "time_formats": ["hh:MM:ss","yyyy:mm:dd\n hh:MM:ss","hh:MM","dd:hh:MM"]
-  },
-  "menu": {
-    "themes_dir": "assets/config/menu_config"
-  },
-  "selected_fmt": 3,
-  "selected_font": 1,
-  "selected_theme": 1
+    "clock": {
+        "fonts_dir": "assets/config/ascii_fonts",
+        "time_formats": [
+            "hh:MM:ss",
+            "yyyy:mm:dd\n hh:MM:ss",
+            "hh:MM",
+            "dd:hh:MM"
+        ]
+    },
+    "menu": {
+        "themes_dir": "assets/config/menu_config"
+    },
+    "selected_fmt": 0,
+    "selected_font": 0,
+    "selected_theme": 1
 }

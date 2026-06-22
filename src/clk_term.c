@@ -87,63 +87,63 @@ bool clk_term_init(void) {
 
     clk_key_io_init();
 
-    int sw, sh;
-    if (!clk_term_get_size(&sw, &sh))
+    int screen_w_tmp, screen_h_tmp;
+    if (!clk_term_get_size(&screen_w_tmp, &screen_h_tmp))
         return false;
-    if (sw <= 0 || sh <= 0)
+    if (screen_w_tmp <= 0 || screen_h_tmp <= 0)
         return false;
-    screen_size = sw * sh;
-    screen_w = sw;
-    screen_h = sh;
+    screen_size = screen_w_tmp * screen_h_tmp;
+    screen_w = screen_w_tmp;
+    screen_h = screen_h_tmp;
 
     clk_cell empty_cell = {.is_empty = true};
 
-    clk_cell* temp_s = malloc(screen_size * sizeof(clk_cell));
-    if (!temp_s)
+    clk_cell* tmp_screen = malloc(screen_size * sizeof(clk_cell));
+    if (!tmp_screen)
         return false;
-    screen_buffer = temp_s;
+    screen_buffer = tmp_screen;
     for (int i = 0; i < screen_size; ++i)
         screen_buffer[i] = empty_cell;
 
-    clk_sprite** temp_l = malloc(sprite_list_capacity * sizeof(clk_sprite*));
-    if (!temp_l) {
+    clk_sprite** tmp_list = malloc(sprite_list_capacity * sizeof(clk_sprite*));
+    if (!tmp_list) {
         free(screen_buffer);
         return false;
     }
-    sprite_render_list = temp_l;
+    sprite_render_list = tmp_list;
     for (int i = 0; i < sprite_list_capacity; ++i)
         sprite_render_list[i] = NULL;
 
     /* per-cell "already claimed" flags for z-order masking */
-    bool* temp_sign = calloc(screen_size, sizeof(bool));
-    if (!temp_sign) {
+    bool* tmp_screenign = calloc(screen_size, sizeof(bool));
+    if (!tmp_screenign) {
         free(screen_buffer);
         free(sprite_render_list);
         return false;
     }
-    if_rendered_sign = temp_sign;
+    if_rendered_sign = tmp_screenign;
 
-    char* temp_a = calloc(1, screen_size * CLK_ANSI_OUTPUT_ESTIMATE_PER_CELL);
-    if (!temp_a) {
+    char* tmp_ansi = calloc(1, screen_size * CLK_ANSI_OUTPUT_ESTIMATE_PER_CELL);
+    if (!tmp_ansi) {
         free(screen_buffer);
         free(sprite_render_list);
         free(if_rendered_sign);
         return false;
     }
-    ansi_output = temp_a;
+    ansi_output = tmp_ansi;
     ansi_output_length = 0;
     ansi_output_capacity = screen_size * CLK_ANSI_OUTPUT_ESTIMATE_PER_CELL;
 
     /* style registry — slot 0 is the "no-style" default */
-    clk_style* temp_st = malloc(CLK_STYLE_DEFAULT_CAPACITY * sizeof(clk_style));
-    if (!temp_st) {
+    clk_style* tmp_styles = malloc(CLK_STYLE_DEFAULT_CAPACITY * sizeof(clk_style));
+    if (!tmp_styles) {
         free(screen_buffer);
         free(sprite_render_list);
         free(if_rendered_sign);
         free(ansi_output);
         return false;
     }
-    style_registry = temp_st;
+    style_registry = tmp_styles;
     style_registry[0] = (clk_style){{.raw = 0}, {.raw = 0}, ATTR_NONE};
     style_count = 1;
     style_capacity = CLK_STYLE_DEFAULT_CAPACITY;
@@ -488,22 +488,22 @@ void clk_term_draw(void) {
             continue;
 
         int pos_x = s->posx, pos_y = s->posy;
-        int tw = s->tex->tex_w, th = s->tex->tex_h;
+        int tex_w = s->tex->tex_w, tex_h = s->tex->tex_h;
 
-        for (int ty = 0; ty < th; ++ty) {
-            for (int tx = 0; tx < tw; ++tx) {
-                int x = tx + pos_x;
-                int y = ty + pos_y;
+        for (int tex_y = 0; tex_y < tex_h; ++tex_y) {
+            for (int tex_x = 0; tex_x < tex_w; ++tex_x) {
+                int x = tex_x + pos_x;
+                int y = tex_y + pos_y;
                 if (x < 0 || x >= screen_w || y < 0 || y >= screen_h)
                     continue;
 
                 int idx = x + y * screen_w;
-                const clk_cell* cell = &s->tex->data[tx + ty * tw];
+                const clk_cell* cell = &s->tex->data[tex_x + tex_y * tex_w];
 
                 if (cell->type == CELL_WIDE_TRAIL)
                     continue;
                 if (cell->type == CELL_WIDE_LEAD) {
-                    const clk_cell* next = (tx + 1 < tw) ? &s->tex->data[tx + 1 + ty * tw] : NULL;
+                    const clk_cell* next = (tex_x + 1 < tex_w) ? &s->tex->data[tex_x + 1 + tex_y * tex_w] : NULL;
                     if (!next || next->type != CELL_WIDE_TRAIL)
                         continue;
                 }
@@ -768,19 +768,19 @@ static int clk_cell_char_width(const char* utf8) {
     if (!utf8 || !utf8[0])
         return 0;
     unsigned char c0 = (unsigned char)utf8[0];
-    unsigned int cp;
+    unsigned int codepoint;
     int len;
     if ((c0 & 0x80) == 0) {
-        cp = c0;
+        codepoint = c0;
         len = 1;
     } else if ((c0 & 0xE0) == 0xC0) {
-        cp = c0 & 0x1F;
+        codepoint = c0 & 0x1F;
         len = 2;
     } else if ((c0 & 0xF0) == 0xE0) {
-        cp = c0 & 0x0F;
+        codepoint = c0 & 0x0F;
         len = 3;
     } else if ((c0 & 0xF8) == 0xF0) {
-        cp = c0 & 0x07;
+        codepoint = c0 & 0x07;
         len = 4;
     } else
         return 1;
@@ -788,21 +788,21 @@ static int clk_cell_char_width(const char* utf8) {
         unsigned char cb = (unsigned char)utf8[i];
         if ((cb & 0xC0) != 0x80)
             return 1;
-        cp = (cp << 6) | (cb & 0x3F);
+        codepoint = (codepoint << 6) | (cb & 0x3F);
     }
-    if (cp >= 0x4E00 && cp <= 0x9FFF)
+    if (codepoint >= 0x4E00 && codepoint <= 0x9FFF)
         return 2;
-    if (cp >= 0x3400 && cp <= 0x4DBF)
+    if (codepoint >= 0x3400 && codepoint <= 0x4DBF)
         return 2;
-    if (cp >= 0xF900 && cp <= 0xFAFF)
+    if (codepoint >= 0xF900 && codepoint <= 0xFAFF)
         return 2;
-    if (cp >= 0xFF01 && cp <= 0xFF60)
+    if (codepoint >= 0xFF01 && codepoint <= 0xFF60)
         return 2;
-    if (cp >= 0xFFE0 && cp <= 0xFFE6)
+    if (codepoint >= 0xFFE0 && codepoint <= 0xFFE6)
         return 2;
-    if (cp >= 0x1F300 && cp <= 0x1F9FF)
+    if (codepoint >= 0x1F300 && codepoint <= 0x1F9FF)
         return 2;
-    if (cp >= 0x20000 && cp <= 0x2EBE0)
+    if (codepoint >= 0x20000 && codepoint <= 0x2EBE0)
         return 2;
     return 1;
 }
@@ -838,13 +838,13 @@ void clk_texture_write_string(clk_texture* tex, int x, int y, const char* str, i
         char tmp[5] = {0};
         for (int j = 0; j < byte_len && str[i + j] != '\0'; ++j)
             tmp[j] = str[i + j];
-        int cw = clk_cell_char_width(tmp);
-        if (cw == 2)
+        int char_width = clk_cell_char_width(tmp);
+        if (char_width == 2)
             clk_texture_write_wide_cell(tex, x + col, y, tmp, style_id);
         else
             clk_texture_write_cell(tex, x + col, y, tmp, style_id);
         i += byte_len;
-        col += cw;
+        col += char_width;
     }
 }
 

@@ -25,8 +25,8 @@ typedef struct {
     clk_menu_value_type type;
     char* label;
     union {
-        const char* s;
-        double d;
+        const char* str;
+        double num;
         bool b;
     } value;
     double min_val, max_val, step_val;
@@ -80,8 +80,8 @@ typedef struct {
     int tab_id;
     int item_id;
     union {
-        const char* s;
-        double d;
+        const char* str;
+        double num;
         bool b;
     } value;
 } clk_menu_event;
@@ -99,52 +99,52 @@ void clk_menu_destroy(clk_menu* menu);
 
 /** Add a tab with the given @p tab_id (caller-defined, e.g. enum value).
  *  Returns the tab_id on success, or -1 on failure. */
-int clk_menu_add_tab(clk_menu* m, int tab_id, const char* name);
+int clk_menu_add_tab(clk_menu* menu, int tab_id, const char* name);
 
 /* ------------------------------------------------------------------
  *  Items
  * ------------------------------------------------------------------ */
 
-void clk_menu_add_item_str(clk_menu* m, int tab_id, int item_id, const char* label, int default_idx,
+void clk_menu_add_item_str(clk_menu* menu, int tab_id, int item_id, const char* label, int default_idx,
                            const char** options, int option_count);
 
-void clk_menu_add_item_int(clk_menu* m, int tab_id, int item_id, const char* label,
+void clk_menu_add_item_int(clk_menu* menu, int tab_id, int item_id, const char* label,
                            double default_val, double min_val, double max_val, double step_val);
 
-void clk_menu_add_item_bool(clk_menu* m, int tab_id, int item_id, const char* label,
+void clk_menu_add_item_bool(clk_menu* menu, int tab_id, int item_id, const char* label,
                             bool default_val);
 
-void clk_menu_add_item_action(clk_menu* m, int tab_id, int item_id, const char* label);
+void clk_menu_add_item_action(clk_menu* menu, int tab_id, int item_id, const char* label);
 
-void clk_menu_remove_item(clk_menu* m, int tab_id, int item_id);
+void clk_menu_remove_item(clk_menu* menu, int tab_id, int item_id);
 
 /* ------------------------------------------------------------------
  *  Interaction
  * ------------------------------------------------------------------ */
 
-clk_menu_event clk_menu_handle_input(clk_menu* m, clk_menu_input input);
+clk_menu_event clk_menu_handle_input(clk_menu* menu, clk_menu_input input);
 
 /* ------------------------------------------------------------------
  *  External sync
  * ------------------------------------------------------------------ */
 
-bool clk_menu_set_value_str(clk_menu* m, int tab_id, int item_id, const char* val);
-bool clk_menu_set_value_int(clk_menu* m, int tab_id, int item_id, double val);
-bool clk_menu_set_value_bool(clk_menu* m, int tab_id, int item_id, bool val);
+bool clk_menu_set_value_str(clk_menu* menu, int tab_id, int item_id, const char* val);
+bool clk_menu_set_value_int(clk_menu* menu, int tab_id, int item_id, double val);
+bool clk_menu_set_value_bool(clk_menu* menu, int tab_id, int item_id, bool val);
 
 /* ------------------------------------------------------------------
  *  Dynamic options
  * ------------------------------------------------------------------ */
 
-void clk_menu_add_option(clk_menu* m, int tab_id, int item_id, const char* opt);
-void clk_menu_remove_option(clk_menu* m, int tab_id, int item_id, int idx);
-void clk_menu_clear_options(clk_menu* m, int tab_id, int item_id);
+void clk_menu_add_option(clk_menu* menu, int tab_id, int item_id, const char* opt);
+void clk_menu_remove_option(clk_menu* menu, int tab_id, int item_id, int idx);
+void clk_menu_clear_options(clk_menu* menu, int tab_id, int item_id);
 
 /* ------------------------------------------------------------------
  *  INT range
  * ------------------------------------------------------------------ */
 
-void clk_menu_set_item_range(clk_menu* m, int tab_id, int item_id, double min_val, double max_val,
+void clk_menu_set_item_range(clk_menu* menu, int tab_id, int item_id, double min_val, double max_val,
                              double step_val);
 
 #ifdef __cplusplus

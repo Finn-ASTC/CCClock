@@ -117,24 +117,24 @@ static unsigned int parse_hex4(clk_json_lexer* lexer) {
     return codepoint;
 }
 
-static int encode_utf8(unsigned int cp, char* dst) {
-    if (cp <= 0x7F) {
-        dst[0] = cp;
+static int encode_utf8(unsigned int codepoint, char* dst) {
+    if (codepoint <= 0x7F) {
+        dst[0] = codepoint;
         return 1;
-    } else if (cp <= 0x7FF) {
-        dst[0] = 0xC0 | (cp >> 6);
-        dst[1] = 0x80 | (cp & 0x3F);
+    } else if (codepoint <= 0x7FF) {
+        dst[0] = 0xC0 | (codepoint >> 6);
+        dst[1] = 0x80 | (codepoint & 0x3F);
         return 2;
-    } else if (cp <= 0xFFFF) {
-        dst[0] = 0xE0 | (cp >> 12);
-        dst[1] = 0x80 | ((cp >> 6) & 0x3F);
-        dst[2] = 0x80 | (cp & 0x3F);
+    } else if (codepoint <= 0xFFFF) {
+        dst[0] = 0xE0 | (codepoint >> 12);
+        dst[1] = 0x80 | ((codepoint >> 6) & 0x3F);
+        dst[2] = 0x80 | (codepoint & 0x3F);
         return 3;
     } else {
-        dst[0] = 0xF0 | (cp >> 18);
-        dst[1] = 0x80 | ((cp >> 12) & 0x3F);
-        dst[2] = 0x80 | ((cp >> 6) & 0x3F);
-        dst[3] = 0x80 | (cp & 0x3F);
+        dst[0] = 0xF0 | (codepoint >> 18);
+        dst[1] = 0x80 | ((codepoint >> 12) & 0x3F);
+        dst[2] = 0x80 | ((codepoint >> 6) & 0x3F);
+        dst[3] = 0x80 | (codepoint & 0x3F);
         return 4;
     }
 }

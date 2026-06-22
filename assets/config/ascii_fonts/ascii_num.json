@@ -1,8 +1,8 @@
 {
     "font_w": 10,
     "font_h": 6,
-    "glyph_spacing": 0,
-    "line_spacing": 1,
+    "glyph_spacing": -1,
+    "line_spacing": 5,
     "styles": {
         "pink": {
             "fg": "#FF69B4",

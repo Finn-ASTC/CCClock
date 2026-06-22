@@ -170,16 +170,16 @@ int main(void) {
         if (mev.type == CLK_MENU_EVENT_VALUE_CHANGED) {
             switch (mev.item_id) {
                 case ITEM_POS_X:
-                    clk_menu_instance_set_position(inst, (int)mev.value.d, inst->sprite->posy);
+                    clk_menu_instance_set_position(inst, (int)mev.value.num, inst->sprite->posy);
                     break;
                 case ITEM_POS_Y:
-                    clk_menu_instance_set_position(inst, inst->sprite->posx, (int)mev.value.d);
+                    clk_menu_instance_set_position(inst, inst->sprite->posx, (int)mev.value.num);
                     break;
                 case ITEM_WIDTH:
-                    clk_menu_instance_set_size(inst, (int)mev.value.d, inst->tex.tex_h);
+                    clk_menu_instance_set_size(inst, (int)mev.value.num, inst->tex.tex_h);
                     break;
                 case ITEM_HEIGHT:
-                    clk_menu_instance_set_size(inst, inst->tex.tex_w, (int)mev.value.d);
+                    clk_menu_instance_set_size(inst, inst->tex.tex_w, (int)mev.value.num);
                     break;
                 case ITEM_THEME: {
                     /* reload theme and recreate instance */
@@ -190,7 +190,7 @@ int main(void) {
                     clk_menu_theme_destroy(&theme);
                     memset(&theme, 0, sizeof(theme));
                     for (int ti = 0; ti < 3; ++ti) {
-                        if (strcmp(mev.value.s, theme_names[ti]) == 0) {
+                        if (strcmp(mev.value.str, theme_names[ti]) == 0) {
                             clk_menu_theme_load(theme_list[ti], &theme);
                             break;
                         }

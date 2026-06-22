@@ -12,16 +12,16 @@
  * ------------------------------------------------------------------ */
 
 /** Find a tab by id. Returns NULL if not found. */
-static clk_menu_tab* find_tab(clk_menu* m, int tab_id) {
-    for (size_t i = 0; i < m->tab_count; ++i)
-        if (m->tabs[i]->id == tab_id)
-            return m->tabs[i];
+static clk_menu_tab* find_tab(clk_menu* menu, int tab_id) {
+    for (size_t i = 0; i < menu->tab_count; ++i)
+        if (menu->tabs[i]->id == tab_id)
+            return menu->tabs[i];
     return NULL;
 }
 
 /** Find an item by tab_id + item_id. Returns NULL if not found. */
-static clk_menu_item* find_item(clk_menu* m, int tab_id, int item_id) {
-    clk_menu_tab* tab = find_tab(m, tab_id);
+static clk_menu_item* find_item(clk_menu* menu, int tab_id, int item_id) {
+    clk_menu_tab* tab = find_tab(menu, tab_id);
     if (!tab)
         return NULL;
     for (size_t i = 0; i < tab->item_count; ++i)
@@ -96,18 +96,18 @@ static void clk_menu_item_destroy(clk_menu_item* item) {
  *  Tabs
  * ------------------------------------------------------------------ */
 
-int clk_menu_add_tab(clk_menu* m, int tab_id, const char* name) {
-    if (!m || !name)
+int clk_menu_add_tab(clk_menu* menu, int tab_id, const char* name) {
+    if (!menu || !name)
         return -1;
 
-    if (m->tab_count >= m->tab_capacity) {
-        size_t new_cap = m->tab_capacity * 2;
-        clk_menu_tab** tmp = realloc(m->tabs, new_cap * sizeof(clk_menu_tab*));
+    if (menu->tab_count >= menu->tab_capacity) {
+        size_t new_cap = menu->tab_capacity * 2;
+        clk_menu_tab** tmp = realloc(menu->tabs, new_cap * sizeof(clk_menu_tab*));
         if (!tmp)
             return -1;
-        memset(tmp + m->tab_capacity, 0, (new_cap - m->tab_capacity) * sizeof(clk_menu_tab*));
-        m->tabs = tmp;
-        m->tab_capacity = new_cap;
+        memset(tmp + menu->tab_capacity, 0, (new_cap - menu->tab_capacity) * sizeof(clk_menu_tab*));
+        menu->tabs = tmp;
+        menu->tab_capacity = new_cap;
     }
 
     clk_menu_tab* tab = malloc(sizeof(clk_menu_tab));
@@ -133,7 +133,7 @@ int clk_menu_add_tab(clk_menu* m, int tab_id, const char* name) {
 
     tab->id = tab_id;
 
-    m->tabs[m->tab_count++] = tab;
+    menu->tabs[menu->tab_count++] = tab;
 
     return tab->id;
 }
@@ -156,12 +156,12 @@ static bool clk_menu_tab_ensure_items_capacity(clk_menu_tab* tab) {
     return true;
 }
 
-void clk_menu_add_item_str(clk_menu* m, int tab_id, int item_id, const char* label, int default_idx,
+void clk_menu_add_item_str(clk_menu* menu, int tab_id, int item_id, const char* label, int default_idx,
                            const char** options, int option_count) {
-    if (!m || !label || !options || option_count <= 0)
+    if (!menu || !label || !options || option_count <= 0)
         return;
 
-    clk_menu_tab* tab = find_tab(m, tab_id);
+    clk_menu_tab* tab = find_tab(menu, tab_id);
     if (!tab)
         return;
 
@@ -207,17 +207,17 @@ void clk_menu_add_item_str(clk_menu* m, int tab_id, int item_id, const char* lab
     if (default_idx >= option_count)
         default_idx = option_count - 1;
     item->option_idx = default_idx;
-    item->value.s = item->options[default_idx];
+    item->value.str = item->options[default_idx];
 
     tab->items[tab->item_count++] = item;
 }
 
-void clk_menu_add_item_int(clk_menu* m, int tab_id, int item_id, const char* label,
+void clk_menu_add_item_int(clk_menu* menu, int tab_id, int item_id, const char* label,
                            double default_val, double min_val, double max_val, double step_val) {
-    if (!m || !label)
+    if (!menu || !label)
         return;
 
-    clk_menu_tab* tab = find_tab(m, tab_id);
+    clk_menu_tab* tab = find_tab(menu, tab_id);
     if (!tab)
         return;
 
@@ -246,17 +246,17 @@ void clk_menu_add_item_int(clk_menu* m, int tab_id, int item_id, const char* lab
         default_val = min_val;
     if (default_val > max_val)
         default_val = max_val;
-    item->value.d = default_val;
+    item->value.num = default_val;
 
     tab->items[tab->item_count++] = item;
 }
 
-void clk_menu_add_item_bool(clk_menu* m, int tab_id, int item_id, const char* label,
+void clk_menu_add_item_bool(clk_menu* menu, int tab_id, int item_id, const char* label,
                             bool default_val) {
-    if (!m || !label)
+    if (!menu || !label)
         return;
 
-    clk_menu_tab* tab = find_tab(m, tab_id);
+    clk_menu_tab* tab = find_tab(menu, tab_id);
     if (!tab)
         return;
 
@@ -282,11 +282,11 @@ void clk_menu_add_item_bool(clk_menu* m, int tab_id, int item_id, const char* la
     tab->items[tab->item_count++] = item;
 }
 
-void clk_menu_add_item_action(clk_menu* m, int tab_id, int item_id, const char* label) {
-    if (!m || !label)
+void clk_menu_add_item_action(clk_menu* menu, int tab_id, int item_id, const char* label) {
+    if (!menu || !label)
         return;
 
-    clk_menu_tab* tab = find_tab(m, tab_id);
+    clk_menu_tab* tab = find_tab(menu, tab_id);
     if (!tab)
         return;
 
@@ -310,8 +310,8 @@ void clk_menu_add_item_action(clk_menu* m, int tab_id, int item_id, const char* 
     tab->items[tab->item_count++] = item;
 }
 
-void clk_menu_remove_item(clk_menu* m, int tab_id, int item_id) {
-    clk_menu_tab* tab = find_tab(m, tab_id);
+void clk_menu_remove_item(clk_menu* menu, int tab_id, int item_id) {
+    clk_menu_tab* tab = find_tab(menu, tab_id);
     if (!tab)
         return;
 
@@ -347,22 +347,22 @@ void clk_menu_remove_item(clk_menu* m, int tab_id, int item_id) {
  *  Interaction
  * ------------------------------------------------------------------ */
 
-clk_menu_event clk_menu_handle_input(clk_menu* m, clk_menu_input input) {
-    clk_menu_event ev = {.type = CLK_MENU_EVENT_NONE};
+clk_menu_event clk_menu_handle_input(clk_menu* menu, clk_menu_input input) {
+    clk_menu_event event = {.type = CLK_MENU_EVENT_NONE};
 
-    if (!m || m->tab_count == 0)
-        return ev;
+    if (!menu || menu->tab_count == 0)
+        return event;
 
-    clk_menu_tab* tab = m->tabs[m->active_tab];
+    clk_menu_tab* tab = menu->tabs[menu->active_tab];
     if (!tab)
-        return ev;
+        return event;
 
-    ev.tab_id = tab->id;
+    event.tab_id = tab->id;
 
     if (tab->item_count > 0 && tab->active_item < (int)tab->item_count) {
         clk_menu_item* item = tab->items[tab->active_item];
         if (item)
-            ev.item_id = item->id;
+            event.item_id = item->id;
     }
 
     switch (input) {
@@ -398,25 +398,25 @@ clk_menu_event clk_menu_handle_input(clk_menu* m, clk_menu_input input) {
                         item->option_idx--;
                     else
                         item->option_idx = item->option_count - 1;
-                    item->value.s = item->options[item->option_idx];
-                    ev.type = CLK_MENU_EVENT_VALUE_CHANGED;
-                    ev.value.s = item->value.s;
+                    item->value.str = item->options[item->option_idx];
+                    event.type = CLK_MENU_EVENT_VALUE_CHANGED;
+                    event.value.str = item->value.str;
                     break;
                 case CLK_MENU_TYPE_INT: {
-                    double new_val = item->value.d - item->step_val;
+                    double new_val = item->value.num - item->step_val;
                     if (new_val < item->min_val)
                         new_val = item->min_val;
-                    if (new_val != item->value.d) {
-                        item->value.d = new_val;
-                        ev.type = CLK_MENU_EVENT_VALUE_CHANGED;
-                        ev.value.d = item->value.d;
+                    if (new_val != item->value.num) {
+                        item->value.num = new_val;
+                        event.type = CLK_MENU_EVENT_VALUE_CHANGED;
+                        event.value.num = item->value.num;
                     }
                     break;
                 }
                 case CLK_MENU_TYPE_BOOL:
                     item->value.b = !item->value.b;
-                    ev.type = CLK_MENU_EVENT_VALUE_CHANGED;
-                    ev.value.b = item->value.b;
+                    event.type = CLK_MENU_EVENT_VALUE_CHANGED;
+                    event.value.b = item->value.b;
                     break;
                 case CLK_MENU_TYPE_ACTION:
                     break;
@@ -439,25 +439,25 @@ clk_menu_event clk_menu_handle_input(clk_menu* m, clk_menu_input input) {
                         item->option_idx++;
                     else
                         item->option_idx = 0;
-                    item->value.s = item->options[item->option_idx];
-                    ev.type = CLK_MENU_EVENT_VALUE_CHANGED;
-                    ev.value.s = item->value.s;
+                    item->value.str = item->options[item->option_idx];
+                    event.type = CLK_MENU_EVENT_VALUE_CHANGED;
+                    event.value.str = item->value.str;
                     break;
                 case CLK_MENU_TYPE_INT: {
-                    double new_val = item->value.d + item->step_val;
+                    double new_val = item->value.num + item->step_val;
                     if (new_val > item->max_val)
                         new_val = item->max_val;
-                    if (new_val != item->value.d) {
-                        item->value.d = new_val;
-                        ev.type = CLK_MENU_EVENT_VALUE_CHANGED;
-                        ev.value.d = item->value.d;
+                    if (new_val != item->value.num) {
+                        item->value.num = new_val;
+                        event.type = CLK_MENU_EVENT_VALUE_CHANGED;
+                        event.value.num = item->value.num;
                     }
                     break;
                 }
                 case CLK_MENU_TYPE_BOOL:
                     item->value.b = !item->value.b;
-                    ev.type = CLK_MENU_EVENT_VALUE_CHANGED;
-                    ev.value.b = item->value.b;
+                    event.type = CLK_MENU_EVENT_VALUE_CHANGED;
+                    event.value.b = item->value.b;
                     break;
                 case CLK_MENU_TYPE_ACTION:
                     break;
@@ -466,10 +466,10 @@ clk_menu_event clk_menu_handle_input(clk_menu* m, clk_menu_input input) {
         }
 
         case CLK_MENU_INPUT_NEXT_TAB:
-            if (m->active_tab + 1 < (int)m->tab_count)
-                m->active_tab++;
+            if (menu->active_tab + 1 < (int)menu->tab_count)
+                menu->active_tab++;
             else
-                m->active_tab = 0;
+                menu->active_tab = 0;
             break;
 
         case CLK_MENU_INPUT_CONFIRM: {
@@ -477,68 +477,68 @@ clk_menu_event clk_menu_handle_input(clk_menu* m, clk_menu_input input) {
                 break;
             clk_menu_item* item = tab->items[tab->active_item];
             if (item && item->type == CLK_MENU_TYPE_ACTION)
-                ev.type = CLK_MENU_EVENT_SUBMIT;
+                event.type = CLK_MENU_EVENT_SUBMIT;
             break;
         }
     }
 
     /* refresh tab_id / item_id in case active changed */
-    if (m->tab_count > 0) {
-        tab = m->tabs[m->active_tab];
+    if (menu->tab_count > 0) {
+        tab = menu->tabs[menu->active_tab];
         if (tab) {
-            ev.tab_id = tab->id;
+            event.tab_id = tab->id;
             if (tab->item_count > 0 && tab->active_item < (int)tab->item_count) {
                 clk_menu_item* item = tab->items[tab->active_item];
                 if (item)
-                    ev.item_id = item->id;
+                    event.item_id = item->id;
             }
         }
     }
 
-    return ev;
+    return event;
 }
 
 /* ------------------------------------------------------------------
  *  External sync
  * ------------------------------------------------------------------ */
 
-bool clk_menu_set_value_str(clk_menu* m, int tab_id, int item_id, const char* val) {
-    if (!m || !val)
+bool clk_menu_set_value_str(clk_menu* menu, int tab_id, int item_id, const char* val) {
+    if (!menu || !val)
         return false;
-    clk_menu_item* item = find_item(m, tab_id, item_id);
+    clk_menu_item* item = find_item(menu, tab_id, item_id);
     if (!item || item->type != CLK_MENU_TYPE_STR)
         return false;
 
     for (size_t i = 0; i < item->option_count; ++i) {
         if (strcmp(val, item->options[i]) == 0) {
             item->option_idx = i;
-            item->value.s = item->options[i];
+            item->value.str = item->options[i];
             return true;
         }
     }
     return false;
 }
 
-bool clk_menu_set_value_int(clk_menu* m, int tab_id, int item_id, double val) {
-    if (!m)
+bool clk_menu_set_value_int(clk_menu* menu, int tab_id, int item_id, double val) {
+    if (!menu)
         return false;
-    clk_menu_item* item = find_item(m, tab_id, item_id);
+    clk_menu_item* item = find_item(menu, tab_id, item_id);
     if (!item || item->type != CLK_MENU_TYPE_INT)
         return false;
 
     if (val < item->min_val)
-        item->value.d = item->min_val;
+        item->value.num = item->min_val;
     else if (val > item->max_val)
-        item->value.d = item->max_val;
+        item->value.num = item->max_val;
     else
-        item->value.d = val;
+        item->value.num = val;
     return true;
 }
 
-bool clk_menu_set_value_bool(clk_menu* m, int tab_id, int item_id, bool val) {
-    if (!m)
+bool clk_menu_set_value_bool(clk_menu* menu, int tab_id, int item_id, bool val) {
+    if (!menu)
         return false;
-    clk_menu_item* item = find_item(m, tab_id, item_id);
+    clk_menu_item* item = find_item(menu, tab_id, item_id);
     if (!item || item->type != CLK_MENU_TYPE_BOOL)
         return false;
 
@@ -550,10 +550,10 @@ bool clk_menu_set_value_bool(clk_menu* m, int tab_id, int item_id, bool val) {
  *  Dynamic options
  * ------------------------------------------------------------------ */
 
-void clk_menu_add_option(clk_menu* m, int tab_id, int item_id, const char* opt) {
-    if (!m || !opt)
+void clk_menu_add_option(clk_menu* menu, int tab_id, int item_id, const char* opt) {
+    if (!menu || !opt)
         return;
-    clk_menu_item* item = find_item(m, tab_id, item_id);
+    clk_menu_item* item = find_item(menu, tab_id, item_id);
     if (!item || item->type != CLK_MENU_TYPE_STR)
         return;
 
@@ -573,10 +573,10 @@ void clk_menu_add_option(clk_menu* m, int tab_id, int item_id, const char* opt) 
     item->option_count = n;
 }
 
-void clk_menu_remove_option(clk_menu* m, int tab_id, int item_id, int idx) {
-    if (!m)
+void clk_menu_remove_option(clk_menu* menu, int tab_id, int item_id, int idx) {
+    if (!menu)
         return;
-    clk_menu_item* item = find_item(m, tab_id, item_id);
+    clk_menu_item* item = find_item(menu, tab_id, item_id);
     if (!item || item->type != CLK_MENU_TYPE_STR)
         return;
     if (idx < 0 || idx >= item->option_count)
@@ -601,13 +601,13 @@ void clk_menu_remove_option(clk_menu* m, int tab_id, int item_id, int idx) {
     if (item->option_idx >= item->option_count)
         item->option_idx = item->option_count > 0 ? item->option_count - 1 : 0;
     if (item->option_count > 0)
-        item->value.s = item->options[item->option_idx];
+        item->value.str = item->options[item->option_idx];
 }
 
-void clk_menu_clear_options(clk_menu* m, int tab_id, int item_id) {
-    if (!m)
+void clk_menu_clear_options(clk_menu* menu, int tab_id, int item_id) {
+    if (!menu)
         return;
-    clk_menu_item* item = find_item(m, tab_id, item_id);
+    clk_menu_item* item = find_item(menu, tab_id, item_id);
     if (!item || item->type != CLK_MENU_TYPE_STR)
         return;
 
@@ -624,11 +624,11 @@ void clk_menu_clear_options(clk_menu* m, int tab_id, int item_id) {
  *  INT range
  * ------------------------------------------------------------------ */
 
-void clk_menu_set_item_range(clk_menu* m, int tab_id, int item_id, double min_val, double max_val,
+void clk_menu_set_item_range(clk_menu* menu, int tab_id, int item_id, double min_val, double max_val,
                              double step_val) {
-    if (!m)
+    if (!menu)
         return;
-    clk_menu_item* item = find_item(m, tab_id, item_id);
+    clk_menu_item* item = find_item(menu, tab_id, item_id);
     if (!item || item->type != CLK_MENU_TYPE_INT)
         return;
 
@@ -636,8 +636,8 @@ void clk_menu_set_item_range(clk_menu* m, int tab_id, int item_id, double min_va
     item->max_val = max_val;
     item->step_val = step_val;
 
-    if (item->value.d < min_val)
-        item->value.d = min_val;
-    else if (item->value.d > max_val)
-        item->value.d = max_val;
+    if (item->value.num < min_val)
+        item->value.num = min_val;
+    else if (item->value.num > max_val)
+        item->value.num = max_val;
 }

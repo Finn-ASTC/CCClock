@@ -3,99 +3,102 @@
 
 #include <stdbool.h>
 #include <stddef.h>
-
-#include "clk_term.h"
+#include <stdint.h>
+#include <time.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define CLK_CLOCK_TIME_FORMAT_MAX_LENGTH (64)
-#define CLK_CLOCK_NUM_TEXTURE_COUNT (11) /* '0'–'9' + ':' */
+#define CLK_CLOCK_FORMAT_MAX_LENGTH 64
 
-/* ------------------------------------------------------------------
- *  Types
- * ------------------------------------------------------------------ */
+/* ================================================================
+ *  Time format translation
+ *
+ *  User-friendly tokens → strftime format strings.
+ *  yyyy→%Y yy→%y MM→%M dd→%d hh→%H mm→%m ss→%S
+ *  Other characters pass through literally.
+ * ================================================================ */
+
+bool clk_clock_translate_format(const char* user_format, char* strftime_format,
+                                size_t strftime_format_size);
+
+/* ================================================================
+ *  Time formatting
+ * ================================================================ */
+
+/** Format the current local time into the supplied buffer using a
+ *  strftime-style format string.  Returns false if localtime fails
+ *  or the buffer is too small. */
+bool clk_clock_format_now(const char* strftime_format, char* buffer, size_t buffer_size);
+
+/* ================================================================
+ *  Timer — wall-clock based countdown
+ *
+ *  Uses difftime() deltas; no per-frame tick required.
+ *  Pause/resume supported. remaining() is always accurate.
+ * ================================================================ */
 
 typedef struct {
-    char clk_clock_time_format[CLK_CLOCK_TIME_FORMAT_MAX_LENGTH];
-    char* clk_clock_font_path;
+    int64_t total_seconds;
+    time_t started_at;
+    bool running;
+    bool paused;
+    time_t paused_at;
+    int64_t consumed;
+} clk_timer;
 
-    clk_texture clk_clock_num_font_texture[CLK_CLOCK_NUM_TEXTURE_COUNT];
-    clk_sprite** clk_clock_sprites;
-    size_t clk_clock_sprite_count;
-    size_t clk_clock_sprite_capacity;
+/** Reset and start counting down from @p seconds. */
+void clk_timer_start(clk_timer* timer, int64_t seconds);
 
-    int clk_clock_glyph_spacing;
-    int clk_clock_line_spacing;
-    int clk_clock_z_order;
-    int posx, posy;
-} clk_clock;
+/** Freeze the timer at its current remaining time. */
+void clk_timer_pause(clk_timer* timer);
 
-/* ------------------------------------------------------------------
- *  Lifecycle
- * ------------------------------------------------------------------ */
+/** Resume from a paused state. */
+void clk_timer_resume(clk_timer* timer);
 
-/** Create a clock from @p time_format and @p font_path (JSON config).
- *  Allocates glyph textures, parses the font, and builds the sprite
- *  table.  Returns false if any step fails — clk_clock_destroy() is
- *  safe to call regardless. */
-bool clk_clock_create(clk_clock* clk, const char* time_format, const char* font_path);
+/** Seconds remaining (≥0). Always up-to-date. */
+int64_t clk_timer_remaining(const clk_timer* timer);
 
-/** Release all resources held by the clock.  NULL-safe and
- *  idempotent — safe to call more than once. */
-void clk_clock_destroy(clk_clock* clk);
+/** True when remaining() has reached 0. */
+bool clk_timer_finished(const clk_timer* timer);
 
-/** Re-parse the font JSON and rebuild glyph textures in-place.
- *  Sprite pointers stay valid — only the texture data is replaced. */
-bool clk_clock_reload_config(clk_clock* clk);
+/** Elapsed seconds since start (or last reset). */
+int64_t clk_timer_elapsed(const clk_timer* timer);
 
-/* ------------------------------------------------------------------
- *  Runtime
- * ------------------------------------------------------------------ */
+/* ================================================================
+ *  Alarm — clock-time based trigger
+ *
+ *  Compares current wall-clock time against a target HH:MM:SS.
+ *  One-shot semantics: check() fires once, then must be re-armed.
+ * ================================================================ */
 
-/** Format the current time according to the clock's time_format and
- *  assign glyph textures to sprites.  Handles multi-line formats
- *  (\\n) and literal spacing. */
-void clk_clock_update(clk_clock* clk);
+typedef struct {
+    int hour;
+    int minute;
+    int second;
+    bool enabled;
+    bool triggered;
+} clk_alarm;
 
-/* ------------------------------------------------------------------
- *  Configuration
- * ------------------------------------------------------------------ */
+/** Arm an alarm.  @p hour is 0–23. */
+void clk_alarm_set(clk_alarm* alarm, int hour, int minute, int second);
 
-bool clk_clock_change_time_format(clk_clock* clk, const char* new_format);
-bool clk_clock_change_font_path(clk_clock* clk, const char* new_path);
+/** Check and fire.  Returns true only on the first match.
+ *  Subsequent calls return false until re-armed. */
+bool clk_alarm_check(clk_alarm* alarm);
 
-/* ------------------------------------------------------------------
- *  Query
- * ------------------------------------------------------------------ */
+/** Clear triggered flag, keep target time and enabled. */
+void clk_alarm_rearm(clk_alarm* alarm);
 
-/** Return the total pixel size of the rendered clock on screen. */
-bool clk_clock_get_clock_size(const clk_clock* clk, int* w, int* h);
+/** Disable without clearing target time. */
+void clk_alarm_disable(clk_alarm* alarm);
 
-/** Return the dimensions of a single glyph texture. */
-bool clk_clock_get_font_texture_size(const clk_clock* clk, int* w, int* h);
-
-/** Read / write the top-left screen position of the entire clock. */
-bool clk_clock_get_sprite_pos(const clk_clock* clk, int* px, int* py);
-void clk_clock_set_sprite_pos(clk_clock* clk, int px, int py);
-
-/** Set the z-order for all clock sprites at once. */
-void clk_clock_set_z_order(clk_clock* clk, int z);
-
-/** Get the current z-order of the clock. */
-int clk_clock_get_z_order(const clk_clock* clk);
-
-/* ------------------------------------------------------------------
- *  Rendering
- * ------------------------------------------------------------------ */
-
-/** Register all sprites with the term render list.  Call once after
- *  clk_clock_create(). */
-bool clk_clock_add_to_term(clk_clock* clk);
+/** Enable a previously disabled alarm. */
+void clk_alarm_enable(clk_alarm* alarm);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* CLK_CLOCK_H */
+#endif
