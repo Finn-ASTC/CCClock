@@ -19,6 +19,14 @@ set(CMAKE_C_STANDARD 17)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# ---- expose compile_commands.json at project root for clangd ----
+if(CMAKE_EXPORT_COMPILE_COMMANDS)
+    file(CREATE_LINK
+        "${CMAKE_BINARY_DIR}/compile_commands.json"
+        "${CMAKE_SOURCE_DIR}/compile_commands.json"
+        SYMBOLIC COPY_ON_ERROR)
+endif()
+
 # ---- sanitizers (Linux only, skip MinGW) ----
 if(CMAKE_BUILD_TYPE MATCHES "Debug" AND NOT WIN32 AND NOT MINGW)
     add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
