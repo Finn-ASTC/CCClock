@@ -10,7 +10,7 @@
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 
 static void recenter_clock(clk_ascii_render* render, const char* time_format, int term_w,
-                            int term_h) {
+                           int term_h) {
     int cw = 0, ch = 0;
     if (!clk_ascii_render_get_size(render, time_format, &cw, &ch))
         return;

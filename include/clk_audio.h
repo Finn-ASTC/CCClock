@@ -12,16 +12,13 @@ extern "C" {
  * ------------------------------------------------------------------ */
 
 typedef struct clk_audio_engine clk_audio_engine;
-typedef struct clk_audio_sound  clk_audio_sound;
+typedef struct clk_audio_sound clk_audio_sound;
 
 /* ------------------------------------------------------------------
  *  Loop mode
  * ------------------------------------------------------------------ */
 
-typedef enum {
-    CLK_AUDIO_LOOP_OFF,
-    CLK_AUDIO_LOOP_ON
-} clk_audio_loop;
+typedef enum { CLK_AUDIO_LOOP_OFF, CLK_AUDIO_LOOP_ON } clk_audio_loop;
 
 /* ------------------------------------------------------------------
  *  Engine lifecycle
