@@ -55,21 +55,11 @@ add_library(libclock STATIC
 )
 target_include_directories(libclock PRIVATE include)
 
-# ---- miniaudio (header-only, via vcpkg) ----
-if(DEFINED CMAKE_TOOLCHAIN_FILE AND NOT CMAKE_TOOLCHAIN_FILE STREQUAL "")
-    cmake_path(GET CMAKE_TOOLCHAIN_FILE PARENT_PATH _tc_dir)
-    cmake_path(GET _tc_dir PARENT_PATH _tc_dir2)
-    cmake_path(GET _tc_dir2 PARENT_PATH _vcpkg_root)
-    set(_miniaudio_dir "${_vcpkg_root}/packages/miniaudio_${VCPKG_TARGET_TRIPLET}/include")
-    if(NOT EXISTS "${_miniaudio_dir}/miniaudio.h")
-        set(_miniaudio_dir "${_vcpkg_root}/installed/${VCPKG_TARGET_TRIPLET}/include")
-    endif()
-    if(EXISTS "${_miniaudio_dir}/miniaudio.h")
-        target_include_directories(libclock PRIVATE "${_miniaudio_dir}")
-    else()
-        message(FATAL_ERROR "miniaudio.h not found (tried packages/ and installed/)")
-    endif()
-endif()
+find_path(MINIAUDIO_INCLUDE_DIR
+    NAMES miniaudio.h
+    REQUIRED
+)
+target_include_directories(libclock PRIVATE "${MINIAUDIO_INCLUDE_DIR}")
 
 if(WIN32)
     target_link_libraries(libclock PRIVATE winmm ole32)
