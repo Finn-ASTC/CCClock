@@ -445,8 +445,10 @@ void clk_ascii_render_update(clk_ascii_render* render, const char* string) {
     }
 
     for (size_t i = len; i < render->sprite_capacity; ++i) {
-        if (render->sprites[i])
-            render->sprites[i]->is_invalid = true;
+        if (render->sprites[i]) {
+            render->sprites[i]->is_hidden = true;
+            render->sprites[i]->tex = NULL;
+        }
     }
 }
 

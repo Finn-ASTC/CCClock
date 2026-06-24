@@ -3,17 +3,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
-
-#if defined(_WIN32) || defined(_WIN64)
-#include <windows.h>
-#else
-#include <dirent.h>
-#endif
 
 #include "clk_ascii_render.h"
 #include "clk_clock.h"
 #include "clk_file_util.h"
+#include "clk_fs_watch.h"
 #include "clk_json.h"
 #include "clk_key_io.h"
 #include "clk_menu.h"
@@ -22,99 +16,10 @@
 #include "clk_term.h"
 
 #define APP_CONFIG "assets/config/app_config.json"
-#define CLK_MENU_DEFAULT_WIDTH  65
+#define CLK_MENU_DEFAULT_WIDTH 65
 #define CLK_MENU_DEFAULT_HEIGHT 35
-#define CLK_FRAME_MS            16
-#define CLK_HOTRELOAD_TICKS     30   /* 30 × 16ms ≈ 0.5s */
-
-/* ── cross-platform directory scanner ── */
-
-#if defined(_WIN32) || defined(_WIN64)
-/**
- * Scan a directory for *.json files and return their full paths.
- * Writes the number of matches to *out_count.
- * Returns NULL on error or when nothing matches.
- * Ownership: caller must free each returned string and the array itself.
- */
-static char** scan_json_dir(const char* dir_path, int* out_count) {
-    *out_count = 0;
-    char pattern[1024];
-    snprintf(pattern, sizeof(pattern), "%s\\*.json", dir_path);
-
-    WIN32_FIND_DATA find_data;
-    HANDLE find_handle = FindFirstFile(pattern, &find_data);
-    if (find_handle == INVALID_HANDLE_VALUE)
-        return NULL;
-
-    char** list = NULL;
-    int count = 0, capacity = 0;
-    do {
-        if (find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
-            continue;
-        size_t name_len = strlen(find_data.cFileName);
-        if (name_len < 6 || strcmp(find_data.cFileName + name_len - 5, ".json") != 0)
-            continue;
-        if (count >= capacity) {
-            capacity = capacity ? capacity * 2 : 8;
-            char** tmp = realloc(list, capacity * sizeof(char*));
-            if (!tmp) {
-                free(list);
-                FindClose(find_handle);
-                return NULL;
-            }
-            list = tmp;
-        }
-        size_t path_len = strlen(dir_path) + 1 + name_len + 1;
-        list[count] = malloc(path_len);
-        snprintf(list[count], path_len, "%s\\%s", dir_path, find_data.cFileName);
-        count++;
-    } while (FindNextFile(find_handle, &find_data));
-    FindClose(find_handle);
-
-    *out_count = count;
-    return list;
-}
-#else
-/**
- * Scan a directory for *.json files and return their full paths.
- * Writes the number of matches to *out_count.
- * Returns NULL on error or when nothing matches.
- * Ownership: caller must free each returned string and the array itself.
- */
-static char** scan_json_dir(const char* dir_path, int* out_count) {
-    *out_count = 0;
-    DIR* dir = opendir(dir_path);
-    if (!dir)
-        return NULL;
-
-    char** list = NULL;
-    int count = 0, capacity = 0;
-    struct dirent* entry;
-    while ((entry = readdir(dir)) != NULL) {
-        size_t name_len = strlen(entry->d_name);
-        if (name_len <= 5 || strcmp(entry->d_name + name_len - 5, ".json") != 0)
-            continue;
-        if (count >= capacity) {
-            capacity = capacity ? capacity * 2 : 8;
-            char** tmp = realloc(list, capacity * sizeof(char*));
-            if (!tmp) {
-                free(list);
-                closedir(dir);
-                return NULL;
-            }
-            list = tmp;
-        }
-        size_t path_len = strlen(dir_path) + 1 + name_len + 1;
-        list[count] = malloc(path_len);
-        snprintf(list[count], path_len, "%s/%s", dir_path, entry->d_name);
-        count++;
-    }
-    closedir(dir);
-
-    *out_count = count;
-    return list;
-}
-#endif
+#define CLK_FRAME_MS 16
+#define CLK_HOTRELOAD_TICKS 30 /* 30 × 16ms ≈ 0.5s */
 
 /**
  * Build a human-readable label from a file path.
@@ -145,6 +50,70 @@ static const char** str_array_to_const(char** array, int count) {
     return result;
 }
 
+/**
+ * Build an array of display names from file paths.
+ * Each entry is a malloc'd copy of the filename with extension stripped.
+ * Caller must free each entry and the outer array.
+ */
+static const char** build_display_names(char** paths, int count) {
+    const char** names = calloc(count, sizeof(const char*));
+    for (int i = 0; i < count; ++i)
+        names[i] = make_display_name(paths[i]);
+    return names;
+}
+
+/** Forward decl — defined after restore_selections. */
+static int find_index_by_str(const char* needle, const char** haystack, int count, int fallback);
+
+/**
+ * Parse the "time_formats" JSON array into a char** view of the
+ * strings (borrowed from the JSON tree — do not free individually).
+ * Returns NULL and sets *out_count = 0 on failure.
+ */
+static char** parse_time_formats(clk_json_value* clock_section, int* out_count) {
+    *out_count = 0;
+    clk_json_value* array = clk_json_object_get(clock_section, "time_formats");
+    if (!array || !clk_json_is_array(array))
+        return NULL;
+    int count = (int)clk_json_array_count(array);
+    if (count <= 0)
+        return NULL;
+    char** formats = calloc(count, sizeof(char*));
+    for (int i = 0; i < count; ++i) {
+        clk_json_value* element = clk_json_array_get(array, i);
+        const char* str = NULL;
+        if (element && clk_json_is_string(element) && clk_json_get_string(element, &str) == 0)
+            formats[i] = (char*)str;
+    }
+    *out_count = count;
+    return formats;
+}
+
+/**
+ * Restore persisted selections from the config JSON.
+ * Each key is a string that must match a display name in the
+ * corresponding array.  Falls back to index 0 on miss or absence.
+ */
+static void restore_selections(clk_json_value* clock_section, clk_json_value* menu_section,
+                               char** time_formats, int time_format_count, const char** font_names,
+                               int font_count, const char** theme_names, int theme_count,
+                               int* time_format_index, int* font_index, int* theme_index) {
+    const char* str;
+    clk_json_value* jv;
+
+    jv = clk_json_object_get(clock_section, "selected_time_format");
+    if (jv && clk_json_is_string(jv) && clk_json_get_string(jv, &str) == 0)
+        *time_format_index =
+            find_index_by_str(str, (const char**)time_formats, time_format_count, 0);
+    jv = clk_json_object_get(clock_section, "font");
+    if (jv && clk_json_is_string(jv) && clk_json_get_string(jv, &str) == 0)
+        *font_index = find_index_by_str(str, font_names, font_count, 0);
+
+    jv = clk_json_object_get(menu_section, "theme");
+    if (jv && clk_json_is_string(jv) && clk_json_get_string(jv, &str) == 0)
+        *theme_index = find_index_by_str(str, theme_names, theme_count, 0);
+}
+
 /* ── hot-reload dir scan ── */
 
 /**
@@ -162,7 +131,7 @@ static void check_dir_changed(const char* dir_path, char*** paths, int* count,
     if (!dir_path)
         return;
     int new_count;
-    char** new_paths = scan_json_dir(dir_path, &new_count);
+    char** new_paths = clk_fs_scan_dir(dir_path, ".json", &new_count);
     if (!new_paths)
         return;
 
@@ -258,8 +227,7 @@ static void copy_time_format(char* dst, const char* src) {
 
 /** Find the index of @p needle in @p haystack (count entries).
  *  Returns the index, or @p fallback if not found. */
-static int find_index_by_str(const char* needle, const char** haystack, int count,
-                              int fallback) {
+static int find_index_by_str(const char* needle, const char** haystack, int count, int fallback) {
     for (int i = 0; i < count; ++i) {
         if (strcmp(needle, haystack[i]) == 0)
             return i;
@@ -304,25 +272,11 @@ int main(void) {
 
     char** font_paths;
     int font_count;
-    font_paths = fonts_dir ? scan_json_dir(fonts_dir, &font_count) : NULL;
+    font_paths = fonts_dir ? clk_fs_scan_dir(fonts_dir, ".json", &font_count) : NULL;
 
     char** time_formats;
-    int time_format_count = 0;
-    {
-        clk_json_value* array = clk_json_object_get(clock_section, "time_formats");
-        if (array && clk_json_is_array(array)) {
-            time_format_count = (int)clk_json_array_count(array);
-            time_formats = calloc(time_format_count, sizeof(char*));
-            for (int i = 0; i < time_format_count; ++i) {
-                clk_json_value* element = clk_json_array_get(array, i);
-                const char* str = NULL;
-                if (element && clk_json_is_string(element) &&
-                    clk_json_get_string(element, &str) == 0)
-                    time_formats[i] = (char*)str;
-            }
-        } else
-            time_formats = NULL;
-    }
+    int time_format_count;
+    time_formats = parse_time_formats(clock_section, &time_format_count);
 
     const char* themes_dir = NULL;
     dir_field = clk_json_object_get(menu_section, "themes_dir");
@@ -331,28 +285,21 @@ int main(void) {
 
     char** theme_paths;
     int theme_count;
-    theme_paths = themes_dir ? scan_json_dir(themes_dir, &theme_count) : NULL;
+    theme_paths = themes_dir ? clk_fs_scan_dir(themes_dir, ".json", &theme_count) : NULL;
 
-    if (!font_count || !time_format_count || !theme_count) {
+    if (!font_count || !time_formats || !theme_count) {
         clk_json_free(config);
         clk_term_close();
         return 1;
     }
 
+    const char** font_names = build_display_names(font_paths, font_count);
+    const char** theme_names = build_display_names(theme_paths, theme_count);
+
     int time_format_index = 0, font_index = 0, theme_index = 0;
-    {
-        clk_json_value* json_val;
-        double num;
-        json_val = clk_json_object_get(config, "selected_fmt");
-        if (json_val && clk_json_is_number(json_val) && clk_json_get_number(json_val, &num) == 0)
-            time_format_index = (int)num % time_format_count;
-        json_val = clk_json_object_get(config, "selected_font");
-        if (json_val && clk_json_is_number(json_val) && clk_json_get_number(json_val, &num) == 0)
-            font_index = (int)num % font_count;
-        json_val = clk_json_object_get(config, "selected_theme");
-        if (json_val && clk_json_is_number(json_val) && clk_json_get_number(json_val, &num) == 0)
-            theme_index = (int)num % theme_count;
-    }
+    restore_selections(clock_section, menu_section, time_formats, time_format_count, font_names,
+                       font_count, theme_names, theme_count, &time_format_index, &font_index,
+                       &theme_index);
 
     /* ── clock (time + render split) ─────────────────────── */
     char time_format[CLK_CLOCK_FORMAT_MAX_LENGTH];
@@ -370,13 +317,6 @@ int main(void) {
 
     /* ── menu ────────────────────────────────────────────── */
     enum { ITEM_TFMT = 1, ITEM_FONT = 2, ITEM_THEME = 3, ITEM_QUIT = 4 };
-
-    const char** font_names = calloc(font_count, sizeof(const char*));
-    const char** theme_names = calloc(theme_count, sizeof(const char*));
-    for (int i = 0; i < font_count; ++i)
-        font_names[i] = make_display_name(font_paths[i]);
-    for (int i = 0; i < theme_count; ++i)
-        theme_names[i] = make_display_name(theme_paths[i]);
 
     clk_menu* menu = clk_menu_create();
     clk_menu_add_tab(menu, 0, "menu");
@@ -405,11 +345,7 @@ int main(void) {
 
     /* ── hot-reload state ─────────────────────────────────── */
     time_t last_app = 0, last_font = 0, last_theme = 0;
-    {
-        struct stat stat_buf;
-        if (stat(APP_CONFIG, &stat_buf) == 0)
-            last_app = stat_buf.st_mtime;
-    }
+    clk_fs_file_changed(APP_CONFIG, &last_app); /* init baseline, suppress first hot-reload */
     int hot_tick = 0;
 
     /* ── main loop ───────────────────────────────────────── */
@@ -455,20 +391,19 @@ int main(void) {
                     if (menu_event.type == CLK_MENU_EVENT_VALUE_CHANGED) {
                         switch (menu_event.item_id) {
                             case ITEM_TFMT:
-                                time_format_index = find_index_by_str(menu_event.value.str,
-                                                                      (const char**)time_formats,
-                                                                      time_format_count,
-                                                                      time_format_index);
+                                time_format_index = find_index_by_str(
+                                    menu_event.value.str, (const char**)time_formats,
+                                    time_format_count, time_format_index);
                                 copy_time_format(time_format, time_formats[time_format_index]);
                                 break;
                             case ITEM_FONT:
                                 font_index = find_index_by_str(menu_event.value.str, font_names,
-                                                                font_count, font_index);
+                                                               font_count, font_index);
                                 clk_ascii_render_change_font(&render, font_paths[font_index]);
                                 break;
                             case ITEM_THEME:
                                 theme_index = find_index_by_str(menu_event.value.str, theme_names,
-                                                                 theme_count, theme_index);
+                                                                theme_count, theme_index);
                                 clk_menu_instance_change_theme(menu_inst, theme_paths[theme_index]);
                                 break;
                         }
@@ -479,8 +414,6 @@ int main(void) {
 
         /* resize */
         if (clk_term_size_changed()) {
-            clk_term_resize();
-            clk_term_compact();
             clk_term_get_size(&term_width, &term_height);
             recenter_clock(&render, time_format, term_width, term_height);
             recenter_menu(menu_inst, term_width, term_height);
@@ -499,16 +432,15 @@ int main(void) {
         }
 
         clk_menu_instance_render(menu_inst);
+        clk_term_update();
         clk_term_draw();
         clk_term_sleep_ms(CLK_FRAME_MS);
 
         /* ── hot reload ────────────────────────────────── */
         if (++hot_tick > CLK_HOTRELOAD_TICKS) {
             hot_tick = 0;
-            struct stat stat_buf;
 
-            if (stat(APP_CONFIG, &stat_buf) == 0 && stat_buf.st_mtime != last_app) {
-                last_app = stat_buf.st_mtime;
+            if (clk_fs_file_changed(APP_CONFIG, &last_app)) {
                 char* raw_json2 = clk_file_read_all(APP_CONFIG, NULL);
                 if (raw_json2) {
                     clk_json_value* new_config = clk_json_parse(raw_json2);
@@ -537,42 +469,37 @@ int main(void) {
                         }
                         free(time_formats);
                         free(time_format_options);
-                        {
-                            clk_json_value* array =
-                                clk_json_object_get(clock_section, "time_formats");
-                            if (array && clk_json_is_array(array)) {
-                                time_format_count = (int)clk_json_array_count(array);
-                                time_formats = calloc(time_format_count, sizeof(char*));
-                                for (int i = 0; i < time_format_count; ++i) {
-                                    clk_json_value* element = clk_json_array_get(array, i);
-                                    const char* str = NULL;
-                                    if (element && clk_json_is_string(element) &&
-                                        clk_json_get_string(element, &str) == 0)
-                                        time_formats[i] = (char*)str;
-                                }
-                            } else {
-                                time_formats = NULL;
-                                time_format_count = 0;
-                            }
+                        time_formats = parse_time_formats(clock_section, &time_format_count);
+                        if (!time_formats) {
+                            time_formats = calloc(1, sizeof(char*));
+                            time_format_count = 0;
                         }
                         time_format_options = str_array_to_const(time_formats, time_format_count);
-                        if (time_format_index >= time_format_count)
-                            time_format_index = 0;
+                        restore_selections(clock_section, menu_section, time_formats,
+                                           time_format_count, font_names, font_count, theme_names,
+                                           theme_count, &time_format_index, &font_index,
+                                           &theme_index);
                         clk_menu_clear_options(menu, 0, ITEM_TFMT);
                         for (int i = 0; i < time_format_count; ++i)
                             clk_menu_add_option(menu, 0, ITEM_TFMT, time_format_options[i]);
                         clk_menu_set_value_str(menu, 0, ITEM_TFMT, time_formats[time_format_index]);
+                        clk_menu_clear_options(menu, 0, ITEM_FONT);
+                        for (int i = 0; i < font_count; ++i)
+                            clk_menu_add_option(menu, 0, ITEM_FONT, font_names[i]);
+                        clk_menu_set_value_str(menu, 0, ITEM_FONT, font_names[font_index]);
+                        clk_menu_clear_options(menu, 0, ITEM_THEME);
+                        for (int i = 0; i < theme_count; ++i)
+                            clk_menu_add_option(menu, 0, ITEM_THEME, theme_names[i]);
+                        clk_menu_set_value_str(menu, 0, ITEM_THEME, theme_names[theme_index]);
                     }
                 }
             }
             if (font_index >= 0 && font_index < font_count &&
-                stat(font_paths[font_index], &stat_buf) == 0 && stat_buf.st_mtime != last_font) {
-                last_font = stat_buf.st_mtime;
+                clk_fs_file_changed(font_paths[font_index], &last_font)) {
                 clk_ascii_render_change_font(&render, font_paths[font_index]);
             }
             if (theme_index >= 0 && theme_index < theme_count &&
-                stat(theme_paths[theme_index], &stat_buf) == 0 && stat_buf.st_mtime != last_theme) {
-                last_theme = stat_buf.st_mtime;
+                clk_fs_file_changed(theme_paths[theme_index], &last_theme)) {
                 clk_menu_instance_change_theme(menu_inst, theme_paths[theme_index]);
             }
 
@@ -584,9 +511,14 @@ int main(void) {
     }
 
     /* ── save state ──────────────────────────────────────── */
-    clk_json_object_set_number(config, "selected_fmt", time_format_index);
-    clk_json_object_set_number(config, "selected_font", font_index);
-    clk_json_object_set_number(config, "selected_theme", theme_index);
+    clk_json_object_set_string(clock_section, "selected_time_format",
+                               time_formats[time_format_index]);
+    clk_json_object_set_string(clock_section, "font", font_names[font_index]);
+    clk_json_object_set_string(menu_section, "theme", theme_names[theme_index]);
+    /* remove legacy numeric keys if present */
+    clk_json_object_remove(config, "selected_fmt");
+    clk_json_object_remove(config, "selected_font");
+    clk_json_object_remove(config, "selected_theme");
     {
         char* out = clk_json_stringify_pretty(config);
         if (out) {
