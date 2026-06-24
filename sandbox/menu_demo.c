@@ -11,11 +11,9 @@
 
 #define THEME_PATH "assets/config/menu_config/menu_theme_pinkblue.json"
 
-static const char* theme_list[] = {
-    "assets/config/menu_config/menu_theme_pinkblue.json",
-    "assets/config/menu_config/menu_theme_vivid.json",
-    "assets/config/menu_config/menu_theme_config.json"
-};
+static const char* theme_list[] = {"assets/config/menu_config/menu_theme_pinkblue.json",
+                                   "assets/config/menu_config/menu_theme_vivid.json",
+                                   "assets/config/menu_config/menu_theme_config.json"};
 static const char* theme_names[] = {"pinkblue", "vivid", "grey"};
 
 enum { TAB_APPEARANCE, TAB_ADVANCED, TAB_ACTIONS, TAB_SPARSE, TAB_LAYOUT };

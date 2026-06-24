@@ -936,10 +936,10 @@ int clk_json_array_set(clk_json_value* array, size_t index, clk_json_value* valu
     return 0;
 }
 
-int clk_json_array_count(const clk_json_value* array) {
+size_t clk_json_array_count(const clk_json_value* array) {
     if (!array || array->type != JSON_ARRAY)
         return 0;
-    return (int)array->array_value.count;
+    return array->array_value.count;
 }
 
 /* ================================================================

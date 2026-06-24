@@ -63,7 +63,7 @@ static clk_menu_def* resolve_def(clk_menu_theme* theme, const clk_json_value* js
  *  Stores the member array on def. Returns true on success, false on alloc/resolution failure. */
 static bool resolve_composite_members(clk_menu_theme* theme, const clk_json_value* json_defs,
                                       const clk_json_value* members_json, clk_menu_def* def) {
-    int cnt = clk_json_array_count(members_json);
+    int cnt = (int)clk_json_array_count(members_json);
     if (cnt == 0) {
         def->members = NULL;
         def->member_cnt = 0;
@@ -100,7 +100,7 @@ static bool resolve_composite_members(clk_menu_theme* theme, const clk_json_valu
 static bool resolve_special_members(clk_menu_theme* theme, const clk_json_value* json_defs,
                                     const clk_json_value* layout_json, clk_menu_def*** out_members,
                                     int* out_cnt) {
-    int cnt = clk_json_array_count(layout_json);
+    int cnt = (int)clk_json_array_count(layout_json);
     if (cnt == 0) {
         *out_members = NULL;
         *out_cnt = 0;
@@ -259,7 +259,7 @@ static clk_menu_def* resolve_def(clk_menu_theme* theme, const clk_json_value* js
  *  Returns true on success, false on allocation or unresolved-reference failure. */
 static bool parse_single_row(clk_menu_theme* theme, const clk_json_value* json_defs,
                              const clk_json_value* json_row, clk_menu_row* row_out) {
-    int cnt = clk_json_array_count(json_row);
+    int cnt = (int)clk_json_array_count(json_row);
     if (cnt == 0) {
         row_out->elems = NULL;
         row_out->count = 0;
@@ -323,7 +323,7 @@ static bool parse_single_row(clk_menu_theme* theme, const clk_json_value* json_d
  *  Returns true on success; on failure frees any partially built sections and returns false. */
 static bool parse_sections(clk_menu_theme* theme, const clk_json_value* json_defs,
                            const clk_json_value* json_sections, const clk_json_value* json_layout) {
-    int sec_cnt = clk_json_array_count(json_layout);
+    int sec_cnt = (int)clk_json_array_count(json_layout);
     if (sec_cnt <= 0)
         return false;
 
@@ -363,7 +363,7 @@ static bool parse_sections(clk_menu_theme* theme, const clk_json_value* json_def
         if (!rows || !clk_json_is_array(rows))
             goto fail_sections;
 
-        int row_cnt = clk_json_array_count(rows);
+        int row_cnt = (int)clk_json_array_count(rows);
         clk_menu_row* row_arr = calloc(row_cnt, sizeof(clk_menu_row));
         if (!row_arr)
             goto fail_sections;

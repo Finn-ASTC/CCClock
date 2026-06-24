@@ -198,7 +198,7 @@ int main(void) {
     TEST("update '12': sprite_count == 2", render.sprite_count == 2);
     TEST("update '12': sprites have different textures",
          render.sprites[0]->tex != NULL && render.sprites[1]->tex != NULL &&
-         render.sprites[0]->tex != render.sprites[1]->tex);
+             render.sprites[0]->tex != render.sprites[1]->tex);
 
     /* --- update: longer than previous (sprite count shrinks then grows) --- */
     clk_ascii_render_update(&render, "12:34:56");
@@ -224,8 +224,7 @@ int main(void) {
 
     /* --- get_size with multi-line --- */
     int sw2, sh2;
-    TEST("get_size multi-line succeeds",
-         clk_ascii_render_get_size(&render, "12\n34", &sw2, &sh2));
+    TEST("get_size multi-line succeeds", clk_ascii_render_get_size(&render, "12\n34", &sw2, &sh2));
     TEST("get_size multi-line: height > glyph_h", sh2 > gw);
 
     /* --- reload --- */

@@ -171,7 +171,7 @@ int clk_json_array_append(clk_json_value* array, clk_json_value* value);
 int clk_json_array_remove(clk_json_value* array, size_t index);
 int clk_json_array_insert(clk_json_value* array, size_t index, clk_json_value* value);
 int clk_json_array_set(clk_json_value* array, size_t index, clk_json_value* value);
-int clk_json_array_count(const clk_json_value* array);
+size_t clk_json_array_count(const clk_json_value* array);
 
 /* ------------------------------------------------------------------
  *  Equality & copy

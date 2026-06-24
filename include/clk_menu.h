@@ -105,8 +105,8 @@ int clk_menu_add_tab(clk_menu* menu, int tab_id, const char* name);
  *  Items
  * ------------------------------------------------------------------ */
 
-void clk_menu_add_item_str(clk_menu* menu, int tab_id, int item_id, const char* label, int default_idx,
-                           const char** options, int option_count);
+void clk_menu_add_item_str(clk_menu* menu, int tab_id, int item_id, const char* label,
+                           int default_idx, const char** options, int option_count);
 
 void clk_menu_add_item_int(clk_menu* menu, int tab_id, int item_id, const char* label,
                            double default_val, double min_val, double max_val, double step_val);
@@ -144,8 +144,8 @@ void clk_menu_clear_options(clk_menu* menu, int tab_id, int item_id);
  *  INT range
  * ------------------------------------------------------------------ */
 
-void clk_menu_set_item_range(clk_menu* menu, int tab_id, int item_id, double min_val, double max_val,
-                             double step_val);
+void clk_menu_set_item_range(clk_menu* menu, int tab_id, int item_id, double min_val,
+                             double max_val, double step_val);
 
 #ifdef __cplusplus
 }

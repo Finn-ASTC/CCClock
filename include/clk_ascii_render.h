@@ -15,13 +15,13 @@ extern "C" {
  * ------------------------------------------------------------------ */
 
 typedef struct {
-    char        key[5];
+    char key[5];
     clk_texture texture;
 } clk_glyph;
 
 typedef struct {
-    clk_glyph*  glyphs;
-    int         glyph_count;
+    clk_glyph* glyphs;
+    int glyph_count;
 
     clk_sprite** sprites;
     size_t sprite_count;
@@ -76,8 +76,8 @@ bool clk_ascii_render_change_font(clk_ascii_render* render, const char* new_font
 
 /** Return the total pixel size the rendered string occupies on screen.
  *  Computed from the string's geometry. */
-bool clk_ascii_render_get_size(const clk_ascii_render* render, const char* string,
-                               int* width, int* height);
+bool clk_ascii_render_get_size(const clk_ascii_render* render, const char* string, int* width,
+                               int* height);
 
 /** Return the dimensions of a single glyph texture. */
 bool clk_ascii_render_get_glyph_size(const clk_ascii_render* render, int* width, int* height);
@@ -88,7 +88,7 @@ void clk_ascii_render_set_pos(clk_ascii_render* render, int px, int py);
 
 /** Set / get the z-order for all sprites at once. */
 void clk_ascii_render_set_z_order(clk_ascii_render* render, int z);
-int  clk_ascii_render_get_z_order(const clk_ascii_render* render);
+int clk_ascii_render_get_z_order(const clk_ascii_render* render);
 
 /* ------------------------------------------------------------------
  *  Rendering

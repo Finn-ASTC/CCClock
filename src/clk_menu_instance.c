@@ -127,7 +127,8 @@ void clk_menu_instance_remove_from_term(clk_menu_instance* instance) {
 clk_menu_event clk_menu_instance_handle_input(clk_menu_instance* instance, clk_menu_input input) {
     clk_menu_event ev = {.type = CLK_MENU_EVENT_NONE};
     if (!instance || (instance->sprite && instance->sprite->is_hidden) ||
-        instance->tex.tex_w < instance->theme->min_width || instance->tex.tex_h < instance->theme->min_height)
+        instance->tex.tex_w < instance->theme->min_width ||
+        instance->tex.tex_h < instance->theme->min_height)
         return ev;
 
     if (input == CLK_MENU_INPUT_NEXT_ITEM) {
@@ -342,7 +343,7 @@ static int render_item_label_str(const clk_menu* menu, clk_texture* tex, const c
     if (!it)
         return 0;
     int style_id = (item_idx == (int)menu->tabs[tab_idx]->active_item) ? def->active_style_id
-                                                                  : def->inactive_style_id;
+                                                                       : def->inactive_style_id;
     clk_texture_write_string(tex, x, y, it->label, style_id);
     return (int)strlen(it->label);
 }
@@ -358,7 +359,7 @@ static int render_item_value_str(const clk_menu* menu, clk_texture* tex, const c
     if (!it)
         return 0;
     int style_id = (item_idx == (int)menu->tabs[tab_idx]->active_item) ? def->active_style_id
-                                                                  : def->inactive_style_id;
+                                                                       : def->inactive_style_id;
     char buf[CLK_MENU_ITEM_VAL_BUF_SIZE];
     const char* ptr = NULL;
     switch (it->type) {
@@ -429,7 +430,7 @@ static int render_dyn_str(const clk_menu* menu, clk_texture* tex, const clk_menu
                 return 0;
             str = it->label;
             style_id = (item_idx == (int)menu->tabs[tab_idx]->active_item) ? def->active_style_id
-                                                                      : def->inactive_style_id;
+                                                                           : def->inactive_style_id;
             break;
         }
         case CLK_MENU_DEF_ITEM_VALUE_STR: {
@@ -439,7 +440,7 @@ static int render_dyn_str(const clk_menu* menu, clk_texture* tex, const clk_menu
             if (!it)
                 return 0;
             style_id = (item_idx == (int)menu->tabs[tab_idx]->active_item) ? def->active_style_id
-                                                                      : def->inactive_style_id;
+                                                                           : def->inactive_style_id;
             static char buf[CLK_MENU_ITEM_VAL_BUF_SIZE];
             switch (it->type) {
                 case CLK_MENU_TYPE_INT:
@@ -587,14 +588,16 @@ static void render_single_item_list_section(const clk_menu* menu, clk_texture* t
  *  align_top decides whether a partial item is clipped at the top or bottom as
  *  the selection scrolls past either edge; scroll offsets the first visible item
  *  and any leftover height is filled with empty item frames. Returns rows used. */
-static int render_item_list_section(clk_menu_instance* instance, const clk_menu* menu, clk_texture* tex,
-                                    const clk_menu_section* sec, int y, int avail_rows) {
+static int render_item_list_section(clk_menu_instance* instance, const clk_menu* menu,
+                                    clk_texture* tex, const clk_menu_section* sec, int y,
+                                    int avail_rows) {
     int item_cnt = (avail_rows + sec->row_count - 1) / sec->row_count;
     int item_gap = item_cnt / 4;
 
     int remaining_rows = (item_cnt * sec->row_count) % avail_rows;
 
-    bool up = (instance->active_item_pos_idx - instance->last_active_item_pos_idx > 0) ? false : true;
+    bool up =
+        (instance->active_item_pos_idx - instance->last_active_item_pos_idx > 0) ? false : true;
 
     if (up && instance->last_active_item_pos_idx == 0) {
         instance->align_top = true;
@@ -688,7 +691,8 @@ void clk_menu_instance_render(clk_menu_instance* instance) {
                 y += render_normal_or_tab_section(instance->menu, &instance->tex, sec, y);
                 break;
             case CLK_MENU_SEC_ITEM_LIST:
-                y += render_item_list_section(instance, instance->menu, &instance->tex, sec, y, items_rows);
+                y += render_item_list_section(instance, instance->menu, &instance->tex, sec, y,
+                                              items_rows);
                 break;
         }
     }

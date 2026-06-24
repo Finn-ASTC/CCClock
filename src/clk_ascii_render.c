@@ -179,7 +179,7 @@ static bool load_glyph_textures(const clk_json_value* json, clk_ascii_render* re
         cell_entry_count++;
     }
 
-    int glyph_count = clk_json_object_count(json_glyphs);
+    int glyph_count = (int)clk_json_object_count(json_glyphs);
     clk_glyph* glyphs = calloc(glyph_count, sizeof(clk_glyph));
     if (!glyphs) {
         free(cell_entries);

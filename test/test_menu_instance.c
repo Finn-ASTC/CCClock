@@ -30,8 +30,8 @@ int main(void) {
     /* ================================================================
      *  create — invalid args
      * ================================================================ */
-    TEST("create NULL menu",   clk_menu_instance_create(NULL, &theme) == NULL);
-    TEST("create NULL theme",  clk_menu_instance_create(menu, NULL) == NULL);
+    TEST("create NULL menu", clk_menu_instance_create(NULL, &theme) == NULL);
+    TEST("create NULL theme", clk_menu_instance_create(menu, NULL) == NULL);
 
     /* ================================================================
      *  create — success
@@ -39,13 +39,12 @@ int main(void) {
     clk_menu_instance* inst = clk_menu_instance_create(menu, &theme);
     TEST_REQUIRE("create success", inst != NULL);
 
-    TEST("create has menu",       inst->menu == menu);
-    TEST("create has theme",      inst->theme == &theme);
-    TEST("create has sprite",     inst->sprite != NULL);
+    TEST("create has menu", inst->menu == menu);
+    TEST("create has theme", inst->theme == &theme);
+    TEST("create has sprite", inst->sprite != NULL);
     TEST("create sprite default z", inst->sprite->z_order == 0);
-    TEST("create sprite pos=0,0",  inst->sprite->posx == 0 && inst->sprite->posy == 0);
-    TEST("create defaults", inst->active_item_pos_idx == 1 &&
-                                inst->last_active_item_pos_idx == 1 &&
+    TEST("create sprite pos=0,0", inst->sprite->posx == 0 && inst->sprite->posy == 0);
+    TEST("create defaults", inst->active_item_pos_idx == 1 && inst->last_active_item_pos_idx == 1 &&
                                 inst->align_top == true);
 
     /* ================================================================
@@ -65,8 +64,8 @@ int main(void) {
     /* below min → clamped */
     clk_menu_instance_set_size(inst, 1, 1);
     int mw = theme.min_width, mh = theme.min_height;
-    TEST("set_size clamp to min w",  inst->tex.tex_w == mw);
-    TEST("set_size clamp to min h",  inst->tex.tex_h == mh);
+    TEST("set_size clamp to min w", inst->tex.tex_w == mw);
+    TEST("set_size clamp to min h", inst->tex.tex_h == mh);
 
     /* resize bigger */
     clk_menu_instance_set_size(inst, 60, 20);
@@ -92,7 +91,7 @@ int main(void) {
     TEST("set_visible false", inst->sprite->is_hidden == true);
 
     clk_menu_instance_set_visible(inst, true);
-    TEST("set_visible true",  inst->sprite->is_hidden == false);
+    TEST("set_visible true", inst->sprite->is_hidden == false);
 
     clk_menu_instance_set_visible(NULL, true);
     TEST("set_visible NULL no crash", 1);
@@ -105,13 +104,13 @@ int main(void) {
     clk_menu_instance_add_to_term(inst);
     TEST("sprite added", inst->sprite_added);
 
-    clk_menu_instance_add_to_term(inst);  /* double add = no-op */
+    clk_menu_instance_add_to_term(inst); /* double add = no-op */
     TEST("double add no crash", inst->sprite_added);
 
     clk_menu_instance_remove_from_term(inst);
     TEST("sprite removed", !inst->sprite_added);
 
-    clk_menu_instance_remove_from_term(inst);  /* double remove */
+    clk_menu_instance_remove_from_term(inst); /* double remove */
     TEST("double remove no crash", 1);
 
     clk_menu_instance_add_to_term(NULL);
@@ -149,12 +148,12 @@ int main(void) {
     {
         clk_menu_event ev = clk_menu_instance_handle_input(inst, CLK_MENU_INPUT_NEXT_ITEM);
         TEST("active moves on NEXT", menu->tabs[0]->active_item == 1);
-        TEST("hnd returns event",    ev.type != CLK_MENU_EVENT_NONE);
+        TEST("hnd returns event", ev.type != CLK_MENU_EVENT_NONE);
     }
     /* prev item */
     {
         clk_menu_event ev = clk_menu_instance_handle_input(inst, CLK_MENU_INPUT_PREV_ITEM);
-        TEST("active back to 0",     menu->tabs[0]->active_item == 0);
+        TEST("active back to 0", menu->tabs[0]->active_item == 0);
     }
     /* tab switch resets P */
     clk_menu_add_tab(menu, 1, "other");

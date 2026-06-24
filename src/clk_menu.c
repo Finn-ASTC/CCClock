@@ -156,8 +156,8 @@ static bool clk_menu_tab_ensure_items_capacity(clk_menu_tab* tab) {
     return true;
 }
 
-void clk_menu_add_item_str(clk_menu* menu, int tab_id, int item_id, const char* label, int default_idx,
-                           const char** options, int option_count) {
+void clk_menu_add_item_str(clk_menu* menu, int tab_id, int item_id, const char* label,
+                           int default_idx, const char** options, int option_count) {
     if (!menu || !label || !options || option_count <= 0)
         return;
 
@@ -624,8 +624,8 @@ void clk_menu_clear_options(clk_menu* menu, int tab_id, int item_id) {
  *  INT range
  * ------------------------------------------------------------------ */
 
-void clk_menu_set_item_range(clk_menu* menu, int tab_id, int item_id, double min_val, double max_val,
-                             double step_val) {
+void clk_menu_set_item_range(clk_menu* menu, int tab_id, int item_id, double min_val,
+                             double max_val, double step_val) {
     if (!menu)
         return;
     clk_menu_item* item = find_item(menu, tab_id, item_id);

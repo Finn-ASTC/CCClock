@@ -503,7 +503,8 @@ void clk_term_draw(void) {
                 if (cell->type == CELL_WIDE_TRAIL)
                     continue;
                 if (cell->type == CELL_WIDE_LEAD) {
-                    const clk_cell* next = (tex_x + 1 < tex_w) ? &s->tex->data[tex_x + 1 + tex_y * tex_w] : NULL;
+                    const clk_cell* next =
+                        (tex_x + 1 < tex_w) ? &s->tex->data[tex_x + 1 + tex_y * tex_w] : NULL;
                     if (!next || next->type != CELL_WIDE_TRAIL)
                         continue;
                 }
