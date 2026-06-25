@@ -132,8 +132,8 @@ static bool resolve_special_members(clk_menu_theme* theme, const clk_json_value*
     return true;
 }
 
-/** Resolves a dynamic string leaf (tab_str / item_label_str / item_value_str) with active/inactive styles.
- *  Returns def on success, or NULL when the active/inactive fields are missing. */
+/** Resolves a dynamic string leaf (tab_str / item_label_str / item_value_str) with active/inactive
+ * styles. Returns def on success, or NULL when the active/inactive fields are missing. */
 static clk_menu_def* resolve_leaf_dyn(clk_menu_def* def, const clk_json_value* json_def,
                                       const char* type_str) {
     const clk_json_value* active = clk_json_object_get(json_def, "active");
@@ -153,8 +153,8 @@ static clk_menu_def* resolve_leaf_dyn(clk_menu_def* def, const clk_json_value* j
     return def;
 }
 
-/** Resolves a special composite (tab / item_label / item_value) and its active/inactive member layouts.
- *  Returns def on success, or NULL on missing fields or member-resolution failure. */
+/** Resolves a special composite (tab / item_label / item_value) and its active/inactive member
+ * layouts. Returns def on success, or NULL on missing fields or member-resolution failure. */
 static clk_menu_def* resolve_special(clk_menu_theme* theme, const clk_json_value* json_defs,
                                      clk_menu_def* def, const clk_json_value* json_def,
                                      const char* type_str) {
@@ -178,7 +178,8 @@ static clk_menu_def* resolve_special(clk_menu_theme* theme, const clk_json_value
     return def;
 }
 
-/** Resolves a plain string leaf, copying its literal text and registering its inline style. Returns def. */
+/** Resolves a plain string leaf, copying its literal text and registering its inline style. Returns
+ * def. */
 static clk_menu_def* resolve_leaf_string(clk_menu_def* def, const clk_json_value* json_def) {
     def->type = CLK_MENU_DEF_STRING;
 
@@ -381,10 +382,19 @@ static bool parse_sections(clk_menu_theme* theme, const clk_json_value* json_def
                 row_arr[ri].elems[0].fill = -1.0;
                 const clk_menu_def* d = clk_menu_theme_find_def(theme, n);
                 row_arr[ri].elems[0].def = d ? (clk_menu_def*)d : resolve_def(theme, json_defs, n);
-                if (!row_arr[ri].elems[0].def) { ok = false; break; }
+                if (!row_arr[ri].elems[0].def) {
+                    ok = false;
+                    break;
+                }
             } else if (clk_json_is_array(json_row)) {
-                if (!parse_single_row(theme, json_defs, json_row, &row_arr[ri])) { ok = false; break; }
-            } else { ok = false; break; }
+                if (!parse_single_row(theme, json_defs, json_row, &row_arr[ri])) {
+                    ok = false;
+                    break;
+                }
+            } else {
+                ok = false;
+                break;
+            }
         }
         if (!ok) {
             for (int ri = 0; ri < row_cnt; ++ri)
@@ -440,7 +450,8 @@ static int leaf_width(const clk_menu_def* def) {
     }
 }
 
-/** Computes the theme's minimum width and height from its sections and rows, storing both on the theme. */
+/** Computes the theme's minimum width and height from its sections and rows, storing both on the
+ * theme. */
 static void compute_min_size(clk_menu_theme* theme) {
     int min_w = 0, min_h = 0;
 
@@ -614,8 +625,8 @@ bool clk_menu_theme_load(const char* json_path, clk_menu_theme* theme) {
         return false;
     }
 
-    bool ok = parse_sections(theme, json_defs, json_sections, layout_order) &&
-              validate_theme(theme);
+    bool ok =
+        parse_sections(theme, json_defs, json_sections, layout_order) && validate_theme(theme);
 
     if (ok)
         compute_min_size(theme);

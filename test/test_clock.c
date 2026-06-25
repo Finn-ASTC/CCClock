@@ -5,6 +5,7 @@
 #include "clk_ascii_render.h"
 #include "clk_clock.h"
 #include "clk_term.h"
+#include "clk_time.h"
 #include "test_utils.h"
 
 #define TEST_FONT_PATH "../test/test_clock_config.json"

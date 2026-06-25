@@ -47,6 +47,7 @@ add_library(libclock STATIC
     src/clk_term.c
     src/clk_file_util.c
     src/clk_fs_watch.c
+    src/clk_time.c
     src/clk_clock.c
     src/clk_ascii_render.c
     src/clk_menu.c
