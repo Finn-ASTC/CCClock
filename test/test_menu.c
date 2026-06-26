@@ -330,6 +330,50 @@ int main(void) {
     TEST("remove bad args no crash", 1);
 
     /* ================================================================
+     *  insert_item_at
+     * ================================================================ */
+    /* --- insert_str_at (head / middle / tail / -1) --- */
+    {
+        clk_menu* im = clk_menu_create();
+        clk_menu_add_tab(im, 0, "ins");
+        clk_menu_add_item_str_at(im, 0, 10, "B", 0, str_opts, 3, 0);
+        clk_menu_add_item_str_at(im, 0, 20, "C", 0, str_opts, 3, -1);
+        clk_menu_add_item_str_at(im, 0, 15, "A", 0, str_opts, 3, 0);
+        TEST("insert: head→3 items", im->tabs[0]->item_count == 3);
+        TEST("insert: items[0]=A", im->tabs[0]->items[0]->id == 15);
+        TEST("insert: items[1]=B", im->tabs[0]->items[1]->id == 10);
+        TEST("insert: items[2]=C", im->tabs[0]->items[2]->id == 20);
+
+        clk_menu_add_item_str_at(im, 0, 30, "M", 0, str_opts, 3, 1);
+        TEST("insert: middle→items[1]=M", im->tabs[0]->items[1]->id == 30);
+
+        clk_menu_add_item_str_at(im, 0, 40, "Z", 0, str_opts, 3, -1);
+        TEST("insert: -1=append→last=Z", im->tabs[0]->items[4]->id == 40);
+
+        clk_menu_add_item_str_at(im, 0, 50, "X", 0, str_opts, 3, 999);
+        TEST("insert: OOB→last=X", im->tabs[0]->items[5]->id == 50);
+
+        clk_menu_add_item_int_at(im, 0, 60, "num", 5, 0, 10, 1, 0);
+        TEST("insert_int_at head", im->tabs[0]->items[0]->id == 60);
+        TEST("insert_int_at value", clk_menu_set_value_int(im, 0, 60, 7));
+
+        clk_menu_add_item_bool_at(im, 0, 70, "flag", true, 1);
+        TEST("insert_bool_at mid", im->tabs[0]->items[1]->id == 70);
+
+        clk_menu_add_item_action_at(im, 0, 80, "act", -1);
+        TEST("insert_action_at last=80",
+             im->tabs[0]->items[im->tabs[0]->item_count - 1]->id == 80);
+
+        /* bad args no crash */
+        clk_menu_add_item_str_at(NULL, 0, 1, "x", 0, str_opts, 3, 0);
+        clk_menu_add_item_str_at(im, 0, 1, NULL, 0, str_opts, 3, 0);
+        clk_menu_add_item_str_at(im, 99, 1, "x", 0, str_opts, 3, 0);
+        TEST("insert bad args no crash", 1);
+
+        clk_menu_destroy(im);
+    }
+
+    /* ================================================================
      *  destroy
      * ================================================================ */
     clk_menu_destroy(NULL);

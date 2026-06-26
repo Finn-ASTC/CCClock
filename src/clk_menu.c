@@ -310,6 +310,135 @@ void clk_menu_add_item_action(clk_menu* menu, int tab_id, int item_id, const cha
     tab->items[tab->item_count++] = item;
 }
 
+/** Create a fresh clk_menu_item at the given @p position in the tab's items array.
+ *  Shifts existing items right.  position=-1 means append.  Returns the new item,
+ *  or NULL on any failure (caller does not need to free). */
+static clk_menu_item* clk_menu_insert_item(clk_menu* menu, int tab_id, int item_id, int position) {
+    clk_menu_tab* tab = find_tab(menu, tab_id);
+    if (!tab)
+        return NULL;
+    if (!clk_menu_tab_ensure_items_capacity(tab))
+        return NULL;
+
+    if (position < 0 || position > (int)tab->item_count)
+        position = (int)tab->item_count;
+
+    clk_menu_item* item = malloc(sizeof(clk_menu_item));
+    if (!item)
+        return NULL;
+    memset(item, 0, sizeof(clk_menu_item));
+    item->id = item_id;
+    item->tab_id = tab_id;
+
+    for (int i = (int)tab->item_count; i > position; --i)
+        tab->items[i] = tab->items[i - 1];
+    tab->items[position] = item;
+    tab->item_count++;
+    return item;
+}
+
+/* ── _at variants ────────────────────────────────────────── */
+
+void clk_menu_add_item_str_at(clk_menu* menu, int tab_id, int item_id, const char* label,
+                              int default_idx, const char** options, int option_count,
+                              int position) {
+    if (!menu || !label || !options || option_count <= 0)
+        return;
+    clk_menu_item* item = clk_menu_insert_item(menu, tab_id, item_id, position);
+    if (!item)
+        return;
+
+    item->type = CLK_MENU_TYPE_STR;
+    item->label = strdup(label);
+    if (!item->label) {
+        free(item);
+        return;
+    }
+
+    item->options = malloc(option_count * sizeof(char*));
+    if (!item->options) {
+        free(item->label);
+        free(item);
+        return;
+    }
+    for (int i = 0; i < option_count; ++i) {
+        item->options[i] = strdup(options[i]);
+        if (!item->options[i]) {
+            for (int j = 0; j < i; ++j)
+                free(item->options[j]);
+            free(item->options);
+            free(item->label);
+            free(item);
+            return;
+        }
+    }
+    item->option_count = option_count;
+    if (default_idx < 0)
+        default_idx = 0;
+    if (default_idx >= option_count)
+        default_idx = option_count - 1;
+    item->option_idx = default_idx;
+    item->value.str = item->options[default_idx];
+}
+
+void clk_menu_add_item_int_at(clk_menu* menu, int tab_id, int item_id, const char* label,
+                              double default_val, double min_val, double max_val, double step_val,
+                              int position) {
+    if (!menu || !label)
+        return;
+    clk_menu_item* item = clk_menu_insert_item(menu, tab_id, item_id, position);
+    if (!item)
+        return;
+
+    item->type = CLK_MENU_TYPE_INT;
+    item->label = strdup(label);
+    if (!item->label) {
+        free(item);
+        return;
+    }
+    item->min_val = min_val;
+    item->max_val = max_val;
+    item->step_val = step_val;
+    if (default_val < min_val)
+        default_val = min_val;
+    if (default_val > max_val)
+        default_val = max_val;
+    item->value.num = default_val;
+}
+
+void clk_menu_add_item_bool_at(clk_menu* menu, int tab_id, int item_id, const char* label,
+                               bool default_val, int position) {
+    if (!menu || !label)
+        return;
+    clk_menu_item* item = clk_menu_insert_item(menu, tab_id, item_id, position);
+    if (!item)
+        return;
+
+    item->type = CLK_MENU_TYPE_BOOL;
+    item->label = strdup(label);
+    if (!item->label) {
+        free(item);
+        return;
+    }
+    item->value.b = default_val;
+}
+
+void clk_menu_add_item_action_at(clk_menu* menu, int tab_id, int item_id, const char* label,
+                                 int position) {
+    if (!menu || !label)
+        return;
+    clk_menu_item* item = clk_menu_insert_item(menu, tab_id, item_id, position);
+    if (!item)
+        return;
+
+    item->type = CLK_MENU_TYPE_ACTION;
+    item->label = strdup(label);
+    if (!item->label) {
+        free(item);
+        return;
+    }
+}
+
 void clk_menu_remove_item(clk_menu* menu, int tab_id, int item_id) {
     clk_menu_tab* tab = find_tab(menu, tab_id);
     if (!tab)
