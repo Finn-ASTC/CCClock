@@ -6,11 +6,11 @@
 
 #include "clk_ascii_render.h"
 #include "clk_clock.h"
+#include "clk_clock_menu.h"
 #include "clk_file_util.h"
 #include "clk_fs_watch.h"
 #include "clk_json.h"
 #include "clk_key_io.h"
-#include "clk_menu.h"
 #include "clk_menu_instance.h"
 #include "clk_menu_theme.h"
 #include "clk_term.h"
@@ -21,55 +21,20 @@
 #define CLK_FRAME_MS 16
 #define CLK_HOTRELOAD_TICKS 30 /* 30 × 16ms ≈ 0.5s */
 
-/**
- * Build a human-readable label from a file path.
- * Strips the leading directory and the trailing ".json" extension.
- * Returns a malloc'd string the caller must free.
- */
-static char* make_display_name(const char* path) {
-    const char* last_slash = NULL;
-    for (const char* p = path; *p; ++p)
-        if (*p == '/' || *p == '\\')
-            last_slash = p;
-    const char* name_start = last_slash ? last_slash + 1 : path;
-    char* display_name = strdup(name_start);
-    char* dot_pos = strrchr(display_name, '.');
-    if (dot_pos)
-        *dot_pos = '\0';
-    return display_name;
+/* ── helpers ── */
+
+/** Copy a time format string into @p dst (size CLK_CLOCK_FORMAT_MAX_LENGTH),
+ *  clamping to fit. */
+static void copy_time_format(char* dst, const char* src) {
+    size_t len = strlen(src);
+    if (len >= CLK_CLOCK_FORMAT_MAX_LENGTH)
+        len = CLK_CLOCK_FORMAT_MAX_LENGTH - 1;
+    memcpy(dst, src, len);
+    dst[len] = '\0';
 }
 
-/**
- * Wrap a char** array as a const char** view of the same pointers.
- * Returns a malloc'd array (the caller must free); the strings are not copied.
- */
-static const char** str_array_to_const(char** array, int count) {
-    const char** result = calloc(count, sizeof(const char*));
-    for (int i = 0; i < count; ++i)
-        result[i] = array[i];
-    return result;
-}
-
-/**
- * Build an array of display names from file paths.
- * Each entry is a malloc'd copy of the filename with extension stripped.
- * Caller must free each entry and the outer array.
- */
-static const char** build_display_names(char** paths, int count) {
-    const char** names = calloc(count, sizeof(const char*));
-    for (int i = 0; i < count; ++i)
-        names[i] = make_display_name(paths[i]);
-    return names;
-}
-
-/** Forward decl — defined after restore_selections. */
-static int find_index_by_str(const char* needle, const char** haystack, int count, int fallback);
-
-/**
- * Parse the "time_formats" JSON array into a char** view of the
- * strings (borrowed from the JSON tree — do not free individually).
- * Returns NULL and sets *out_count = 0 on failure.
- */
+/** Parse the "time_formats" JSON array into a borrowed char** view.
+ *  Returns NULL on failure; *out_count is set to 0. */
 static char** parse_time_formats(clk_json_value* clock_section, int* out_count) {
     *out_count = 0;
     clk_json_value* array = clk_json_object_get(clock_section, "time_formats");
@@ -89,88 +54,8 @@ static char** parse_time_formats(clk_json_value* clock_section, int* out_count) 
     return formats;
 }
 
-/**
- * Restore persisted selections from the config JSON.
- * Each key is a string that must match a display name in the
- * corresponding array.  Falls back to index 0 on miss or absence.
- */
-static void restore_selections(clk_json_value* clock_section, clk_json_value* menu_section,
-                               char** time_formats, int time_format_count, const char** font_names,
-                               int font_count, const char** theme_names, int theme_count,
-                               int* time_format_index, int* font_index, int* theme_index) {
-    const char* str;
-    clk_json_value* jv;
-
-    jv = clk_json_object_get(clock_section, "selected_time_format");
-    if (jv && clk_json_is_string(jv) && clk_json_get_string(jv, &str) == 0)
-        *time_format_index =
-            find_index_by_str(str, (const char**)time_formats, time_format_count, 0);
-    jv = clk_json_object_get(clock_section, "font");
-    if (jv && clk_json_is_string(jv) && clk_json_get_string(jv, &str) == 0)
-        *font_index = find_index_by_str(str, font_names, font_count, 0);
-
-    jv = clk_json_object_get(menu_section, "theme");
-    if (jv && clk_json_is_string(jv) && clk_json_get_string(jv, &str) == 0)
-        *theme_index = find_index_by_str(str, theme_names, theme_count, 0);
-}
-
-/* ── hot-reload dir scan ── */
-
-/**
- * Re-scan a directory and, if its set of *.json files changed, rebuild the
- * matching menu options in place.
- *
- * On a real change the old paths and display names are freed, the in/out
- * pointers are repointed at the freshly scanned data, new display names are
- * generated, the selection index is clamped, and the menu item's options are
- * cleared and repopulated.
- */
-static void check_dir_changed(const char* dir_path, char*** paths, int* count,
-                              const char*** display_names, int* index, clk_menu* menu,
-                              int item_id) {
-    if (!dir_path)
-        return;
-    int new_count;
-    char** new_paths = clk_fs_scan_dir(dir_path, ".json", &new_count);
-    if (!new_paths)
-        return;
-
-    bool changed = (new_count != *count);
-    for (int i = 0; i < *count && i < new_count && !changed; ++i)
-        if (strcmp(new_paths[i], (*paths)[i]) != 0)
-            changed = true;
-
-    if (!changed || new_count <= 0) {
-        for (int i = 0; i < new_count; ++i)
-            free(new_paths[i]);
-        free(new_paths);
-        return;
-    }
-
-    for (int i = 0; i < *count; ++i) {
-        free((*paths)[i]);
-        free((void*)(*display_names)[i]);
-    }
-    free(*paths);
-    free(*display_names);
-
-    *paths = new_paths;
-    *count = new_count;
-    *display_names = calloc(new_count, sizeof(const char*));
-    for (int i = 0; i < new_count; ++i)
-        (*display_names)[i] = make_display_name(new_paths[i]);
-
-    if (*index >= new_count)
-        *index = 0;
-    clk_menu_clear_options(menu, 0, item_id);
-    for (int i = 0; i < new_count; ++i)
-        clk_menu_add_option(menu, 0, item_id, (*display_names)[i]);
-    clk_menu_set_value_str(menu, 0, item_id, (*display_names)[*index]);
-}
-
 /* ── recenter ── */
 
-/** Center the clock renderer within the given terminal dimensions. */
 static void recenter_clock(clk_ascii_render* render, const char* time_format, int term_width,
                            int term_height) {
     int clock_width, clock_height;
@@ -180,7 +65,6 @@ static void recenter_clock(clk_ascii_render* render, const char* time_format, in
                              (term_height - clock_height) / 2);
 }
 
-/** Center the menu instance within the given terminal dimensions. */
 static void recenter_menu(clk_menu_instance* instance, int term_width, int term_height) {
     if (!instance)
         return;
@@ -192,49 +76,6 @@ static void recenter_menu(clk_menu_instance* instance, int term_width, int term_
 
 typedef enum { FOCUS_CLOCK, FOCUS_MENU } focus_t;
 
-/** Translate a raw key event into the corresponding menu input action. */
-static clk_menu_input map_menu_input(clk_key_event key_event) {
-    switch (key_event.key) {
-        case CLK_KEY_UP:
-            return CLK_MENU_INPUT_PREV_ITEM;
-        case CLK_KEY_DOWN:
-            return CLK_MENU_INPUT_NEXT_ITEM;
-        case CLK_KEY_LEFT:
-            return CLK_MENU_INPUT_DEC_VALUE;
-        case CLK_KEY_RIGHT:
-            return CLK_MENU_INPUT_INC_VALUE;
-        case '\t':
-            return CLK_MENU_INPUT_NEXT_TAB;
-        case '\r':
-        case '\n':
-            return CLK_MENU_INPUT_CONFIRM;
-        default:
-            return CLK_MENU_INPUT_NONE;
-    }
-}
-
-/* ── helpers ── */
-
-/** Copy a time format string into @p dst (size CLK_CLOCK_FORMAT_MAX_LENGTH),
- *  clamping to fit.  Safe for any valid source. */
-static void copy_time_format(char* dst, const char* src) {
-    size_t len = strlen(src);
-    if (len >= CLK_CLOCK_FORMAT_MAX_LENGTH)
-        len = CLK_CLOCK_FORMAT_MAX_LENGTH - 1;
-    memcpy(dst, src, len);
-    dst[len] = '\0';
-}
-
-/** Find the index of @p needle in @p haystack (count entries).
- *  Returns the index, or @p fallback if not found. */
-static int find_index_by_str(const char* needle, const char** haystack, int count, int fallback) {
-    for (int i = 0; i < count; ++i) {
-        if (strcmp(needle, haystack[i]) == 0)
-            return i;
-    }
-    return fallback;
-}
-
 int main(void) {
     if (!clk_term_init()) {
         printf("term init fail\n");
@@ -242,8 +83,7 @@ int main(void) {
     }
 
     /* ── load app config ─────────────────────────────────── */
-    size_t _config_size = 0;
-    char* raw_json = clk_file_read_all(APP_CONFIG, &_config_size);
+    char* raw_json = clk_file_read_all(APP_CONFIG, NULL);
     if (!raw_json) {
         clk_term_close();
         printf("no app config\n");
@@ -293,13 +133,13 @@ int main(void) {
         return 1;
     }
 
-    const char** font_names = build_display_names(font_paths, font_count);
-    const char** theme_names = build_display_names(theme_paths, theme_count);
+    const char** font_names = clk_clock_menu_build_names(font_paths, font_count);
+    const char** theme_names = clk_clock_menu_build_names(theme_paths, theme_count);
 
     int time_format_index = 0, font_index = 0, theme_index = 0;
-    restore_selections(clock_section, menu_section, time_formats, time_format_count, font_names,
-                       font_count, theme_names, theme_count, &time_format_index, &font_index,
-                       &theme_index);
+    clk_clock_menu_restore_selections(clock_section, menu_section, time_formats, time_format_count,
+                                      font_names, font_count, theme_names, theme_count,
+                                      &time_format_index, &font_index, &theme_index);
 
     /* ── clock (time + render split) ─────────────────────── */
     char time_format[CLK_CLOCK_FORMAT_MAX_LENGTH];
@@ -316,16 +156,10 @@ int main(void) {
     clk_ascii_render_add_to_term(&render);
 
     /* ── menu ────────────────────────────────────────────── */
-    enum { ITEM_TFMT = 1, ITEM_FONT = 2, ITEM_THEME = 3, ITEM_QUIT = 4 };
-
     clk_menu* menu = clk_menu_create();
-    clk_menu_add_tab(menu, 0, "menu");
-    const char** time_format_options = str_array_to_const(time_formats, time_format_count);
-    clk_menu_add_item_str(menu, 0, ITEM_TFMT, "time format", time_format_index, time_format_options,
-                          time_format_count);
-    clk_menu_add_item_str(menu, 0, ITEM_FONT, "font", font_index, font_names, font_count);
-    clk_menu_add_item_str(menu, 0, ITEM_THEME, "menu theme", theme_index, theme_names, theme_count);
-    clk_menu_add_item_action(menu, 0, ITEM_QUIT, "quit");
+    const char** time_format_options = clk_clock_menu_wrap_strings(time_formats, time_format_count);
+    clk_clock_menu_build(menu, time_format_options, time_format_count, time_format_index,
+                         font_names, font_count, font_index, theme_names, theme_count, theme_index);
 
     clk_menu_theme theme;
     memset(&theme, 0, sizeof(theme));
@@ -345,7 +179,7 @@ int main(void) {
 
     /* ── hot-reload state ─────────────────────────────────── */
     time_t last_app = 0, last_font = 0, last_theme = 0;
-    clk_fs_file_changed(APP_CONFIG, &last_app); /* init baseline, suppress first hot-reload */
+    clk_fs_file_changed(APP_CONFIG, &last_app);
     int hot_tick = 0;
 
     /* ── main loop ───────────────────────────────────────── */
@@ -365,16 +199,16 @@ int main(void) {
                 if (key_event.key == 'f' || key_event.key == 'F') {
                     time_format_index = (time_format_index + 1) % time_format_count;
                     copy_time_format(time_format, time_formats[time_format_index]);
-                    clk_menu_set_value_str(menu, 0, ITEM_TFMT, time_formats[time_format_index]);
+                    clk_menu_set_value_str(menu, 0, CLK_MENU_CLOCK_TFMT,
+                                           time_formats[time_format_index]);
                 }
                 if (key_event.key == 'r' || key_event.key == 'R') {
                     font_index = (font_index + 1) % font_count;
                     clk_ascii_render_change_font(&render, font_paths[font_index]);
-                    clk_menu_set_value_str(menu, 0, ITEM_FONT, font_names[font_index]);
+                    clk_menu_set_value_str(menu, 0, CLK_MENU_CLOCK_FONT, font_names[font_index]);
                 }
                 if (key_event.key == 'q' || key_event.key == 'Q')
                     running = false;
-
                 break;
 
             case FOCUS_MENU:
@@ -384,26 +218,38 @@ int main(void) {
                     continue;
                 }
                 {
-                    clk_menu_event menu_event =
-                        clk_menu_instance_handle_input(menu_inst, map_menu_input(key_event));
-                    if (menu_event.type == CLK_MENU_EVENT_SUBMIT && menu_event.item_id == ITEM_QUIT)
+                    clk_menu_event menu_event = clk_menu_instance_handle_input(
+                        menu_inst, clk_clock_menu_translate_key(key_event));
+                    if (clk_clock_menu_handle_event(&menu_event, &time_format_index, &font_index,
+                                                    &theme_index))
                         running = false;
                     if (menu_event.type == CLK_MENU_EVENT_VALUE_CHANGED) {
                         switch (menu_event.item_id) {
-                            case ITEM_TFMT:
-                                time_format_index = find_index_by_str(
-                                    menu_event.value.str, (const char**)time_formats,
-                                    time_format_count, time_format_index);
+                            case CLK_MENU_CLOCK_TFMT:
+                                for (int i = 0; i < time_format_count; ++i) {
+                                    if (strcmp(menu_event.value.str, time_formats[i]) == 0) {
+                                        time_format_index = i;
+                                        break;
+                                    }
+                                }
                                 copy_time_format(time_format, time_formats[time_format_index]);
                                 break;
-                            case ITEM_FONT:
-                                font_index = find_index_by_str(menu_event.value.str, font_names,
-                                                               font_count, font_index);
+                            case CLK_MENU_CLOCK_FONT:
+                                for (int i = 0; i < font_count; ++i) {
+                                    if (strcmp(menu_event.value.str, font_names[i]) == 0) {
+                                        font_index = i;
+                                        break;
+                                    }
+                                }
                                 clk_ascii_render_change_font(&render, font_paths[font_index]);
                                 break;
-                            case ITEM_THEME:
-                                theme_index = find_index_by_str(menu_event.value.str, theme_names,
-                                                                theme_count, theme_index);
+                            case CLK_MENU_CLOCK_THEME:
+                                for (int i = 0; i < theme_count; ++i) {
+                                    if (strcmp(menu_event.value.str, theme_names[i]) == 0) {
+                                        theme_index = i;
+                                        break;
+                                    }
+                                }
                                 clk_menu_instance_change_theme(menu_inst, theme_paths[theme_index]);
                                 break;
                         }
@@ -412,7 +258,6 @@ int main(void) {
                 break;
         }
 
-        /* resize */
         if (clk_term_size_changed()) {
             clk_term_get_size(&term_width, &term_height);
             recenter_clock(&render, time_format, term_width, term_height);
@@ -422,7 +267,6 @@ int main(void) {
         recenter_clock(&render, time_format, term_width, term_height);
         recenter_menu(menu_inst, term_width, term_height);
 
-        /* time → render pipeline */
         {
             char translated[128];
             char time_str[CLK_CLOCK_FORMAT_MAX_LENGTH];
@@ -474,23 +318,19 @@ int main(void) {
                             time_formats = calloc(1, sizeof(char*));
                             time_format_count = 0;
                         }
-                        time_format_options = str_array_to_const(time_formats, time_format_count);
-                        restore_selections(clock_section, menu_section, time_formats,
-                                           time_format_count, font_names, font_count, theme_names,
-                                           theme_count, &time_format_index, &font_index,
-                                           &theme_index);
-                        clk_menu_clear_options(menu, 0, ITEM_TFMT);
-                        for (int i = 0; i < time_format_count; ++i)
-                            clk_menu_add_option(menu, 0, ITEM_TFMT, time_format_options[i]);
-                        clk_menu_set_value_str(menu, 0, ITEM_TFMT, time_formats[time_format_index]);
-                        clk_menu_clear_options(menu, 0, ITEM_FONT);
-                        for (int i = 0; i < font_count; ++i)
-                            clk_menu_add_option(menu, 0, ITEM_FONT, font_names[i]);
-                        clk_menu_set_value_str(menu, 0, ITEM_FONT, font_names[font_index]);
-                        clk_menu_clear_options(menu, 0, ITEM_THEME);
-                        for (int i = 0; i < theme_count; ++i)
-                            clk_menu_add_option(menu, 0, ITEM_THEME, theme_names[i]);
-                        clk_menu_set_value_str(menu, 0, ITEM_THEME, theme_names[theme_index]);
+                        time_format_options =
+                            clk_clock_menu_wrap_strings(time_formats, time_format_count);
+                        clk_clock_menu_restore_selections(
+                            clock_section, menu_section, time_formats, time_format_count,
+                            font_names, font_count, theme_names, theme_count, &time_format_index,
+                            &font_index, &theme_index);
+                        clk_clock_menu_rebuild_item(menu, 0, CLK_MENU_CLOCK_TFMT,
+                                                    (const char**)time_format_options,
+                                                    time_format_count, time_format_index);
+                        clk_clock_menu_rebuild_item(menu, 0, CLK_MENU_CLOCK_FONT, font_names,
+                                                    font_count, font_index);
+                        clk_clock_menu_rebuild_item(menu, 0, CLK_MENU_CLOCK_THEME, theme_names,
+                                                    theme_count, theme_index);
                     }
                 }
             }
@@ -503,10 +343,10 @@ int main(void) {
                 clk_menu_instance_change_theme(menu_inst, theme_paths[theme_index]);
             }
 
-            check_dir_changed(fonts_dir, &font_paths, &font_count, &font_names, &font_index, menu,
-                              ITEM_FONT);
-            check_dir_changed(themes_dir, &theme_paths, &theme_count, &theme_names, &theme_index,
-                              menu, ITEM_THEME);
+            clk_clock_menu_sync_dir(menu, 0, CLK_MENU_CLOCK_FONT, fonts_dir, &font_paths,
+                                    &font_count, &font_names, &font_index);
+            clk_clock_menu_sync_dir(menu, 0, CLK_MENU_CLOCK_THEME, themes_dir, &theme_paths,
+                                    &theme_count, &theme_names, &theme_index);
         }
     }
 
@@ -515,7 +355,6 @@ int main(void) {
                                time_formats[time_format_index]);
     clk_json_object_set_string(clock_section, "font", font_names[font_index]);
     clk_json_object_set_string(menu_section, "theme", theme_names[theme_index]);
-    /* remove legacy numeric keys if present */
     clk_json_object_remove(config, "selected_fmt");
     clk_json_object_remove(config, "selected_font");
     clk_json_object_remove(config, "selected_theme");
