@@ -3,7 +3,7 @@
     "fonts_dir": "assets/config/ascii_fonts",
     "font": "ascii_num",
     "time_formats": ["hh:MM:ss","yyyy:mm:dd\n hh:MM:ss","hh:MM","dd:hh:MM"],
-    "selected_time_format": "yyyy:mm:dd\n hh:MM:ss"
+    "selected_time_format": "dd:hh:MM"
   },
   "menu": {
     "themes_dir": "assets/config/menu_config",

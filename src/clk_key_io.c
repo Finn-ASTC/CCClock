@@ -3,6 +3,7 @@
 #include <pthread.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <string.h>
 
 /* ================================================================
  *  Ring buffer — thread-safe (protected by key_mutex)
@@ -236,9 +237,106 @@ void clk_key_io_close(void) {
 }
 
 /* ================================================================
+ *  Input mode (string-input vs normal)
+ * ================================================================ */
+
+static enum { KEY_MODE_NORMAL, KEY_MODE_STRING_INPUT } key_mode;
+static char* key_input_buf;
+static size_t key_input_buf_size;
+static size_t *key_input_len, *key_input_pos;
+
+/* ================================================================
  *  Public API
  * ================================================================ */
 
 clk_key_event clk_get_key_event(void) {
+    if (key_mode == KEY_MODE_STRING_INPUT)
+        return (clk_key_event){CLK_KEY_NONE, 0, {0, 0}};
     return ring_pop();
+}
+
+/* --- string input --- */
+
+void clk_key_io_text_start(char* buf, size_t buf_size, size_t* len, size_t* pos) {
+    if (!buf || !buf_size || !len || !pos)
+        return;
+    key_input_buf = buf;
+    key_input_buf_size = buf_size;
+    key_input_len = len;
+    key_input_pos = pos;
+    key_mode = KEY_MODE_STRING_INPUT;
+    *len = 0;
+    *pos = 0;
+    buf[0] = '\0';
+}
+
+void clk_key_io_text_stop(void) {
+    key_mode = KEY_MODE_NORMAL;
+}
+
+uint32_t clk_key_io_text_poll(void) {
+    if (key_mode != KEY_MODE_STRING_INPUT)
+        return CLK_KEY_NONE;
+
+    clk_key_event ev = ring_pop();
+    uint32_t key = ev.key;
+    if (key == CLK_KEY_NONE)
+        return CLK_KEY_NONE;
+
+    if (key == '\r' || key == '\n') {
+        key_input_buf[*key_input_len] = '\0';
+        clk_key_io_text_stop();
+        return '\r';
+    }
+    if (key == CLK_KEY_ESC) {
+        key_input_buf[0] = '\0';
+        *key_input_len = 0;
+        *key_input_pos = 0;
+        clk_key_io_text_stop();
+        return CLK_KEY_ESC;
+    }
+
+    if (key == CLK_KEY_LEFT) {
+        if (*key_input_pos > 0)
+            (*key_input_pos)--;
+        return CLK_KEY_NONE;
+    }
+    if (key == CLK_KEY_RIGHT) {
+        if (*key_input_pos < *key_input_len)
+            (*key_input_pos)++;
+        return CLK_KEY_NONE;
+    }
+
+    /* backspace — delete character before cursor */
+    if (key == '\b' || key == 127) {
+        if (*key_input_pos > 0 && *key_input_len > 0) {
+            size_t p = *key_input_pos;
+            memmove(key_input_buf + p - 1, key_input_buf + p, *key_input_len - p);
+            (*key_input_pos)--;
+            (*key_input_len)--;
+        }
+        return CLK_KEY_NONE;
+    }
+
+    /* printable ASCII */
+    if (key >= 32 && key < 127) {
+        if (*key_input_len + 1 < key_input_buf_size) {
+            if (*key_input_pos < *key_input_len)
+                memmove(key_input_buf + *key_input_pos + 1, key_input_buf + *key_input_pos,
+                        *key_input_len - *key_input_pos);
+            key_input_buf[*key_input_pos] = (char)key;
+            (*key_input_pos)++;
+            (*key_input_len)++;
+        }
+        return CLK_KEY_NONE;
+    }
+
+    return CLK_KEY_NONE;
+}
+
+/* --- test hook (not part of public API) --- */
+
+void clk_key_io_test_inject(uint32_t key) {
+    clk_key_event ev = {key, 0, {0, 0}};
+    ring_push(ev);
 }

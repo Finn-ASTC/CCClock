@@ -2,6 +2,7 @@
 #define CLK_KEY_IO_H
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 #ifdef __cplusplus
@@ -45,8 +46,32 @@ void clk_key_io_close(void);
  * ------------------------------------------------------------------ */
 
 /** Return the next pending key event, or CLK_KEY_NONE if the input
- *  buffer is empty. Non-blocking — never waits for input. */
+ *  buffer is empty.  Non-blocking — never waits for input.
+ *
+ *  When string-input mode is active this function always returns
+ *  CLK_KEY_NONE — keys go to clk_key_io_text_poll() instead. */
 clk_key_event clk_get_key_event(void);
+
+/* ------------------------------------------------------------------
+ *  String input
+ * ------------------------------------------------------------------ */
+
+/** Enter string-input mode.  Binds @p buf for accumulation.  While
+ *  active, clk_get_key_event() returns CLK_KEY_NONE automatically. */
+void clk_key_io_text_start(char* buf, size_t buf_size, size_t* len, size_t* pos);
+
+/** Poll one character from the ring buffer and append it to the bound
+ *  buffer.  Supports Left/Right arrows, Backspace, Delete, and
+ *  printable ASCII (32-126).  Insert semantics — new characters are
+ *  placed at *pos.
+ *
+ *  Returns '\r' on Enter, CLK_KEY_ESC on cancel, or CLK_KEY_NONE
+ *  while input is still in progress.  On Enter or ESC the mode
+ *  switches back to normal automatically. */
+uint32_t clk_key_io_text_poll(void);
+
+/** Exit string-input mode early without processing. */
+void clk_key_io_text_stop(void);
 
 #ifdef __cplusplus
 }
