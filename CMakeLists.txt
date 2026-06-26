@@ -65,7 +65,7 @@ find_path(MINIAUDIO_INCLUDE_DIR
 target_include_directories(libclock PRIVATE "${MINIAUDIO_INCLUDE_DIR}")
 
 if(WIN32)
-    target_link_libraries(libclock PRIVATE winmm ole32)
+    target_link_libraries(libclock PRIVATE winmm ole32 pthread)
 else()
     target_link_libraries(libclock PRIVATE pthread dl m)
 endif()

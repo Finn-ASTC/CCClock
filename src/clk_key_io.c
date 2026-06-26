@@ -1,41 +1,73 @@
 #include "clk_key_io.h"
 
+#include <pthread.h>
+#include <stdbool.h>
 #include <stdint.h>
 
 /* ================================================================
- *  Shared State
+ *  Ring buffer — thread-safe (protected by key_mutex)
  * ================================================================ */
 
-static bool clk_key_io_is_init = false;
+#define KEY_BUF_SIZE 256
+
+static clk_key_event key_ring[KEY_BUF_SIZE];
+static int key_write;
+static int key_read;
+static pthread_mutex_t key_mutex;
+
+static void ring_push(clk_key_event ev) {
+    pthread_mutex_lock(&key_mutex);
+    key_ring[key_write] = ev;
+    key_write = (key_write + 1) % KEY_BUF_SIZE;
+    if (key_write == key_read) /* full — discard oldest */
+        key_read = (key_read + 1) % KEY_BUF_SIZE;
+    pthread_mutex_unlock(&key_mutex);
+}
+
+static clk_key_event ring_pop(void) {
+    clk_key_event ev = {CLK_KEY_NONE, 0, {0, 0}};
+    pthread_mutex_lock(&key_mutex);
+    if (key_read != key_write) {
+        ev = key_ring[key_read];
+        key_read = (key_read + 1) % KEY_BUF_SIZE;
+    }
+    pthread_mutex_unlock(&key_mutex);
+    return ev;
+}
+
+/* ================================================================
+ *  Thread state
+ * ================================================================ */
+
+static pthread_t key_thread;
+static volatile bool key_thread_running;
+static bool key_thread_started;
+
+/* ================================================================
+ *  Platform-specific raw I/O
+ * ================================================================ */
 
 #if defined(_WIN32) || defined(_WIN64)
 
-/* ================================================================
- *  Windows Implementation
- * ================================================================ */
-
 #include <conio.h>
-#include <stdbool.h>
+#include <windows.h>
 
-/** Initialize the keyboard input subsystem. */
-void clk_key_io_init(void) {
-    if (!clk_key_io_is_init)
-        clk_key_io_is_init = true;
+static bool raw_kbhit(void) {
+    return _kbhit() != 0;
 }
 
-/** Shut down the keyboard input subsystem. */
-void clk_key_io_close(void) {
-    if (clk_key_io_is_init)
-        clk_key_io_is_init = false;
+static int raw_getch(void) {
+    return _getch();
 }
 
-/** Poll for and decode a single key event. */
-clk_key_event clk_get_key_event(void) {
-    clk_key_event res = {CLK_KEY_NONE, CLK_KEY_NONE, {0, 0}};
-    if (!_kbhit() || !clk_key_io_is_init)
-        return res;
+static void raw_sleep_ms(int ms) {
+    Sleep(ms);
+}
 
-    int ch = _getch();
+static clk_key_event raw_read_key(void) {
+    clk_key_event res = {CLK_KEY_NONE, 0, {0, 0}};
+
+    int ch = raw_getch();
     res.raw = (uint32_t)ch;
 
     if (ch == 27) {
@@ -45,7 +77,7 @@ clk_key_event clk_get_key_event(void) {
 
     /* extended key prefix (arrow keys etc.) */
     if (ch == 0 || ch == 224) {
-        int ch2 = _getch();
+        int ch2 = raw_getch();
         res.raw = (uint32_t)ch2;
         switch (ch2) {
             case 72:
@@ -70,11 +102,7 @@ clk_key_event clk_get_key_event(void) {
     return res;
 }
 
-#else /* Linux / macOS / Unix */
-
-/* ================================================================
- *  POSIX Implementation
- * ================================================================ */
+#else /* POSIX */
 
 #include <sys/select.h>
 #include <termios.h>
@@ -82,8 +110,7 @@ clk_key_event clk_get_key_event(void) {
 
 static struct termios old_tio;
 
-/** Return non-zero if a key press is waiting to be read. */
-static int linux_kbhit(void) {
+static bool raw_kbhit(void) {
     struct timeval tv = {0, 0};
     fd_set fds;
     FD_ZERO(&fds);
@@ -91,48 +118,30 @@ static int linux_kbhit(void) {
     return select(STDIN_FILENO + 1, &fds, NULL, NULL, &tv) > 0;
 }
 
-/** Read a single raw byte from standard input. */
-static int linux_getch(void) {
+static int raw_getch(void) {
     unsigned char ch;
-    return (read(STDIN_FILENO, &ch, 1) == 1) ? (int)ch : CLK_KEY_NONE;
+    return (read(STDIN_FILENO, &ch, 1) == 1) ? (int)ch : -1;
 }
 
-/** Initialize the keyboard input subsystem. */
-void clk_key_io_init(void) {
-    struct termios new_tio;
-    tcgetattr(STDIN_FILENO, &old_tio);
-    new_tio = old_tio;
-    new_tio.c_lflag &= ~(ICANON | ECHO);
-    tcsetattr(STDIN_FILENO, TCSANOW, &new_tio);
-    clk_key_io_is_init = true;
+static void raw_sleep_ms(int ms) {
+    usleep(ms * 1000);
 }
 
-/** Shut down the keyboard input subsystem. */
-void clk_key_io_close(void) {
-    if (clk_key_io_is_init) {
-        tcsetattr(STDIN_FILENO, TCSANOW, &old_tio);
-        clk_key_io_is_init = false;
-    }
-}
-
-/** Poll for and decode a single key event. */
-clk_key_event clk_get_key_event(void) {
+static clk_key_event raw_read_key(void) {
     clk_key_event res = {CLK_KEY_NONE, 0, {0, 0}};
-    if (!linux_kbhit() || !clk_key_io_is_init)
-        return res;
 
-    int ch = linux_getch();
+    int ch = raw_getch();
     res.raw = (uint32_t)ch;
 
     if (ch == 27) {
         /* might be ESC or start of an escape sequence */
-        if (linux_kbhit()) {
-            int ch2 = linux_getch();
+        if (raw_kbhit()) {
+            int ch2 = raw_getch();
             res.raw = (res.raw << 16) | (uint32_t)ch2;
 
             if (ch2 == '[' || ch2 == 'O') {
-                if (linux_kbhit()) {
-                    int ch3 = linux_getch();
+                if (raw_kbhit()) {
+                    int ch3 = raw_getch();
                     res.raw = (res.raw << 8) | (uint32_t)ch3;
                     switch (ch3) {
                         case 'A':
@@ -163,3 +172,73 @@ clk_key_event clk_get_key_event(void) {
 }
 
 #endif
+
+/* ================================================================
+ *  Background thread
+ * ================================================================ */
+
+static void* key_thread_func(void* arg) {
+    (void)arg;
+
+    while (key_thread_running) {
+        if (!raw_kbhit()) {
+            raw_sleep_ms(10);
+            continue;
+        }
+
+        clk_key_event ev = raw_read_key();
+        if (ev.key != CLK_KEY_NONE)
+            ring_push(ev);
+    }
+
+    return NULL;
+}
+
+/* ================================================================
+ *  Lifecycle
+ * ================================================================ */
+
+void clk_key_io_init(void) {
+    if (key_thread_started)
+        return;
+
+    pthread_mutex_init(&key_mutex, NULL);
+    key_write = 0;
+    key_read = 0;
+
+#ifndef _WIN32
+    struct termios new_tio;
+    tcgetattr(STDIN_FILENO, &old_tio);
+    new_tio = old_tio;
+    new_tio.c_lflag &= ~(ICANON | ECHO);
+    tcsetattr(STDIN_FILENO, TCSANOW, &new_tio);
+#endif
+
+    key_thread_running = true;
+    pthread_create(&key_thread, NULL, key_thread_func, NULL);
+    key_thread_started = true;
+}
+
+void clk_key_io_close(void) {
+    if (!key_thread_started)
+        return;
+
+    key_thread_running = false;
+    pthread_join(key_thread, NULL);
+
+    pthread_mutex_destroy(&key_mutex);
+
+#ifndef _WIN32
+    tcsetattr(STDIN_FILENO, TCSANOW, &old_tio);
+#endif
+
+    key_thread_started = false;
+}
+
+/* ================================================================
+ *  Public API
+ * ================================================================ */
+
+clk_key_event clk_get_key_event(void) {
+    return ring_pop();
+}

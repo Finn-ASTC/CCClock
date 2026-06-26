@@ -46,7 +46,7 @@ int main(void) {
     TEST("create_object empty", clk_json_object_count(v) == 0);
     clk_json_free(v);
 
-    /* === Parse —— 简单值 === */
+    /* === Parse — simple values === */
     v = clk_json_parse("null");
     TEST("parse null", v != NULL && clk_json_is_null(v));
     clk_json_free(v);
@@ -90,7 +90,7 @@ int main(void) {
     TEST("parse \\t", strcmp(str_val, "hello\tworld") == 0);
     clk_json_free(v);
 
-    /* === Parse —— 对象 === */
+    /* === Parse — objects === */
     v = clk_json_parse("{}");
     TEST_REQUIRE("parse empty obj", v != NULL && clk_json_is_object(v));
     TEST("empty obj count 0", clk_json_object_count(v) == 0);
@@ -128,7 +128,7 @@ int main(void) {
     }
     clk_json_free(v);
 
-    /* === Parse —— 数组 === */
+    /* === Parse — arrays === */
     v = clk_json_parse("[]");
     TEST_REQUIRE("parse empty array", v != NULL);
     TEST("empty array count 0", clk_json_array_count(v) == 0);
@@ -161,7 +161,7 @@ int main(void) {
     TEST("mixed array[3] null", clk_json_is_null(clk_json_array_get(v, 3)));
     clk_json_free(v);
 
-    /* === Parse —— 错误 === */
+    /* === Parse — errors === */
     v = clk_json_parse("");
     TEST("empty string fails", v == NULL);
 
@@ -179,7 +179,7 @@ int main(void) {
     TEST("parse_ex invalid fails", v == NULL);
     TEST("parse_ex error non-empty", strlen(err) > 0);
 
-    /* === Object 操作 === */
+    /* === Object operations === */
     v = clk_json_create_object();
     clk_json_object_set(v, "name", clk_json_create_string("clock"));
     TEST("object set new key", clk_json_object_count(v) == 1);
@@ -208,7 +208,7 @@ int main(void) {
     }
     clk_json_free(v);
 
-    /* === Array 操作 === */
+    /* === Array operations === */
     v = clk_json_create_array();
     clk_json_array_append(v, clk_json_create_number(1));
     clk_json_array_append(v, clk_json_create_number(3));
@@ -278,7 +278,7 @@ int main(void) {
     v = clk_json_parse("{\"a\":1,\"b\":2}");
     s = clk_json_stringify(v);
     TEST("stringify object", s != NULL);
-    /* 解析 stringify 的输出应该得到同样的结构 */
+    /* Parsing stringify output should produce the same structure */
     clk_json_value* v2 = clk_json_parse(s);
     TEST("stringify roundtrip parse OK", v2 != NULL);
     TEST("stringify roundtrip has 'a'", clk_json_object_get(v2, "a") != NULL);
@@ -288,7 +288,7 @@ int main(void) {
     free(s);
     clk_json_free(v);
 
-    /* 转义字符往返 */
+    /* Escape character roundtrip */
     v = clk_json_parse("\"line1\\nline2\"");
     s = clk_json_stringify(v);
     TEST("stringify escaped", s != NULL);
@@ -300,9 +300,9 @@ int main(void) {
     free(s);
     clk_json_free(v);
 
-    /* === Pretty-print —— 格式化验证 === */
+    /* === Pretty-print — format verification === */
 
-    /* 空对象 / 空数组 —— 永远一行 */
+    /* Empty object / empty array — always single line */
     v = clk_json_parse("{}");
     s = clk_json_stringify_pretty(v);
     TEST("pretty empty obj", strcmp(s, "{}") == 0);
@@ -315,14 +315,14 @@ int main(void) {
     free(s);
     clk_json_free(v);
 
-    /* 简单对象 —— 一行一个键值对，2空格缩进 */
+    /* Simple object — one key-value pair per line, 2-space indent */
     v = clk_json_parse("{\"a\":1}");
     s = clk_json_stringify_pretty(v);
     TEST("pretty simple obj exact", s && strcmp(s, "{\n  \"a\": 1\n}") == 0);
     free(s);
     clk_json_free(v);
 
-    /* 多键值对 —— 每个独立一行，最后不带逗号 */
+    /* Multiple key-value pairs — each on its own line, no trailing comma */
     v = clk_json_parse("{\"x\":1,\"y\":2,\"z\":3}");
     s = clk_json_stringify_pretty(v);
     TEST("pretty multi-key obj exact", s && strcmp(s,
@@ -334,14 +334,14 @@ int main(void) {
     free(s);
     clk_json_free(v);
 
-    /* 全是基本值的数组 —— 不换行 */
+    /* Array of all primitives — no line breaks */
     v = clk_json_parse("[1,2,3]");
     s = clk_json_stringify_pretty(v);
     TEST("pretty primitive array inline", strcmp(s, "[1,2,3]") == 0);
     free(s);
     clk_json_free(v);
 
-    /* 数组里有一个容器孩子 —— 换行 */
+    /* Array with one container child — line breaks */
     v = clk_json_parse("[1,[2],3]");
     s = clk_json_stringify_pretty(v);
     TEST("pretty array with nested inline", s && strcmp(s,
@@ -353,7 +353,7 @@ int main(void) {
     free(s);
     clk_json_free(v);
 
-    /* 纯容器孩子数组 —— 全换行 */
+    /* Array of only container children — all line breaks */
     v = clk_json_parse("[[1,2],[3,4]]");
     s = clk_json_stringify_pretty(v);
     TEST("pretty array all containers", s && strcmp(s,
@@ -364,7 +364,7 @@ int main(void) {
     free(s);
     clk_json_free(v);
 
-    /* 双层嵌套对象 —— 内层缩进 4 空格 */
+    /* Two-level nested object — inner indent 4 spaces */
     v = clk_json_parse("{\"outer\":{\"inner\":99}}");
     s = clk_json_stringify_pretty(v);
     TEST("pretty nested object depth 2", s && strcmp(s,
@@ -376,7 +376,7 @@ int main(void) {
     free(s);
     clk_json_free(v);
 
-    /* 三层嵌套 —— 内层 6 空格 */
+    /* Three-level nesting — inner 6 spaces */
     v = clk_json_parse("{\"a\":{\"b\":{\"c\":3}}}");
     s = clk_json_stringify_pretty(v);
     TEST("pretty nested object depth 3", s && strcmp(s,
@@ -390,7 +390,7 @@ int main(void) {
     free(s);
     clk_json_free(v);
 
-    /* 对象中含数组 —— 数组换行，内层基本值不换行 */
+    /* Object containing array — array line breaks, inner primitives no line breaks */
     v = clk_json_parse("{\"nums\":[1,2,3],\"flag\":true}");
     s = clk_json_stringify_pretty(v);
     TEST("pretty obj with array", s && strcmp(s,
@@ -401,7 +401,7 @@ int main(void) {
     free(s);
     clk_json_free(v);
 
-    /* 数组中含对象 —— 每个对象换行内联 */
+    /* Array containing objects — each object on new lines inline */
     v = clk_json_parse("[{\"id\":1},{\"id\":2}]");
     s = clk_json_stringify_pretty(v);
     TEST("pretty array of objects", s && strcmp(s,
@@ -416,14 +416,14 @@ int main(void) {
     free(s);
     clk_json_free(v);
 
-    /* 混合类型 —— null / false / 字符串 */
+    /* Mixed types — null / false / string */
     v = clk_json_parse("[null,false,\"hi\"]");
     s = clk_json_stringify_pretty(v);
     TEST("pretty mixed primitives inline", strcmp(s, "[null,false,\"hi\"]") == 0);
     free(s);
     clk_json_free(v);
 
-    /* 往返测试 —— 格式化后数据不丢 */
+    /* Roundtrip test — no data loss after formatting */
     v = clk_json_parse("{\"a\":1,\"b\":[2,{\"c\":3}]}");
     s = clk_json_stringify_pretty(v);
     v2 = clk_json_parse(s);
@@ -480,35 +480,35 @@ int main(void) {
         "{\"users\":[{\"name\":\"Alice\",\"age\":30},{\"name\":\"Bob\",\"age\":25}],\"count\":2}");
     TEST_REQUIRE("path parse root", v != NULL);
 
-    /* 简单键名 */
+    /* Simple key name */
     clk_json_value* r = clk_json_get_by_path(v, "count");
     TEST("path simple key", r != NULL && clk_json_is_number(r));
     clk_json_get_number(r, &num_val);
     TEST("path simple key value", num_val == 2.0);
 
-    /* 一层嵌套对象 */
+    /* One-level nested object */
     r = clk_json_get_by_path(v, "users");
     TEST("path nested object", r != NULL && clk_json_is_array(r));
 
-    /* 对象 + 数组索引 */
+    /* Object + array index */
     r = clk_json_get_by_path(v, "users[0]");
     TEST_REQUIRE("path obj+index", r != NULL && clk_json_is_object(r));
     r = clk_json_get_by_path(r, "name");
     TEST("path obj+index sub-key", r != NULL);
 
-    /* 对象 + 数组索引 + 键名（一条路径） */
+    /* Object + array index + key name (single path) */
     r = clk_json_get_by_path(v, "users[0].name");
     TEST_REQUIRE("path obj+index+key", r != NULL && clk_json_is_string(r));
     clk_json_get_string(r, &str_val);
     TEST("path obj+index+key value", strcmp(str_val, "Alice") == 0);
 
-    /* 第二个元素 */
+    /* Second element */
     r = clk_json_get_by_path(v, "users[1].age");
     TEST_REQUIRE("path second element", r != NULL);
     clk_json_get_number(r, &num_val);
     TEST("path second element value", num_val == 25.0);
 
-    /* 不存在返回 NULL */
+    /* Non-existent returns NULL */
     r = clk_json_get_by_path(v, "missing");
     TEST("path missing key", r == NULL);
     r = clk_json_get_by_path(v, "users[99]");
@@ -516,11 +516,11 @@ int main(void) {
     r = clk_json_get_by_path(v, "users[0].bad");
     TEST("path missing sub-key", r == NULL);
 
-    /* 空路径返回 root */
+    /* Empty path returns root */
     r = clk_json_get_by_path(v, "");
     TEST("path empty returns root", r == v);
 
-    /* 从数组开始 */
+    /* Starting from array */
     clk_json_value* arr = clk_json_parse("[10,20,30]");
     r = clk_json_get_by_path(arr, "[0]");
     TEST_REQUIRE("path array root [0]", r != NULL);
@@ -531,13 +531,13 @@ int main(void) {
     TEST("path array root [2] value", num_val == 30.0);
     clk_json_free(arr);
 
-    /* 非法路径 */
+    /* Invalid path */
     r = clk_json_get_by_path(v, "users[abc]");
     TEST("path bad index non-numeric", r == NULL);
     r = clk_json_get_by_path(v, "users[-1]");
     TEST("path bad index negative", r == NULL);
 
-    /* NULL 输入 */
+    /* NULL input */
     TEST("path NULL path", clk_json_get_by_path(v, NULL) == NULL);
     TEST("path NULL root", clk_json_get_by_path(NULL, "a") == NULL);
 
