@@ -328,7 +328,10 @@ int main(void) {
         clk_term_add_sprite(&s2);
         TEST("term_add_sprite succeeds", 1);
     }
-    TEST("add NULL returns false", 0); /* clk_term_add_sprite returns void, always safe */
+    {
+        clk_term_add_sprite(NULL);
+        TEST("add NULL no crash", 1);
+    }
 
     clk_texture_destroy(&tex2);
 

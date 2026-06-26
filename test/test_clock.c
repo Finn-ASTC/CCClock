@@ -103,6 +103,30 @@ int main(void) {
     TEST("timer remaining NULL → 0", clk_timer_remaining(NULL) == 0);
     TEST("timer finished NULL → false", !clk_timer_finished(NULL));
 
+    /* --- timer state machine --- */
+    /* double pause */
+    clk_timer_start(&timer, 60);
+    clk_timer_pause(&timer);
+    int64_t after_first_pause = clk_timer_remaining(&timer);
+    clk_timer_pause(&timer); /* double pause — should be no-op */
+    TEST("timer double pause: remaining unchanged",
+         clk_timer_remaining(&timer) == after_first_pause);
+
+    /* double resume */
+    clk_timer_resume(&timer);
+    TEST("timer resume: unpaused", !timer.paused);
+    clk_timer_resume(&timer); /* double resume — no-op */
+    TEST("timer double resume: still unpaused", !timer.paused);
+
+    /* resume without pause */
+    clk_timer_start(&timer, 30);
+    clk_timer_resume(&timer); /* no-op, already running */
+    TEST("timer resume without pause: no crash", 1);
+
+    /* restart while running */
+    clk_timer_start(&timer, 10);
+    TEST("timer restart: running", timer.running && !timer.paused);
+
     /* ================================================================
      *  Alarm
      * ================================================================ */
