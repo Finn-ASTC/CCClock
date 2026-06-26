@@ -1,7 +1,185 @@
 #include "clk_clock.h"
 
 #include <string.h>
-#include <time.h>
+
+/* ================================================================
+ *  Lifecycle
+ * ================================================================ */
+
+void clk_clock_init(clk_clock* clock, clk_audio_engine* audio_engine) {
+    if (!clock)
+        return;
+    memset(clock, 0, sizeof(*clock));
+    clock->audio_engine = audio_engine;
+}
+
+void clk_clock_deinit(clk_clock* clock) {
+    if (!clock)
+        return;
+    for (int i = 0; i < clock->active_bell_count; ++i) {
+        if (clock->active_bells[i])
+            clk_audio_stop(clock->active_bells[i]);
+    }
+    clock->active_bell_count = 0;
+}
+
+/* ================================================================
+ *  Alarms
+ * ================================================================ */
+
+bool clk_clock_add_alarm(clk_clock* clock, const clk_clock_alarm* alarm) {
+    if (!clock || !alarm || clock->alarm_count >= CLK_ALARM_MAX)
+        return false;
+    clock->alarms[clock->alarm_count] = *alarm;
+    clock->alarm_count++;
+    return true;
+}
+
+bool clk_clock_remove_alarm(clk_clock* clock, int index) {
+    if (!clock || index < 0 || index >= clock->alarm_count)
+        return false;
+    for (int i = index; i < clock->alarm_count - 1; ++i)
+        clock->alarms[i] = clock->alarms[i + 1];
+    clock->alarm_count--;
+    return true;
+}
+
+void clk_clock_alarm_set_enabled(clk_clock* clock, int index, bool enabled) {
+    if (!clock || index < 0 || index >= clock->alarm_count)
+        return;
+    clock->alarms[index].alarm.enabled = enabled;
+}
+
+int clk_clock_alarm_count(const clk_clock* clock) {
+    return clock ? clock->alarm_count : 0;
+}
+
+/* ================================================================
+ *  Pomodoro groups
+ * ================================================================ */
+
+bool clk_clock_add_pomodoro(clk_clock* clock, const clk_clock_pomodoro* pomodoro) {
+    if (!clock || !pomodoro || clock->pomodoro_count >= CLK_POMODORO_MAX)
+        return false;
+    clock->pomodoros[clock->pomodoro_count] = *pomodoro;
+    clock->pomodoro_count++;
+    return true;
+}
+
+bool clk_clock_remove_pomodoro(clk_clock* clock, int index) {
+    if (!clock || index < 0 || index >= clock->pomodoro_count)
+        return false;
+    for (int i = index; i < clock->pomodoro_count - 1; ++i)
+        clock->pomodoros[i] = clock->pomodoros[i + 1];
+    clock->pomodoro_count--;
+    return true;
+}
+
+int clk_clock_pomodoro_count(const clk_clock* clock) {
+    return clock ? clock->pomodoro_count : 0;
+}
+
+bool clk_clock_pomodoro_add_segment(clk_clock* clock, int pomodoro_index,
+                                    const clk_clock_pomodoro_segment* segment) {
+    if (!clock || !segment || pomodoro_index < 0 || pomodoro_index >= clock->pomodoro_count)
+        return false;
+    clk_clock_pomodoro* p = &clock->pomodoros[pomodoro_index];
+    if (p->segment_count >= CLK_POMODORO_MAX_SEGMENTS)
+        return false;
+    p->segments[p->segment_count] = *segment;
+    p->segment_count++;
+    return true;
+}
+
+bool clk_clock_pomodoro_remove_segment(clk_clock* clock, int pomodoro_index, int segment_index) {
+    if (!clock || pomodoro_index < 0 || pomodoro_index >= clock->pomodoro_count)
+        return false;
+    clk_clock_pomodoro* p = &clock->pomodoros[pomodoro_index];
+    if (segment_index < 0 || segment_index >= p->segment_count)
+        return false;
+    for (int i = segment_index; i < p->segment_count - 1; ++i)
+        p->segments[i] = p->segments[i + 1];
+    p->segment_count--;
+    return true;
+}
+
+void clk_clock_pomodoro_start(clk_clock* clock, int index) {
+    if (!clock || index < 0 || index >= clock->pomodoro_count)
+        return;
+    clk_clock_pomodoro* p = &clock->pomodoros[index];
+    if (p->segment_count == 0)
+        return;
+    p->enabled = true;
+    p->paused = false;
+    p->current_segment = 0;
+    clk_timer_start(&p->timer, p->segments[0].duration_seconds);
+}
+
+void clk_clock_pomodoro_pause(clk_clock* clock, int index) {
+    if (!clock || index < 0 || index >= clock->pomodoro_count)
+        return;
+    clk_clock_pomodoro* p = &clock->pomodoros[index];
+    if (!p->enabled || p->paused)
+        return;
+    clk_timer_pause(&p->timer);
+    p->paused = true;
+}
+
+void clk_clock_pomodoro_resume(clk_clock* clock, int index) {
+    if (!clock || index < 0 || index >= clock->pomodoro_count)
+        return;
+    clk_clock_pomodoro* p = &clock->pomodoros[index];
+    if (!p->paused)
+        return;
+    clk_timer_resume(&p->timer);
+    p->paused = false;
+}
+
+void clk_clock_pomodoro_stop(clk_clock* clock, int index) {
+    if (!clock || index < 0 || index >= clock->pomodoro_count)
+        return;
+    clk_clock_pomodoro* p = &clock->pomodoros[index];
+    p->enabled = false;
+    p->paused = false;
+    p->current_segment = 0;
+}
+
+/* ================================================================
+ *  Active bells
+ * ================================================================ */
+
+void clk_clock_stop_bell(clk_clock* clock) {
+    if (!clock || clock->active_bell_count == 0)
+        return;
+    int last = clock->active_bell_count - 1;
+    if (clock->active_bells[last])
+        clk_audio_stop(clock->active_bells[last]);
+    clock->active_bells[last] = NULL;
+    clock->active_bell_count--;
+}
+
+void clk_clock_stop_all_bells(clk_clock* clock) {
+    if (!clock)
+        return;
+    for (int i = 0; i < clock->active_bell_count; ++i) {
+        if (clock->active_bells[i])
+            clk_audio_stop(clock->active_bells[i]);
+        clock->active_bells[i] = NULL;
+    }
+    clock->active_bell_count = 0;
+}
+
+int clk_clock_bell_count(const clk_clock* clock) {
+    return clock ? clock->active_bell_count : 0;
+}
+
+/* ================================================================
+ *  Per-frame update (placeholder)
+ * ================================================================ */
+
+void clk_clock_update(clk_clock* clock) {
+    (void)clock;
+}
 
 /* ================================================================
  *  Time format translation
