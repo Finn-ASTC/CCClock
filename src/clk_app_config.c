@@ -206,8 +206,8 @@ bool clk_app_config_load(clk_app_config* cfg, const char* path) {
         return false;
 
     clk_json_value* fonts_obj = clk_json_object_get(cfg->json, "fonts");
-    clk_json_value* time_obj  = clk_json_object_get(cfg->json, "time_format");
-    clk_json_value* menu_obj  = clk_json_object_get(cfg->json, "menu");
+    clk_json_value* time_obj = clk_json_object_get(cfg->json, "time_format");
+    clk_json_value* menu_obj = clk_json_object_get(cfg->json, "menu");
     if (!fonts_obj || !time_obj || !menu_obj) {
         clk_json_free(cfg->json);
         cfg->json = NULL;
@@ -230,8 +230,8 @@ bool clk_app_config_load(clk_app_config* cfg, const char* path) {
 void clk_app_config_reload(clk_app_config* cfg, clk_menu* menu, int tab_id, int tfmt_id,
                            int font_id, int theme_id) {
     clk_json_value* fonts_obj = clk_json_object_get(cfg->json, "fonts");
-    clk_json_value* time_obj  = clk_json_object_get(cfg->json, "time_format");
-    clk_json_value* menu_obj  = clk_json_object_get(cfg->json, "menu");
+    clk_json_value* time_obj = clk_json_object_get(cfg->json, "time_format");
+    clk_json_value* menu_obj = clk_json_object_get(cfg->json, "menu");
 
     if (fonts_obj)
         clk_cfg_fonts_reload(&cfg->fonts, fonts_obj, menu, tab_id, font_id);

@@ -361,8 +361,7 @@ int main(void) {
         TEST("insert_bool_at mid", im->tabs[0]->items[1]->id == 70);
 
         clk_menu_add_item_action_at(im, 0, 80, "act", -1);
-        TEST("insert_action_at last=80",
-             im->tabs[0]->items[im->tabs[0]->item_count - 1]->id == 80);
+        TEST("insert_action_at last=80", im->tabs[0]->items[im->tabs[0]->item_count - 1]->id == 80);
 
         /* bad args no crash */
         clk_menu_add_item_str_at(NULL, 0, 1, "x", 0, str_opts, 3, 0);

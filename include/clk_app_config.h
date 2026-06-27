@@ -18,26 +18,26 @@ extern "C" {
 
 typedef struct {
     const char* dir;
-    char**      paths;
-    char**      names;
-    int         count;
-    int         idx;
+    char** paths;
+    char** names;
+    int count;
+    int idx;
 } clk_cfg_fonts;
 
 typedef struct {
     const char* dir;
-    char**      paths;
-    char**      names;
-    int         count;
-    int         idx;
+    char** paths;
+    char** names;
+    int count;
+    int idx;
 } clk_cfg_themes;
 
 typedef struct {
-    char**       strings;
+    char** strings;
     const char** options;
-    int          count;
-    int          idx;
-    char         current[CLK_CLOCK_FORMAT_MAX_LENGTH];
+    int count;
+    int idx;
+    char current[CLK_CLOCK_FORMAT_MAX_LENGTH];
 } clk_cfg_time_formats;
 
 /* ------------------------------------------------------------------
@@ -93,10 +93,10 @@ void clk_cfg_time_formats_deinit(clk_cfg_time_formats* tf);
  * ------------------------------------------------------------------ */
 
 typedef struct {
-    clk_cfg_fonts        fonts;
-    clk_cfg_themes       themes;
-    clk_cfg_time_formats  time_formats;
-    clk_json_value*      json;       /* raw parse tree — used for save */
+    clk_cfg_fonts fonts;
+    clk_cfg_themes themes;
+    clk_cfg_time_formats time_formats;
+    clk_json_value* json; /* raw parse tree — used for save */
 } clk_app_config;
 
 /** Load all modules from @p path.  Returns false on any failure. */

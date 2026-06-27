@@ -111,8 +111,8 @@ void clk_menu_add_item_str(clk_menu* menu, int tab_id, int item_id, const char* 
 
 /** Insert a string item at @p position (-1 = append). */
 void clk_menu_add_item_str_at(clk_menu* menu, int tab_id, int item_id, const char* label,
-                               int default_idx, const char** options, int option_count,
-                               int position);
+                              int default_idx, const char** options, int option_count,
+                              int position);
 
 /** Append an int item. */
 void clk_menu_add_item_int(clk_menu* menu, int tab_id, int item_id, const char* label,
@@ -120,8 +120,8 @@ void clk_menu_add_item_int(clk_menu* menu, int tab_id, int item_id, const char* 
 
 /** Insert an int item at @p position (-1 = append). */
 void clk_menu_add_item_int_at(clk_menu* menu, int tab_id, int item_id, const char* label,
-                               double default_val, double min_val, double max_val, double step_val,
-                               int position);
+                              double default_val, double min_val, double max_val, double step_val,
+                              int position);
 
 /** Append a bool item. */
 void clk_menu_add_item_bool(clk_menu* menu, int tab_id, int item_id, const char* label,
@@ -129,14 +129,14 @@ void clk_menu_add_item_bool(clk_menu* menu, int tab_id, int item_id, const char*
 
 /** Insert a bool item at @p position (-1 = append). */
 void clk_menu_add_item_bool_at(clk_menu* menu, int tab_id, int item_id, const char* label,
-                                bool default_val, int position);
+                               bool default_val, int position);
 
 /** Append an action item. */
 void clk_menu_add_item_action(clk_menu* menu, int tab_id, int item_id, const char* label);
 
 /** Insert an action item at @p position (-1 = append). */
 void clk_menu_add_item_action_at(clk_menu* menu, int tab_id, int item_id, const char* label,
-                                  int position);
+                                 int position);
 
 void clk_menu_remove_item(clk_menu* menu, int tab_id, int item_id);
 
@@ -184,8 +184,8 @@ const char** clk_menu_wrap_strings(char** strings, int count);
 int clk_menu_find_index(const char* needle, const char** haystack, int count, int fallback);
 
 /** Rebuild the options of a string-type item: clear → add → set current value. */
-void clk_menu_rebuild_item(clk_menu* menu, int tab_id, int item_id, const char** options,
-                           int count, int new_index);
+void clk_menu_rebuild_item(clk_menu* menu, int tab_id, int item_id, const char** options, int count,
+                           int new_index);
 
 #ifdef __cplusplus
 }
