@@ -52,7 +52,7 @@ add_library(libclock STATIC
     src/clk_fs_watch.c
     src/clk_time.c
     src/clk_clock.c
-    src/clk_clock_menu.c
+    src/clk_app_config.c
     src/clk_ascii_render.c
     src/clk_menu.c
     src/clk_menu_theme.c
@@ -92,9 +92,6 @@ add_clk_test(key_io)
 add_clk_test(json)
 add_clk_test(term)
 add_clk_test(clock)
-add_clk_test(clock_sched)
-add_clk_test(clock_menu)
-add_clk_test(fs)
 add_clk_test(menu)
 add_clk_test(menu_theme)
 add_clk_test(menu_instance)

@@ -169,6 +169,24 @@ void clk_menu_clear_options(clk_menu* menu, int tab_id, int item_id);
 void clk_menu_set_item_range(clk_menu* menu, int tab_id, int item_id, double min_val,
                              double max_val, double step_val);
 
+/* ------------------------------------------------------------------
+ *  Path-list helpers
+ * ------------------------------------------------------------------ */
+
+/** Build display names from file paths (strip directory + extension).
+ *  Each returned string is malloc'd; caller frees via clk_path_list_free. */
+char** clk_menu_build_names(char** paths, int count);
+
+/** Wrap a char** as a const char** view (strings are not copied). */
+const char** clk_menu_wrap_strings(char** strings, int count);
+
+/** Find the index of a string in an array.  Returns @p fallback when not found. */
+int clk_menu_find_index(const char* needle, const char** haystack, int count, int fallback);
+
+/** Rebuild the options of a string-type item: clear → add → set current value. */
+void clk_menu_rebuild_item(clk_menu* menu, int tab_id, int item_id, const char** options,
+                           int count, int new_index);
+
 #ifdef __cplusplus
 }
 #endif

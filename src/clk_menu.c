@@ -648,6 +648,48 @@ bool clk_menu_set_value_str(clk_menu* menu, int tab_id, int item_id, const char*
     return false;
 }
 
+/* ================================================================
+ *  Path-list helpers
+ * ================================================================ */
+
+char** clk_menu_build_names(char** paths, int count) {
+    char** names = calloc(count, sizeof(char*));
+    for (int i = 0; i < count; ++i) {
+        const char* last_slash = NULL;
+        for (const char* p = paths[i]; *p; ++p)
+            if (*p == '/' || *p == '\\')
+                last_slash = p;
+        const char* start = last_slash ? last_slash + 1 : paths[i];
+        names[i] = strdup(start);
+        char* dot = strrchr(names[i], '.');
+        if (dot)
+            *dot = '\0';
+    }
+    return names;
+}
+
+const char** clk_menu_wrap_strings(char** strings, int count) {
+    const char** result = calloc(count, sizeof(const char*));
+    for (int i = 0; i < count; ++i)
+        result[i] = strings[i];
+    return result;
+}
+
+int clk_menu_find_index(const char* needle, const char** haystack, int count, int fallback) {
+    for (int i = 0; i < count; ++i)
+        if (strcmp(needle, haystack[i]) == 0)
+            return i;
+    return fallback;
+}
+
+void clk_menu_rebuild_item(clk_menu* menu, int tab_id, int item_id, const char** options, int count,
+                           int new_index) {
+    clk_menu_clear_options(menu, tab_id, item_id);
+    for (int i = 0; i < count; ++i)
+        clk_menu_add_option(menu, tab_id, item_id, options[i]);
+    clk_menu_set_value_str(menu, tab_id, item_id, options[new_index]);
+}
+
 bool clk_menu_set_value_int(clk_menu* menu, int tab_id, int item_id, double val) {
     if (!menu)
         return false;

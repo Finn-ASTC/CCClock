@@ -132,3 +132,43 @@ bool clk_fs_file_changed(const char* path, time_t* last_mtime) {
     }
     return false;
 }
+
+/* ================================================================
+ *  Directory sync → menu rebuild
+ * ================================================================ */
+
+void clk_fs_sync_dir(const char* dir_path, char*** paths, int* count, char*** display_names,
+                     int* index, clk_menu* menu, int tab_id, int item_id) {
+    if (!dir_path)
+        return;
+    int new_count;
+    char** new_paths = clk_fs_scan_dir(dir_path, ".json", &new_count);
+    if (!new_paths)
+        return;
+
+    bool changed = (new_count != *count);
+    for (int i = 0; i < *count && i < new_count && !changed; ++i)
+        if (strcmp(new_paths[i], (*paths)[i]) != 0)
+            changed = true;
+
+    if (!changed || new_count <= 0) {
+        for (int i = 0; i < new_count; ++i)
+            free(new_paths[i]);
+        free(new_paths);
+        return;
+    }
+
+    for (int i = 0; i < *count; ++i) {
+        free((*paths)[i]);
+        free((*display_names)[i]);
+    }
+    free(*paths);
+    free(*display_names);
+
+    *paths = new_paths;
+    *count = new_count;
+    *display_names = clk_menu_build_names(new_paths, new_count);
+    if (*index >= new_count)
+        *index = 0;
+    clk_menu_rebuild_item(menu, tab_id, item_id, (const char**)(*display_names), new_count, *index);
+}
