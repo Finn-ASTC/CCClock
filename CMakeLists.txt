@@ -21,10 +21,13 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # ---- expose compile_commands.json at project root for clangd ----
 if(CMAKE_EXPORT_COMPILE_COMMANDS)
-    file(CREATE_LINK
-        "${CMAKE_BINARY_DIR}/compile_commands.json"
-        "${CMAKE_SOURCE_DIR}/compile_commands.json"
-        SYMBOLIC COPY_ON_ERROR)
+    add_custom_target(copy_compile_commands ALL
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_BINARY_DIR}/compile_commands.json"
+            "${CMAKE_SOURCE_DIR}/compile_commands.json"
+        BYPRODUCTS "${CMAKE_SOURCE_DIR}/compile_commands.json"
+        COMMENT "Mirroring compile_commands.json to project root for clangd"
+        VERBATIM)
 endif()
 
 # ---- sanitizers (Linux only, skip MinGW) ----
