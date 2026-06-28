@@ -1,0 +1,17 @@
+{
+    "fonts": {
+        "fonts_dir": "../../test",
+        "font": "test_clock_config"
+    },
+    "time_format": {
+        "time_formats": [
+            "hh:MM:ss",
+            "hh:MM"
+        ],
+        "selected_time_format": "hh:MM"
+    },
+    "menu": {
+        "themes_dir": "../../assets/config/menu_config",
+        "theme": "menu_theme_config"
+    }
+}
