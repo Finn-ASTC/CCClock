@@ -36,10 +36,11 @@ typedef struct {
     char name[64];
     clk_alarm alarm;
     clk_audio_sound* sound;
-    int repeat_count;  /* times to repeat the sound */
-    int repeat_days;   /* one of CLK_REPEAT_* */
-    time_t today_date; /* used only when repeat_days == CLK_REPEAT_TODAY */
-    float volume;      /* 0.0 — 1.0 */
+    int repeat_count;     /* times to repeat the sound (when !loop) */
+    int repeat_days;      /* one of CLK_REPEAT_* */
+    time_t today_date;    /* used only when repeat_days == CLK_REPEAT_TODAY */
+    float volume;         /* 0.0 — 1.0 */
+    bool loop;            /* true = infinite repeat */
 } clk_clock_alarm;
 
 typedef struct {
@@ -47,7 +48,8 @@ typedef struct {
     int duration_seconds;
     clk_audio_sound* sound;
     int repeat_count;
-    float volume; /* 0.0 — 1.0 */
+    float volume;         /* 0.0 — 1.0 */
+    bool loop;            /* true = infinite repeat */
 } clk_clock_pomodoro_segment;
 
 typedef struct {
@@ -66,8 +68,6 @@ typedef struct {
     clk_clock_pomodoro pomodoros[CLK_POMODORO_MAX];
     int pomodoro_count;
     clk_audio_engine* audio_engine;
-    clk_audio_sound* active_bells[CLK_ALARM_MAX + CLK_POMODORO_MAX];
-    int active_bell_count;
 } clk_clock;
 
 /* ================================================================
@@ -117,20 +117,12 @@ void clk_clock_pomodoro_resume(clk_clock* clock, int index);
 void clk_clock_pomodoro_stop(clk_clock* clock, int index);
 
 /* ================================================================
- *  Active bells
- * ================================================================ */
-
-/** Stop the most recently added bell and remove it from the list. */
-void clk_clock_stop_bell(clk_clock* clock);
-/** Stop and clear ALL active bells. */
-void clk_clock_stop_all_bells(clk_clock* clock);
-int clk_clock_bell_count(const clk_clock* clock);
-
-/* ================================================================
  *  Per-frame update
  * ================================================================ */
 
-/** Check all alarms / pomodoros.  Triggers audio when timers fire. */
+/** Check all alarms / pomodoros.  Triggers audio via
+ *  clk_audio_play_loop / clk_audio_play_times when timers fire.
+ *  Caller must also call clk_audio_update() each frame. */
 void clk_clock_update(clk_clock* clock);
 
 /* ================================================================

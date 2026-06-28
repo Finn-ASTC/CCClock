@@ -66,6 +66,28 @@ void clk_audio_stop(clk_audio_sound* sound);
 void clk_audio_sound_set_volume(clk_audio_sound* sound, float volume);
 
 /* ------------------------------------------------------------------
+ *  Managed playback
+ *  (automatically handles stop / retrigger — call update() each frame)
+ * ------------------------------------------------------------------ */
+
+/** Play the sound in an infinite loop until clk_audio_stop_all(). */
+void clk_audio_play_loop(clk_audio_sound* sound, float volume);
+
+/** Play the sound @p count times, then stop.  Requires clk_audio_update()
+ *  to be called each frame so that the count is decremented. */
+void clk_audio_play_times(clk_audio_sound* sound, float volume, int count);
+
+/** Process managed sounds — retrigger countdown sounds or remove
+ *  finished ones.  Call once per frame (e.g. from clk_clock_update). */
+void clk_audio_update(void);
+
+/** Stop every managed sound immediately and clear the playing list. */
+void clk_audio_stop_all(void);
+
+/** Number of sounds currently being managed. */
+int clk_audio_playing_count(void);
+
+/* ------------------------------------------------------------------
  *  Query
  * ------------------------------------------------------------------ */
 

@@ -16,11 +16,7 @@ void clk_clock_init(clk_clock* clock, clk_audio_engine* audio_engine) {
 void clk_clock_deinit(clk_clock* clock) {
     if (!clock)
         return;
-    for (int i = 0; i < clock->active_bell_count; ++i) {
-        if (clock->active_bells[i])
-            clk_audio_stop(clock->active_bells[i]);
-    }
-    clock->active_bell_count = 0;
+    clk_audio_stop_all();
 }
 
 /* ================================================================
@@ -145,40 +141,46 @@ void clk_clock_pomodoro_stop(clk_clock* clock, int index) {
 }
 
 /* ================================================================
- *  Active bells
- * ================================================================ */
-
-void clk_clock_stop_bell(clk_clock* clock) {
-    if (!clock || clock->active_bell_count == 0)
-        return;
-    int last = clock->active_bell_count - 1;
-    if (clock->active_bells[last])
-        clk_audio_stop(clock->active_bells[last]);
-    clock->active_bells[last] = NULL;
-    clock->active_bell_count--;
-}
-
-void clk_clock_stop_all_bells(clk_clock* clock) {
-    if (!clock)
-        return;
-    for (int i = 0; i < clock->active_bell_count; ++i) {
-        if (clock->active_bells[i])
-            clk_audio_stop(clock->active_bells[i]);
-        clock->active_bells[i] = NULL;
-    }
-    clock->active_bell_count = 0;
-}
-
-int clk_clock_bell_count(const clk_clock* clock) {
-    return clock ? clock->active_bell_count : 0;
-}
-
-/* ================================================================
- *  Per-frame update (placeholder)
+ *  Per-frame update
  * ================================================================ */
 
 void clk_clock_update(clk_clock* clock) {
-    (void)clock;
+    if (!clock)
+        return;
+
+    for (int i = 0; i < clock->alarm_count; ++i) {
+        clk_clock_alarm* a = &clock->alarms[i];
+        if (!a->alarm.enabled || !clk_alarm_check(&a->alarm))
+            continue;
+
+        if (a->sound) {
+            if (a->loop)
+                clk_audio_play_loop(a->sound, a->volume);
+            else
+                clk_audio_play_times(a->sound, a->volume, a->repeat_count);
+        }
+        clk_alarm_rearm(&a->alarm);
+    }
+
+    for (int i = 0; i < clock->pomodoro_count; ++i) {
+        clk_clock_pomodoro* p = &clock->pomodoros[i];
+        if (!p->enabled || p->paused || p->segment_count == 0)
+            continue;
+        if (!clk_timer_finished(&p->timer))
+            continue;
+
+        if (p->current_segment >= 0 && p->current_segment < p->segment_count) {
+            clk_clock_pomodoro_segment* seg = &p->segments[p->current_segment];
+            if (seg->sound) {
+                if (seg->loop)
+                    clk_audio_play_loop(seg->sound, seg->volume);
+                else
+                    clk_audio_play_times(seg->sound, seg->volume, seg->repeat_count);
+            }
+        }
+        p->current_segment = (p->current_segment + 1) % p->segment_count;
+        clk_timer_start(&p->timer, p->segments[p->current_segment].duration_seconds);
+    }
 }
 
 /* ================================================================

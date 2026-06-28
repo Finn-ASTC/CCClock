@@ -145,3 +145,69 @@ bool clk_audio_is_finished(const clk_audio_sound* sound) {
         return true;
     return ma_sound_at_end(&sound->sound);
 }
+
+/* ------------------------------------------------------------------
+ *  Managed playback
+ * ------------------------------------------------------------------ */
+
+#define CLK_AUDIO_MAX_PLAYING 64
+
+typedef struct {
+    clk_audio_sound* sound;
+    bool looping;
+    int remaining;
+    float volume;
+} clk_playing_entry;
+
+static clk_playing_entry playing[CLK_AUDIO_MAX_PLAYING];
+static int playing_count;
+
+void clk_audio_play_loop(clk_audio_sound* sound, float volume) {
+    if (!sound || playing_count >= CLK_AUDIO_MAX_PLAYING)
+        return;
+    clk_audio_sound_set_volume(sound, volume);
+    clk_audio_play(sound, CLK_AUDIO_LOOP_ON);
+    playing[playing_count++] = (clk_playing_entry){sound, true, 0, volume};
+}
+
+void clk_audio_play_times(clk_audio_sound* sound, float volume, int count) {
+    if (!sound || count <= 0 || playing_count >= CLK_AUDIO_MAX_PLAYING)
+        return;
+    clk_audio_sound_set_volume(sound, volume);
+    clk_audio_play(sound, CLK_AUDIO_LOOP_OFF);
+    playing[playing_count++] = (clk_playing_entry){sound, false, count, volume};
+}
+
+void clk_audio_update(void) {
+    for (int i = 0; i < playing_count;) {
+        clk_playing_entry* e = &playing[i];
+        if (e->looping) {
+            i++;
+            continue;
+        }
+        if (!clk_audio_is_finished(e->sound)) {
+            i++;
+            continue;
+        }
+        e->remaining--;
+        if (e->remaining > 0) {
+            clk_audio_play(e->sound, CLK_AUDIO_LOOP_OFF);
+            i++;
+        } else {
+            clk_audio_stop(e->sound);
+            for (int j = i; j < playing_count - 1; ++j)
+                playing[j] = playing[j + 1];
+            playing_count--;
+        }
+    }
+}
+
+void clk_audio_stop_all(void) {
+    for (int i = 0; i < playing_count; ++i)
+        clk_audio_stop(playing[i].sound);
+    playing_count = 0;
+}
+
+int clk_audio_playing_count(void) {
+    return playing_count;
+}
