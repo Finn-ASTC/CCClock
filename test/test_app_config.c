@@ -17,6 +17,7 @@ int main(void) {
     clk_app_config cfg;
     bool ok = clk_app_config_load(&cfg, CONFIG_PATH);
     TEST("load valid -> true", ok);
+    clk_app_config_deinit(&cfg);
 
     ok = clk_app_config_load(&cfg, "nonexistent.json");
     TEST("load missing file -> false", !ok);
