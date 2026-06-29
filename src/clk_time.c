@@ -96,7 +96,6 @@ bool clk_alarm_check(clk_alarm* alarm) {
     if (!alarm || !alarm->enabled || alarm->triggered)
         return false;
 
-    time_t now = time(NULL);
     struct tm time_info;
     if (!clk_time_localtime(&time_info))
         return false;

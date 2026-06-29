@@ -264,18 +264,18 @@ static void clk_json_lexer_next(clk_json_lexer* lexer, clk_json_token* token) {
                     token->type = TOKEN_ERROR;
                     goto string_error;
                 }
-                char c = lexer->json[lexer->pos];
+                char ch = lexer->json[lexer->pos];
 
                 /* unterminated string */
-                if (c == '\n') {
+                if (ch == '\n') {
                     token->type = TOKEN_ERROR;
                     goto string_error;
                 }
 
-                if (c == '"')
+                if (ch == '"')
                     break;
 
-                if (c == '\\') {
+                if (ch == '\\') {
                     lexer->pos++;
                     lexer->col++;
                     if (lexer->pos >= lexer->json_len) {
@@ -369,7 +369,7 @@ static void clk_json_lexer_next(clk_json_lexer* lexer, clk_json_token* token) {
                     lexer->pos++;
                     lexer->col++;
                 } else {
-                    buf[len++] = c;
+                    buf[len++] = ch;
                     lexer->pos++;
                     lexer->col++;
                 }

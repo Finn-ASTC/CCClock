@@ -61,6 +61,17 @@ add_library(libclock STATIC
 )
 target_include_directories(libclock PRIVATE include)
 
+target_compile_options(libclock PRIVATE
+    -Wall
+    -Wextra
+    -Wpedantic
+    -Wshadow
+    -Wformat=2
+    -Wimplicit-fallthrough
+    -Wstrict-prototypes
+    -Werror=implicit-function-declaration
+)
+
 find_path(MINIAUDIO_INCLUDE_DIR
     NAMES miniaudio.h
     REQUIRED

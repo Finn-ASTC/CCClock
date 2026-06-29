@@ -24,7 +24,7 @@ void clk_fs_free_list(char** list, int count);
 bool clk_fs_file_changed(const char* path, time_t* last_mtime);
 
 /** Re-scan a directory and rebuild a menu item if changed.
- *  Frees old data on change; replaces *paths/*count/*display_names/*index. */
+ *  Frees old data on change; replaces *paths, *count, *display_names, *index. */
 void clk_fs_sync_dir(const char* dir_path, char*** paths, int* count, char*** display_names,
                      int* index, clk_menu* menu, int tab_id, int item_id);
 

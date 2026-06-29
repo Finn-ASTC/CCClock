@@ -28,6 +28,8 @@ static char** parse_time_formats_arr(clk_json_value* time_obj, int* out_count) {
     if (count <= 0)
         return NULL;
     char** formats = calloc(count, sizeof(char*));
+    if (!formats)
+        return NULL;
     for (int i = 0; i < count; ++i) {
         clk_json_value* element = clk_json_array_get(array, i);
         const char* str = NULL;
@@ -168,6 +170,8 @@ void clk_cfg_time_formats_reload(clk_cfg_time_formats* tf, clk_json_value* time_
     tf->strings = parse_time_formats_arr(time_obj, &tf->count);
     if (!tf->strings) {
         tf->strings = calloc(1, sizeof(char*));
+        if (!tf->strings)
+            tf->strings = NULL;
         tf->count = 0;
     }
     tf->options = clk_menu_wrap_strings(tf->strings, tf->count);

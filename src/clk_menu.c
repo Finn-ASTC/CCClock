@@ -638,7 +638,7 @@ bool clk_menu_set_value_str(clk_menu* menu, int tab_id, int item_id, const char*
     if (!item || item->type != CLK_MENU_TYPE_STR)
         return false;
 
-    for (size_t i = 0; i < item->option_count; ++i) {
+    for (size_t i = 0; i < (size_t)item->option_count; ++i) {
         if (strcmp(val, item->options[i]) == 0) {
             item->option_idx = i;
             item->value.str = item->options[i];
@@ -654,6 +654,8 @@ bool clk_menu_set_value_str(clk_menu* menu, int tab_id, int item_id, const char*
 
 char** clk_menu_build_names(char** paths, int count) {
     char** names = calloc(count, sizeof(char*));
+    if (!names)
+        return NULL;
     for (int i = 0; i < count; ++i) {
         const char* last_slash = NULL;
         for (const char* p = paths[i]; *p; ++p)
@@ -670,6 +672,8 @@ char** clk_menu_build_names(char** paths, int count) {
 
 const char** clk_menu_wrap_strings(char** strings, int count) {
     const char** result = calloc(count, sizeof(const char*));
+    if (!result)
+        return NULL;
     for (int i = 0; i < count; ++i)
         result[i] = strings[i];
     return result;

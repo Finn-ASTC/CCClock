@@ -226,8 +226,8 @@ void clk_clock_update(clk_clock* clock) {
             if (a->today_date != (time_t)ti.tm_mday)
                 continue;
         } else {
-            int today_wday = ti.tm_wday == 0 ? 7 : ti.tm_wday; /* Mon=1..Sun=7 */
-            if (today_wday != a->repeat_days)
+            int today_wday = ti.tm_wday == 0 ? 7 : ti.tm_wday;
+            if (today_wday != (int)a->repeat_days)
                 continue;
         }
 
@@ -349,11 +349,15 @@ bool clk_clock_format_now(const char* strftime_format, char* buffer, size_t buff
     if (!strftime_format || !buffer || buffer_size == 0)
         return false;
 
-    time_t raw_time;
     struct tm time_info;
 
     if (!clk_time_localtime(&time_info))
         return false;
 
-    return strftime(buffer, buffer_size, strftime_format, &time_info) > 0;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-nonliteral"
+    if (strftime(buffer, buffer_size, strftime_format, &time_info) == 0)
+        return false;
+#pragma GCC diagnostic pop
+    return true;
 }

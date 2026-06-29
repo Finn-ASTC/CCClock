@@ -74,7 +74,7 @@ static bool resolve_composite_members(clk_menu_theme* theme, const clk_json_valu
     if (!arr)
         return false;
 
-    for (size_t i = 0; i < cnt; ++i) {
+    for (size_t i = 0; i < (size_t)cnt; ++i) {
         const clk_json_value* elem = clk_json_array_get(members_json, i);
         const char* name = NULL;
         if (!elem || !clk_json_is_string(elem) || clk_json_get_string(elem, &name) != 0) {
@@ -111,7 +111,7 @@ static bool resolve_special_members(clk_menu_theme* theme, const clk_json_value*
     if (!arr)
         return false;
 
-    for (size_t i = 0; i < cnt; ++i) {
+    for (size_t i = 0; i < (size_t)cnt; ++i) {
         const clk_json_value* elem = clk_json_array_get(layout_json, i);
         const char* name = NULL;
         if (!elem || !clk_json_is_string(elem) || clk_json_get_string(elem, &name) != 0) {

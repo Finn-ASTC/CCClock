@@ -20,7 +20,8 @@ int main(void) {
     TEST("init: playing_count == 0", clk_audio_playing_count() == 0);
 
     clk_audio_sound* s = clk_audio_load(engine, "../../assets/audio/u_inx5oo5fv3-alarm-327234.mp3");
-    clk_audio_sound* s2 = clk_audio_load(engine, "../../assets/audio/u_inx5oo5fv3-alarm-327234.mp3");
+    clk_audio_sound* s2 =
+        clk_audio_load(engine, "../../assets/audio/u_inx5oo5fv3-alarm-327234.mp3");
     if (!s || !s2) {
         printf("  [SKIP] Cannot load test sound — tests skipped\n");
         goto done;

@@ -529,7 +529,6 @@ static int clk_render_row(const clk_menu* menu, clk_texture* tex, const clk_menu
                                t == CLK_MENU_DEF_ITEM_VALUE);
 
             if (is_special) {
-                int before = x;
                 x += render_def(menu, tex, elem->def, tab_idx, item_idx, x, y, target);
                 /* fill remaining gap to target with background of the
                  * last rendered leaf cell */
@@ -592,7 +591,6 @@ static int render_item_list_section(clk_menu_instance* instance, const clk_menu*
                                     clk_texture* tex, const clk_menu_section* sec, int y,
                                     int avail_rows) {
     int item_cnt = (avail_rows + sec->row_count - 1) / sec->row_count;
-    int item_gap = item_cnt / 4;
 
     int remaining_rows = (item_cnt * sec->row_count) % avail_rows;
 
@@ -619,13 +617,11 @@ static int render_item_list_section(clk_menu_instance* instance, const clk_menu*
         instance->align_top = false;
         instance->active_item_pos_idx = item_cnt - 1;
     }
-    if (!up &&
-        menu->tabs[menu->active_tab]->active_item == menu->tabs[menu->active_tab]->item_count) {
+    if (!up && menu->tabs[menu->active_tab]->active_item ==
+                   (int)menu->tabs[menu->active_tab]->item_count) {
         instance->align_top = false;
         instance->active_item_pos_idx = item_cnt - 1;
     }
-
-    int total = (int)menu->tabs[menu->active_tab]->item_count;
 
     int scroll = menu->tabs[menu->active_tab]->active_item - instance->active_item_pos_idx;
     if (scroll < 0)
