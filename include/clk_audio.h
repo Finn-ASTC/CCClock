@@ -15,12 +15,6 @@ typedef struct clk_audio_engine clk_audio_engine;
 typedef struct clk_audio_sound clk_audio_sound;
 
 /* ------------------------------------------------------------------
- *  Loop mode
- * ------------------------------------------------------------------ */
-
-typedef enum { CLK_AUDIO_LOOP_OFF, CLK_AUDIO_LOOP_ON } clk_audio_loop;
-
-/* ------------------------------------------------------------------
  *  Engine lifecycle
  * ------------------------------------------------------------------ */
 
@@ -49,17 +43,26 @@ void clk_audio_destroy(clk_audio_sound* sound);
  *  Playback
  * ------------------------------------------------------------------ */
 
-/** Start (or restart) playback.  @p loop determines whether the sound
- *  repeats when it reaches the end. */
-void clk_audio_play(clk_audio_sound* sound, clk_audio_loop loop);
+/** Start playback with automatic repeat management.
+ *
+ *  @p loop      = true  → repeat forever (until clk_audio_stop).
+ *  @p loop      = false → play @p count times, then stop automatically.
+ *  @p volume    is clamped to 0.0–1.0.
+ *
+ *  Requires clk_audio_update() to be called each frame so that
+ *  non-looping sounds can be retriggered / cleaned up. */
+void clk_audio_play(clk_audio_sound* sound, float volume, bool loop, int count);
 
-/** Pause without resetting position.  No-op if already paused. */
+/** Pause without resetting position.  No-op if already paused.
+ *  Does NOT remove the sound from managed tracking. */
 void clk_audio_pause(clk_audio_sound* sound);
 
 /** Resume from the position where it was paused. */
 void clk_audio_resume(clk_audio_sound* sound);
 
-/** Stop and rewind to the beginning. */
+/** Stop the sound and rewind to the beginning.
+ *  If the sound was being managed (started via clk_audio_play),
+ *  it is also removed from managed tracking. */
 void clk_audio_stop(clk_audio_sound* sound);
 
 /** Set per-sound volume.  @p volume is clamped to 0.0–1.0. */
@@ -67,22 +70,12 @@ void clk_audio_sound_set_volume(clk_audio_sound* sound, float volume);
 
 /* ------------------------------------------------------------------
  *  Managed playback
- *  (automatically handles stop / retrigger — call update() each frame)
+ *  (automatically handles retrigger — call update() each frame)
  * ------------------------------------------------------------------ */
 
-/** Play the sound in an infinite loop until clk_audio_stop_all(). */
-void clk_audio_play_loop(clk_audio_sound* sound, float volume);
-
-/** Play the sound @p count times, then stop.  Requires clk_audio_update()
- *  to be called each frame so that the count is decremented. */
-void clk_audio_play_times(clk_audio_sound* sound, float volume, int count);
-
 /** Process managed sounds — retrigger countdown sounds or remove
- *  finished ones.  Call once per frame (e.g. from clk_clock_update). */
+ *  finished ones.  Call once per frame. */
 void clk_audio_update(void);
-
-/** Stop every managed sound immediately and clear the playing list. */
-void clk_audio_stop_all(void);
 
 /** Number of sounds currently being managed. */
 int clk_audio_playing_count(void);

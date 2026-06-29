@@ -82,6 +82,7 @@ endmacro()
 
 add_clk_exec(Clock src/main.c)
 add_clk_exec(clock_demo sandbox/clock_demo.c)
+add_clk_exec(clock_sched_demo sandbox/clock_sched_demo.c)
 add_clk_exec(audio_demo sandbox/audio_demo.c)
 add_clk_exec(key_io_demo sandbox/key_io_demo.c)
 add_clk_exec(json_benchmark sandbox/json_benchmark.c)

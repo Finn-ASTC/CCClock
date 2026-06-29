@@ -75,6 +75,16 @@ void clk_alarm_disable(clk_alarm* alarm);
 /** Enable a previously disabled alarm. */
 void clk_alarm_enable(clk_alarm* alarm);
 
+/* ================================================================
+ *  Utility
+ * ================================================================ */
+
+/** Get the current local time into @p out.  Returns false on failure. */
+bool clk_time_localtime(struct tm* out);
+
+/** Convert a specific @p timestamp into local time in @p out. */
+bool clk_time_localtime_from(time_t timestamp, struct tm* out);
+
 #ifdef __cplusplus
 }
 #endif

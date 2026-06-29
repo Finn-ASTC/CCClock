@@ -20,6 +20,7 @@ int main(void) {
     clk_clock_init(&clock, NULL);
     TEST("init zeroes alarm_count", clock.alarm_count == 0);
     TEST("init zeroes pomodoro_count", clock.pomodoro_count == 0);
+    TEST("init zeroes active_bell_count", clock.active_bell_count == 0);
     TEST("init stores audio_engine", clock.audio_engine == NULL);
 
     clk_clock_deinit(&clock);
@@ -187,6 +188,38 @@ int main(void) {
     TEST("add_pomodoro fills to max", ok && clock.pomodoro_count == CLK_POMODORO_MAX);
     ok = clk_clock_add_pomodoro(&clock, &p);
     TEST("add_pomodoro overflow fails", !ok);
+
+    /* ================================================================
+     *  Active bells
+     * ================================================================ */
+
+    clk_clock_init(&clock, NULL);
+
+    TEST("bell_count zero", clk_clock_bell_count(&clock) == 0);
+
+    clk_clock_stop_bell(&clock);
+    TEST("stop_bell empty safe", clk_clock_bell_count(&clock) == 0);
+
+    clk_clock_stop_all_bells(&clock);
+    TEST("stop_all empty safe", 1);
+
+    clock.active_bells[0] = NULL;
+    clock.active_bell_count = 1;
+    clock.active_bells[1] = NULL;
+    clock.active_bell_count = 2;
+    TEST("bell_count == 2", clk_clock_bell_count(&clock) == 2);
+
+    clk_clock_stop_bell(&clock);
+    TEST("stop_bell reduces count", clk_clock_bell_count(&clock) == 1);
+    clk_clock_stop_bell(&clock);
+    TEST("stop_bell reduces to zero", clk_clock_bell_count(&clock) == 0);
+
+    clock.active_bells[0] = NULL;
+    clock.active_bells[1] = NULL;
+    clock.active_bells[2] = NULL;
+    clock.active_bell_count = 3;
+    clk_clock_stop_all_bells(&clock);
+    TEST("stop_all clears", clk_clock_bell_count(&clock) == 0);
 
     /* ================================================================
      *  translate_format (regression)

@@ -52,8 +52,7 @@ int main(void) {
     /* --- time_formats switch --- */
     cfg.time_formats.idx = 0;
     clk_cfg_time_formats_switch(&cfg.time_formats);
-    TEST("tfmt_switch: current = hh:MM:ss",
-         strcmp(cfg.time_formats.current, "hh:MM:ss") == 0);
+    TEST("tfmt_switch: current = hh:MM:ss", strcmp(cfg.time_formats.current, "hh:MM:ss") == 0);
 
     /* --- reload: non-matching saved name keeps idx --- */
     {
@@ -68,7 +67,8 @@ int main(void) {
     TEST("deinit: json freed", cfg.json == NULL);
     TEST("deinit: fonts cleared", cfg.fonts.count == 0 && cfg.fonts.paths == NULL);
     TEST("deinit: themes cleared", cfg.themes.count == 0 && cfg.themes.paths == NULL);
-    TEST("deinit: time_formats cleared", cfg.time_formats.count == 0 && cfg.time_formats.strings == NULL);
+    TEST("deinit: time_formats cleared",
+         cfg.time_formats.count == 0 && cfg.time_formats.strings == NULL);
     clk_app_config_deinit(&cfg);
     TEST("deinit double safe", 1);
 

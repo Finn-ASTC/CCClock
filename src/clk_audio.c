@@ -15,7 +15,15 @@ struct clk_audio_engine {
 
 struct clk_audio_sound {
     ma_sound sound;
+
+    /* managed playback — linked list, no fixed limit */
+    bool managed;
+    bool managed_looping;
+    int managed_remaining;
+    struct clk_audio_sound* managed_next;
 };
+
+static clk_audio_sound* managed_head = NULL;
 
 /* ------------------------------------------------------------------
  *  Engine lifecycle
@@ -88,10 +96,21 @@ void clk_audio_destroy(clk_audio_sound* sound) {
  *  Playback
  * ------------------------------------------------------------------ */
 
-void clk_audio_play(clk_audio_sound* sound, clk_audio_loop loop) {
-    if (!sound)
+void clk_audio_play(clk_audio_sound* sound, float volume, bool loop, int count) {
+    if (!sound || sound->managed)
         return;
-    ma_sound_set_looping(&sound->sound, loop == CLK_AUDIO_LOOP_ON);
+    if (!loop && count <= 0)
+        return;
+
+    clk_audio_sound_set_volume(sound, volume);
+
+    sound->managed = true;
+    sound->managed_looping = loop;
+    sound->managed_remaining = loop ? 0 : count;
+    sound->managed_next = managed_head;
+    managed_head = sound;
+
+    ma_sound_set_looping(&sound->sound, loop ? MA_TRUE : MA_FALSE);
     ma_sound_start(&sound->sound);
 }
 
@@ -112,6 +131,22 @@ void clk_audio_stop(clk_audio_sound* sound) {
         return;
     ma_sound_stop(&sound->sound);
     ma_sound_seek_to_pcm_frame(&sound->sound, 0);
+
+    /* remove from managed list if present */
+    clk_audio_sound* prev = NULL;
+    clk_audio_sound* s = managed_head;
+    while (s) {
+        if (s == sound) {
+            if (prev)
+                prev->managed_next = s->managed_next;
+            else
+                managed_head = s->managed_next;
+            s->managed = false;
+            return;
+        }
+        prev = s;
+        s = s->managed_next;
+    }
 }
 
 void clk_audio_sound_set_volume(clk_audio_sound* sound, float volume) {
@@ -150,64 +185,39 @@ bool clk_audio_is_finished(const clk_audio_sound* sound) {
  *  Managed playback
  * ------------------------------------------------------------------ */
 
-#define CLK_AUDIO_MAX_PLAYING 64
-
-typedef struct {
-    clk_audio_sound* sound;
-    bool looping;
-    int remaining;
-    float volume;
-} clk_playing_entry;
-
-static clk_playing_entry playing[CLK_AUDIO_MAX_PLAYING];
-static int playing_count;
-
-void clk_audio_play_loop(clk_audio_sound* sound, float volume) {
-    if (!sound || playing_count >= CLK_AUDIO_MAX_PLAYING)
-        return;
-    clk_audio_sound_set_volume(sound, volume);
-    clk_audio_play(sound, CLK_AUDIO_LOOP_ON);
-    playing[playing_count++] = (clk_playing_entry){sound, true, 0, volume};
-}
-
-void clk_audio_play_times(clk_audio_sound* sound, float volume, int count) {
-    if (!sound || count <= 0 || playing_count >= CLK_AUDIO_MAX_PLAYING)
-        return;
-    clk_audio_sound_set_volume(sound, volume);
-    clk_audio_play(sound, CLK_AUDIO_LOOP_OFF);
-    playing[playing_count++] = (clk_playing_entry){sound, false, count, volume};
-}
-
 void clk_audio_update(void) {
-    for (int i = 0; i < playing_count;) {
-        clk_playing_entry* e = &playing[i];
-        if (e->looping) {
-            i++;
+    clk_audio_sound* prev = NULL;
+    clk_audio_sound* s = managed_head;
+
+    while (s) {
+        if (s->managed_looping || !clk_audio_is_finished(s)) {
+            prev = s;
+            s = s->managed_next;
             continue;
         }
-        if (!clk_audio_is_finished(e->sound)) {
-            i++;
-            continue;
-        }
-        e->remaining--;
-        if (e->remaining > 0) {
-            clk_audio_play(e->sound, CLK_AUDIO_LOOP_OFF);
-            i++;
+        s->managed_remaining--;
+        if (s->managed_remaining > 0) {
+            ma_sound_seek_to_pcm_frame(&s->sound, 0);
+            ma_sound_start(&s->sound);
+            prev = s;
+            s = s->managed_next;
         } else {
-            clk_audio_stop(e->sound);
-            for (int j = i; j < playing_count - 1; ++j)
-                playing[j] = playing[j + 1];
-            playing_count--;
+            ma_sound_stop(&s->sound);
+            ma_sound_seek_to_pcm_frame(&s->sound, 0);
+            clk_audio_sound* next = s->managed_next;
+            if (prev)
+                prev->managed_next = s->managed_next;
+            else
+                managed_head = s->managed_next;
+            s->managed = false;
+            s = next;
         }
     }
 }
 
-void clk_audio_stop_all(void) {
-    for (int i = 0; i < playing_count; ++i)
-        clk_audio_stop(playing[i].sound);
-    playing_count = 0;
-}
-
 int clk_audio_playing_count(void) {
-    return playing_count;
+    int count = 0;
+    for (clk_audio_sound* s = managed_head; s; s = s->managed_next)
+        count++;
+    return count;
 }

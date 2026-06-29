@@ -3,6 +3,25 @@
 #include <time.h>
 
 /* ================================================================
+ *  Utility
+ * ================================================================ */
+
+bool clk_time_localtime(struct tm* out) {
+    return clk_time_localtime_from(time(NULL), out);
+}
+
+bool clk_time_localtime_from(time_t timestamp, struct tm* out) {
+    if (!out)
+        return false;
+
+#if defined(_WIN32) || defined(_WIN64)
+    return localtime_s(out, &timestamp) == 0;
+#else
+    return localtime_r(&timestamp, out) != NULL;
+#endif
+}
+
+/* ================================================================
  *  Timer
  * ================================================================ */
 
@@ -79,14 +98,8 @@ bool clk_alarm_check(clk_alarm* alarm) {
 
     time_t now = time(NULL);
     struct tm time_info;
-
-#if defined(_WIN32) || defined(_WIN64)
-    if (localtime_s(&time_info, &now) != 0)
+    if (!clk_time_localtime(&time_info))
         return false;
-#else
-    if (!localtime_r(&now, &time_info))
-        return false;
-#endif
 
     if (time_info.tm_hour == alarm->hour && time_info.tm_min == alarm->minute &&
         time_info.tm_sec >= alarm->second) {
