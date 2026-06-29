@@ -1,8 +1,6 @@
 #include "clk_clock.h"
 
-#include <stdbool.h>
 #include <string.h>
-#include <windows.h>
 
 /* ================================================================
  *  Lifecycle
