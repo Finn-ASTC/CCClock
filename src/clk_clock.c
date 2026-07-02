@@ -96,8 +96,8 @@ bool clk_clock_pomodoro_add_segment_at(clk_clock* clock, int pomodoro_index,
     if (!clock || !segment || pomodoro_index < 0 || pomodoro_index >= clock->pomodoro_count)
         return false;
     clk_clock_pomodoro* p = &clock->pomodoros[pomodoro_index];
-    if (segment_index < 0 || segment_index >= CLK_POMODORO_MAX_SEGMENTS ||
-        p->segment_count + 1 > CLK_POMODORO_MAX_SEGMENTS)
+    if (segment_index < 0 || segment_index > p->segment_count ||
+        p->segment_count >= CLK_POMODORO_MAX_SEGMENTS)
         return false;
     for (int i = p->segment_count - 1; i >= segment_index; --i)
         p->segments[i + 1] = p->segments[i];

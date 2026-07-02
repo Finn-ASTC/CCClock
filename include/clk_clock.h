@@ -111,7 +111,9 @@ int clk_clock_pomodoro_count(const clk_clock* clock);
 bool clk_clock_pomodoro_add_segment(clk_clock* clock, int pomodoro_index,
                                     const clk_clock_pomodoro_segment* segment);
 
-/** Add a segment by index. */
+/** Insert a segment at @p segment_index (0..segment_count).
+ *  Existing segments from that position onward are shifted right.
+ *  Returns false on out-of-range or array full. */
 bool clk_clock_pomodoro_add_segment_at(clk_clock* clock, int pomodoro_index,
                                        const clk_clock_pomodoro_segment* segment,
                                        int segment_index);
