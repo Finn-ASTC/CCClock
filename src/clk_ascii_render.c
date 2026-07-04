@@ -164,11 +164,13 @@ static bool load_glyph_textures(const clk_json_value* json, clk_ascii_render* re
     }
     clk_json_key_value_pair cell_pair;
     while (clk_json_object_iterator_next(&cell_iter, &cell_pair)) {
-        cell_entries = realloc(cell_entries, (cell_entry_count + 1) * sizeof(*cell_entries));
-        if (!cell_entries) {
+        clk_cell_entry* tmp = realloc(cell_entries, (cell_entry_count + 1) * sizeof(*cell_entries));
+        if (!tmp) {
+            free(cell_entries);
             clk_json_free(translator);
             return false;
         }
+        cell_entries = tmp;
         memset(cell_entries[cell_entry_count].key, 0, 5);
         strncpy(cell_entries[cell_entry_count].key, cell_pair.key, 4);
         if (!trans_json_cell(cell_pair.value, &cell_entries[cell_entry_count].cell, translator)) {

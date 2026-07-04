@@ -55,6 +55,13 @@ char** clk_fs_scan_dir(const char* dir_path, const char* extension, int* out_cou
 
         size_t path_len = strlen(dir_path) + 1 + name_len + 1;
         list[count] = malloc(path_len);
+        if (!list[count]) {
+            for (int k = 0; k < count; ++k)
+                free(list[k]);
+            free(list);
+            FindClose(find_handle);
+            return NULL;
+        }
         snprintf(list[count], path_len, "%s\\%s", dir_path, find_data.cFileName);
         count++;
     } while (FindNextFile(find_handle, &find_data));
@@ -96,6 +103,13 @@ char** clk_fs_scan_dir(const char* dir_path, const char* extension, int* out_cou
 
         size_t path_len = strlen(dir_path) + 1 + name_len + 1;
         list[count] = malloc(path_len);
+        if (!list[count]) {
+            for (int k = 0; k < count; ++k)
+                free(list[k]);
+            free(list);
+            closedir(dir);
+            return NULL;
+        }
         snprintf(list[count], path_len, "%s/%s", dir_path, entry->d_name);
         count++;
     }

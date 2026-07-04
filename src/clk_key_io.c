@@ -218,7 +218,14 @@ void clk_key_io_init(void) {
 #endif
 
     key_thread_running = true;
-    pthread_create(&key_thread, NULL, key_thread_func, NULL);
+    if (pthread_create(&key_thread, NULL, key_thread_func, NULL) != 0) {
+        key_thread_running = false;
+#ifndef _WIN32
+        tcsetattr(STDIN_FILENO, TCSANOW, &old_tio);
+#endif
+        pthread_mutex_destroy(&key_mutex);
+        return;
+    }
     key_thread_started = true;
 }
 

@@ -225,6 +225,8 @@ void clk_clock_update(clk_clock* clock) {
         if (a->repeat_days == CLK_REPEAT_TODAY) {
             if (a->today_date != (time_t)ti.tm_mday)
                 continue;
+        } else if (a->repeat_days == CLK_REPEAT_EVERYDAY) {
+            /* no day-of-week filter */
         } else {
             int today_wday = ti.tm_wday == 0 ? 7 : ti.tm_wday;
             if (today_wday != (int)a->repeat_days)

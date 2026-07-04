@@ -619,12 +619,6 @@ static int render_item_list_section(clk_menu_instance* instance, const clk_menu*
         instance->align_top = false;
         instance->active_item_pos_idx = item_cnt - 1;
     }
-    if (!up && menu->tabs[menu->active_tab]->active_item ==
-                   (int)menu->tabs[menu->active_tab]->item_count) {
-        instance->align_top = false;
-        instance->active_item_pos_idx = item_cnt - 1;
-    }
-
     int scroll = menu->tabs[menu->active_tab]->active_item - instance->active_item_pos_idx;
     if (scroll < 0)
         scroll = 0;
