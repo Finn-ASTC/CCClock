@@ -43,7 +43,7 @@ char** clk_fs_scan_dir(const char* dir_path, const char* extension, int* out_cou
             continue;
 
         if (count >= capacity) {
-            capacity = capacity ? capacity * 2 : 8;
+            capacity = capacity ? capacity * 2 : CLK_FS_DIR_INIT_CAP;
             char** tmp = realloc(list, capacity * sizeof(char*));
             if (!tmp) {
                 free(list);
@@ -84,7 +84,7 @@ char** clk_fs_scan_dir(const char* dir_path, const char* extension, int* out_cou
             continue;
 
         if (count >= capacity) {
-            capacity = capacity ? capacity * 2 : 8;
+            capacity = capacity ? capacity * 2 : CLK_FS_DIR_INIT_CAP;
             char** tmp = realloc(list, capacity * sizeof(char*));
             if (!tmp) {
                 free(list);

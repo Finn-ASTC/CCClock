@@ -1,5 +1,10 @@
 #include "clk_json.h"
 
+#define CLK_JSON_ERR_BUF_SIZE 256
+#define CLK_JSON_STRING_BUF_INIT 64
+#define CLK_JSON_CONTAINER_DEFAULT_CAP 8
+#define CLK_JSON_SERIALIZE_BUF_INIT 256
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -11,7 +16,7 @@
  *  Error handling
  * ================================================================ */
 
-static char clk_json_parse_err[256];
+static char clk_json_parse_err[CLK_JSON_ERR_BUF_SIZE];
 
 #define SET_ERROR(fmt, ...) \
     snprintf(clk_json_parse_err, sizeof(clk_json_parse_err), fmt, ##__VA_ARGS__)
@@ -252,7 +257,7 @@ static void clk_json_lexer_next(clk_json_lexer* lexer, clk_json_token* token) {
             token->type = TOKEN_EOF;
             break;
         case '"': {
-            size_t capacity = 64;
+            size_t capacity = CLK_JSON_STRING_BUF_INIT;
             size_t len = 0;
             char* buf = malloc(capacity);
 
@@ -640,7 +645,7 @@ clk_json_value* clk_json_create_array(void) {
     if (!v)
         return NULL;
     v->type = JSON_ARRAY;
-    v->array_value.capacity = 8;
+    v->array_value.capacity = CLK_JSON_CONTAINER_DEFAULT_CAP;
     v->array_value.items = malloc(v->array_value.capacity * sizeof(clk_json_value*));
     if (!v->array_value.items) {
         clk_json_free(v);
@@ -654,7 +659,7 @@ clk_json_value* clk_json_create_object(void) {
     if (!v)
         return NULL;
     v->type = JSON_OBJECT;
-    v->object_value.capacity = 8;
+    v->object_value.capacity = CLK_JSON_CONTAINER_DEFAULT_CAP;
     v->object_value.pairs = malloc(v->object_value.capacity * sizeof(clk_json_key_value_pair));
     if (!v->object_value.pairs) {
         clk_json_free(v);
@@ -1102,11 +1107,11 @@ char* clk_json_stringify(const clk_json_value* root) {
     if (!root)
         return NULL;
 
-    char* buf = malloc(256);
+    char* buf = malloc(CLK_JSON_SERIALIZE_BUF_INIT);
     if (!buf)
         return NULL;
 
-    size_t capacity = 256;
+    size_t capacity = CLK_JSON_SERIALIZE_BUF_INIT;
     size_t len = 0;
 
     if (!clk_json_append_value_to_str(&buf, &len, &capacity, root)) {
@@ -1315,11 +1320,11 @@ char* clk_json_stringify_pretty(const clk_json_value* root) {
     if (!root)
         return NULL;
 
-    char* buf = malloc(256);
+    char* buf = malloc(CLK_JSON_SERIALIZE_BUF_INIT);
     if (!buf)
         return NULL;
 
-    size_t capacity = 256;
+    size_t capacity = CLK_JSON_SERIALIZE_BUF_INIT;
     size_t len = 0;
 
     if (!clk_json_append_value_to_str_pretty(&buf, &len, &capacity, root, 0)) {

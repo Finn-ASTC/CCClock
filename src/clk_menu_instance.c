@@ -8,6 +8,8 @@
 #include "clk_menu_theme.h"
 #include "clk_term.h"
 
+#define CLK_MENU_DEFAULT_ACTIVE_POS 1
+
 #define CLK_MENU_ITEM_VAL_BUF_SIZE 32
 
 /* ================================================================
@@ -23,8 +25,8 @@ clk_menu_instance* clk_menu_instance_create(clk_menu* menu, const clk_menu_theme
         return NULL;
     memset(instance, 0, sizeof(clk_menu_instance));
 
-    instance->active_item_pos_idx = 1;
-    instance->last_active_item_pos_idx = 1;
+    instance->active_item_pos_idx = CLK_MENU_DEFAULT_ACTIVE_POS;
+    instance->last_active_item_pos_idx = CLK_MENU_DEFAULT_ACTIVE_POS;
     instance->align_top = true;
 
     instance->menu = menu;
@@ -91,8 +93,8 @@ void clk_menu_instance_change_menu(clk_menu_instance* instance, clk_menu* menu) 
     if (!instance || !menu)
         return;
     instance->menu = menu;
-    instance->active_item_pos_idx = 1;
-    instance->last_active_item_pos_idx = 1;
+    instance->active_item_pos_idx = CLK_MENU_DEFAULT_ACTIVE_POS;
+    instance->last_active_item_pos_idx = CLK_MENU_DEFAULT_ACTIVE_POS;
     instance->align_top = true;
 }
 
@@ -200,7 +202,7 @@ static int measure_def(const clk_menu* menu, const clk_menu_def* def, int tab_id
                     return snprintf(b, sizeof(b), "%.0f", it->value.num);
                 }
                 case CLK_MENU_TYPE_BOOL:
-                    return it->value.b ? 4 : 5;
+                    return it->value.b ? (int)(sizeof("true") - 1) : (int)(sizeof("false") - 1);
                 case CLK_MENU_TYPE_STR:
                     return (int)strlen(it->value.str);
                 default:

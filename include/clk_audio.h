@@ -11,6 +11,9 @@ extern "C" {
  *  Opaque types — miniaudio details hidden from callers
  * ------------------------------------------------------------------ */
 
+#define CLK_AUDIO_VOLUME_MIN 0.0f
+#define CLK_AUDIO_VOLUME_MAX 1.0f
+
 typedef struct clk_audio_engine clk_audio_engine;
 typedef struct clk_audio_sound clk_audio_sound;
 

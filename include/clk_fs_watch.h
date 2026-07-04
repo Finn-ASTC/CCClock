@@ -10,6 +10,8 @@
 extern "C" {
 #endif
 
+#define CLK_FS_DIR_INIT_CAP 8
+
 /** Scan a directory for files matching the given extension.
  *  @p extension includes the leading dot, e.g. ".json" ".mp3".
  *  Returns full paths; caller frees via clk_fs_free_list.

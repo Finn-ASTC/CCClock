@@ -13,6 +13,7 @@ extern "C" {
 #endif
 
 #define CLK_CLOCK_FORMAT_MAX_LENGTH 64
+#define CLK_CLOCK_NAME_MAX 64
 #define CLK_POMODORO_MAX_SEGMENTS 12
 #define CLK_ALARM_MAX 64
 #define CLK_POMODORO_MAX 64
@@ -35,7 +36,7 @@ typedef enum {
  * ------------------------------------------------------------------ */
 
 typedef struct {
-    char name[64];
+    char name[CLK_CLOCK_NAME_MAX];
     clk_alarm alarm;
     clk_audio_sound* sound;
     int repeat_count;            /* times to repeat the sound (when !loop) */
@@ -46,7 +47,7 @@ typedef struct {
 } clk_clock_alarm;
 
 typedef struct {
-    char name[64];
+    char name[CLK_CLOCK_NAME_MAX];
     int duration_seconds;
     clk_audio_sound* sound;
     int repeat_count;
@@ -55,7 +56,7 @@ typedef struct {
 } clk_clock_pomodoro_segment;
 
 typedef struct {
-    char name[64];
+    char name[CLK_CLOCK_NAME_MAX];
     clk_clock_pomodoro_segment segments[CLK_POMODORO_MAX_SEGMENTS];
     int segment_count;
     clk_timer timer;     /* current segment countdown */

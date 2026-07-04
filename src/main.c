@@ -21,6 +21,8 @@
 #define CLK_MENU_DEFAULT_HEIGHT 35
 #define CLK_FRAME_MS 16
 #define CLK_HOTRELOAD_TICKS 30
+#define CLK_MENU_Z_ORDER 5
+#define CLK_CLOCK_FORMAT_TRANSLATED_MAX 128
 
 enum {
     CLK_ITEM_TFMT = 1,
@@ -98,7 +100,7 @@ int main(void) {
      * ================================================================ */
 
     clk_ascii_render render;
-    if (!clk_ascii_render_create(&render, cfg.fonts.paths[cfg.fonts.idx])) {
+    if (!clk_ascii_render_create(&render, cfg.ascii_clock.fonts.paths[cfg.ascii_clock.fonts.idx])) {
         clk_app_config_deinit(&cfg);
         clk_term_close();
         printf("render create fail\n");
@@ -113,10 +115,10 @@ int main(void) {
 
     clk_menu* menu = clk_menu_create();
     clk_menu_add_tab(menu, 0, "clock");
-    clk_menu_add_item_str(menu, 0, CLK_ITEM_TFMT, "time format", cfg.time_formats.idx,
-                          cfg.time_formats.options, cfg.time_formats.count);
-    clk_menu_add_item_str(menu, 0, CLK_ITEM_FONT, "font", cfg.fonts.idx,
-                          (const char**)cfg.fonts.names, cfg.fonts.count);
+    clk_menu_add_item_str(menu, 0, CLK_ITEM_TFMT, "time format", cfg.ascii_clock.time_formats.idx,
+                          cfg.ascii_clock.time_formats.options, cfg.ascii_clock.time_formats.count);
+    clk_menu_add_item_str(menu, 0, CLK_ITEM_FONT, "font", cfg.ascii_clock.fonts.idx,
+                          (const char**)cfg.ascii_clock.fonts.names, cfg.ascii_clock.fonts.count);
     clk_menu_add_item_str(menu, 0, CLK_ITEM_THEME, "menu theme", cfg.themes.idx,
                           (const char**)cfg.themes.names, cfg.themes.count);
     clk_menu_add_item_action(menu, 0, CLK_ITEM_QUIT, "quit");
@@ -129,7 +131,7 @@ int main(void) {
     clk_menu_instance_set_size(menu_inst, CLK_MENU_DEFAULT_WIDTH, CLK_MENU_DEFAULT_HEIGHT);
     clk_menu_instance_set_visible(menu_inst, false);
     clk_menu_instance_add_to_term(menu_inst);
-    clk_sprite_set_z(menu_inst->sprite, 5);
+    clk_sprite_set_z(menu_inst->sprite, CLK_MENU_Z_ORDER);
 
     /* ================================================================
      *  Initial layout
@@ -137,7 +139,7 @@ int main(void) {
 
     int term_width, term_height;
     clk_term_get_size(&term_width, &term_height);
-    recenter_clock(&render, cfg.time_formats.current, term_width, term_height);
+    recenter_clock(&render, cfg.ascii_clock.time_formats.current, term_width, term_height);
     recenter_menu(menu_inst, term_width, term_height);
 
     /* ================================================================
@@ -166,15 +168,20 @@ int main(void) {
                     continue;
                 }
                 if (key_event.key == 'f' || key_event.key == 'F') {
-                    cfg.time_formats.idx = (cfg.time_formats.idx + 1) % cfg.time_formats.count;
-                    clk_cfg_time_formats_switch(&cfg.time_formats);
-                    clk_menu_set_value_str(menu, 0, CLK_ITEM_TFMT,
-                                           cfg.time_formats.strings[cfg.time_formats.idx]);
+                    cfg.ascii_clock.time_formats.idx =
+                        (cfg.ascii_clock.time_formats.idx + 1) % cfg.ascii_clock.time_formats.count;
+                    clk_cfg_ascii_clock_theme_switch_time(&cfg.ascii_clock);
+                    clk_menu_set_value_str(
+                        menu, 0, CLK_ITEM_TFMT,
+                        cfg.ascii_clock.time_formats.strings[cfg.ascii_clock.time_formats.idx]);
                 }
                 if (key_event.key == 'r' || key_event.key == 'R') {
-                    cfg.fonts.idx = (cfg.fonts.idx + 1) % cfg.fonts.count;
-                    clk_ascii_render_change_font(&render, cfg.fonts.paths[cfg.fonts.idx]);
-                    clk_menu_set_value_str(menu, 0, CLK_ITEM_FONT, cfg.fonts.names[cfg.fonts.idx]);
+                    cfg.ascii_clock.fonts.idx =
+                        (cfg.ascii_clock.fonts.idx + 1) % cfg.ascii_clock.fonts.count;
+                    clk_ascii_render_change_font(
+                        &render, cfg.ascii_clock.fonts.paths[cfg.ascii_clock.fonts.idx]);
+                    clk_menu_set_value_str(menu, 0, CLK_ITEM_FONT,
+                                           cfg.ascii_clock.fonts.names[cfg.ascii_clock.fonts.idx]);
                 }
                 if (key_event.key == 'q' || key_event.key == 'Q')
                     running = false;
@@ -194,17 +201,19 @@ int main(void) {
                     if (mev.type == CLK_MENU_EVENT_VALUE_CHANGED) {
                         switch (mev.item_id) {
                             case CLK_ITEM_TFMT:
-                                cfg.time_formats.idx = clk_menu_find_index(
-                                    mev.value.str, cfg.time_formats.options, cfg.time_formats.count,
-                                    cfg.time_formats.idx);
-                                clk_cfg_time_formats_switch(&cfg.time_formats);
+                                cfg.ascii_clock.time_formats.idx = clk_menu_find_index(
+                                    mev.value.str, cfg.ascii_clock.time_formats.options,
+                                    cfg.ascii_clock.time_formats.count,
+                                    cfg.ascii_clock.time_formats.idx);
+                                clk_cfg_ascii_clock_theme_switch_time(&cfg.ascii_clock);
                                 break;
                             case CLK_ITEM_FONT:
-                                cfg.fonts.idx = clk_menu_find_index(mev.value.str,
-                                                                    (const char**)cfg.fonts.names,
-                                                                    cfg.fonts.count, cfg.fonts.idx);
-                                clk_ascii_render_change_font(&render,
-                                                             cfg.fonts.paths[cfg.fonts.idx]);
+                                cfg.ascii_clock.fonts.idx = clk_menu_find_index(
+                                    mev.value.str, (const char**)cfg.ascii_clock.fonts.names,
+                                    cfg.ascii_clock.fonts.count, cfg.ascii_clock.fonts.idx);
+                                clk_ascii_render_change_font(
+                                    &render,
+                                    cfg.ascii_clock.fonts.paths[cfg.ascii_clock.fonts.idx]);
                                 break;
                             case CLK_ITEM_THEME:
                                 cfg.themes.idx = clk_menu_find_index(
@@ -223,13 +232,13 @@ int main(void) {
             clk_term_get_size(&term_width, &term_height);
         }
 
-        recenter_clock(&render, cfg.time_formats.current, term_width, term_height);
+        recenter_clock(&render, cfg.ascii_clock.time_formats.current, term_width, term_height);
         recenter_menu(menu_inst, term_width, term_height);
 
         {
-            char translated[128];
+            char translated[CLK_CLOCK_FORMAT_TRANSLATED_MAX];
             char time_str[CLK_CLOCK_FORMAT_MAX_LENGTH];
-            if (clk_clock_translate_format(cfg.time_formats.current, translated,
+            if (clk_clock_translate_format(cfg.ascii_clock.time_formats.current, translated,
                                            sizeof(translated)) &&
                 clk_clock_format_now(translated, time_str, sizeof(time_str)))
                 clk_ascii_render_update(&render, time_str);
@@ -255,14 +264,17 @@ int main(void) {
                     }
                 }
             }
-            if (cfg.fonts.idx >= 0 && cfg.fonts.idx < cfg.fonts.count &&
-                clk_fs_file_changed(cfg.fonts.paths[cfg.fonts.idx], &last_font))
-                clk_ascii_render_change_font(&render, cfg.fonts.paths[cfg.fonts.idx]);
+            if (cfg.ascii_clock.fonts.idx >= 0 &&
+                cfg.ascii_clock.fonts.idx < cfg.ascii_clock.fonts.count &&
+                clk_fs_file_changed(cfg.ascii_clock.fonts.paths[cfg.ascii_clock.fonts.idx],
+                                    &last_font))
+                clk_ascii_render_change_font(
+                    &render, cfg.ascii_clock.fonts.paths[cfg.ascii_clock.fonts.idx]);
             if (cfg.themes.idx >= 0 && cfg.themes.idx < cfg.themes.count &&
                 clk_fs_file_changed(cfg.themes.paths[cfg.themes.idx], &last_theme))
                 clk_menu_instance_change_theme(menu_inst, cfg.themes.paths[cfg.themes.idx]);
 
-            clk_cfg_fonts_sync(&cfg.fonts, menu, 0, CLK_ITEM_FONT);
+            clk_cfg_ascii_clock_theme_sync_fonts(&cfg.ascii_clock, menu, 0, CLK_ITEM_FONT);
             clk_cfg_themes_sync(&cfg.themes, menu, 0, CLK_ITEM_THEME);
         }
     }
@@ -272,14 +284,19 @@ int main(void) {
      * ================================================================ */
 
     {
-        clk_json_value* fobj = clk_json_object_get(cfg.json, "fonts");
-        clk_json_value* tobj = clk_json_object_get(cfg.json, "time_format");
+        clk_json_value* theme_obj = clk_json_object_get(cfg.json, "ascii_clock_theme");
         clk_json_value* mobj = clk_json_object_get(cfg.json, "menu");
-        if (fobj)
-            clk_json_object_set_string(fobj, "font", cfg.fonts.names[cfg.fonts.idx]);
-        if (tobj)
-            clk_json_object_set_string(tobj, "selected_time_format",
-                                       cfg.time_formats.strings[cfg.time_formats.idx]);
+        if (theme_obj) {
+            clk_json_value* fobj = clk_json_object_get(theme_obj, "fonts");
+            clk_json_value* tobj = clk_json_object_get(theme_obj, "time_format");
+            if (fobj)
+                clk_json_object_set_string(fobj, "font",
+                                           cfg.ascii_clock.fonts.names[cfg.ascii_clock.fonts.idx]);
+            if (tobj)
+                clk_json_object_set_string(
+                    tobj, "selected_time_format",
+                    cfg.ascii_clock.time_formats.strings[cfg.ascii_clock.time_formats.idx]);
+        }
         if (mobj)
             clk_json_object_set_string(mobj, "theme", cfg.themes.names[cfg.themes.idx]);
     }

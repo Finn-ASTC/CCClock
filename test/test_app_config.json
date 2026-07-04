@@ -1,17 +1,50 @@
 {
-    "fonts": {
-        "fonts_dir": "../../test",
-        "font": "test_clock_config"
-    },
-    "time_format": {
-        "time_formats": [
-            "hh:MM:ss",
-            "hh:MM"
-        ],
-        "selected_time_format": "hh:MM"
+    "ascii_clock_theme": {
+        "fonts": {
+            "fonts_dir": "../../test",
+            "font": "test_clock_config"
+        },
+        "time_format": {
+            "time_formats": [
+                "hh:MM:ss",
+                "hh:MM"
+            ],
+            "selected_time_format": "hh:MM"
+        }
     },
     "menu": {
         "themes_dir": "../../assets/config/menu_config",
         "theme": "menu_theme_config"
-    }
+    },
+    "clock": {
+        "alarms": [
+            {
+                "name": "test_alarm",
+                "hour": 8,
+                "minute": 30,
+                "enable": true,
+                "repeat": "Everyday"
+            }
+        ],
+        "pomodoro": [
+            {
+                "name": "test_pomo",
+                "segments": [
+                    {
+                        "minutes": 25
+                    },
+                    {
+                        "minutes": 5
+                    }
+                ]
+            }
+        ]
+    },
+    "BGM": [
+        {
+            "sound": "rain",
+            "volume": 80,
+            "enable": true
+        }
+    ]
 }

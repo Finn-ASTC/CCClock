@@ -5,6 +5,8 @@
 #include <stdint.h>
 #include <string.h>
 
+#define CLK_KEY_POLL_MS 10
+
 /* ================================================================
  *  Ring buffer — thread-safe (protected by key_mutex)
  * ================================================================ */
@@ -183,7 +185,7 @@ static void* key_thread_func(void* arg) {
 
     while (key_thread_running) {
         if (!raw_kbhit()) {
-            raw_sleep_ms(10);
+            raw_sleep_ms(CLK_KEY_POLL_MS);
             continue;
         }
 

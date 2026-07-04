@@ -16,6 +16,13 @@ extern "C" {
  *  Per-module data containers (no shared types — each is independent)
  * ------------------------------------------------------------------ */
 
+#define CLK_CFG_ALARM_SOUND_MAX 256
+
+#define CLK_CFG_VOLUME_DEFAULT 50
+#define CLK_CFG_SOUND_REPEAT_DEFAULT 1
+#define CLK_CFG_POMO_MINUTES_DEFAULT 25
+#define CLK_MINUTES_TO_SECONDS(m) ((m) * 60)
+
 typedef struct {
     const char* dir;
     char** paths;
@@ -40,22 +47,82 @@ typedef struct {
     char current[CLK_CLOCK_FORMAT_MAX_LENGTH];
 } clk_cfg_time_formats;
 
+typedef struct {
+    char name[CLK_CLOCK_NAME_MAX];
+    int hour;
+    int minute;
+    bool enabled;
+    char sound_file[CLK_CFG_ALARM_SOUND_MAX];
+    int sound_repeat;
+    int volume;
+    bool loop;
+    clk_repeat_days repeat_days;
+} clk_cfg_alarm;
+
+typedef struct {
+    clk_cfg_alarm* items;
+    int count;
+} clk_cfg_alarms;
+
+typedef struct {
+    char name[CLK_CLOCK_NAME_MAX];
+    int duration_seconds;
+    int sound_repeat;
+    int volume;
+    bool loop;
+    char sound_file[CLK_CFG_ALARM_SOUND_MAX];
+} clk_cfg_pomodoro_segment;
+
+typedef struct {
+    char name[CLK_CLOCK_NAME_MAX];
+    clk_cfg_pomodoro_segment* segments;
+    int segment_count;
+} clk_cfg_pomodoro;
+
+typedef struct {
+    clk_cfg_pomodoro* items;
+    int count;
+} clk_cfg_pomodoros;
+
+typedef struct {
+    char sound_file[CLK_CFG_ALARM_SOUND_MAX];
+    int volume;
+    bool enabled;
+} clk_cfg_bgm;
+
+typedef struct {
+    clk_cfg_bgm* items;
+    int count;
+} clk_cfg_bgms;
+
 /* ------------------------------------------------------------------
  *  Fonts
  * ------------------------------------------------------------------ */
 
-/** Load from the "fonts" JSON object.  Scans the directory, builds
- *  display names, resolves the saved font index. */
-void clk_cfg_fonts_init(clk_cfg_fonts* f, clk_json_value* fonts_obj);
+/* ------------------------------------------------------------------
+ *  Ascii Clock Theme (fonts + time formats wrapped)
+ * ------------------------------------------------------------------ */
 
-/** Rebuild the font menu item after a config reload. */
-void clk_cfg_fonts_reload(clk_cfg_fonts* f, clk_json_value* fonts_obj, clk_menu* menu, int tab_id,
-                          int item_id);
+typedef struct {
+    clk_cfg_fonts fonts;
+    clk_cfg_time_formats time_formats;
+} clk_cfg_ascii_clock_theme;
 
-/** Rescan the directory and update the menu item if files changed. */
-void clk_cfg_fonts_sync(clk_cfg_fonts* f, clk_menu* menu, int tab_id, int item_id);
+/** Parse the "ascii_clock_theme" JSON object — delegates to fonts/time_format init. */
+void clk_cfg_ascii_clock_theme_init(clk_cfg_ascii_clock_theme* t, clk_json_value* theme_obj);
 
-void clk_cfg_fonts_deinit(clk_cfg_fonts* f);
+/** Rebuild fonts/time_format menu items after a config reload. */
+void clk_cfg_ascii_clock_theme_reload(clk_cfg_ascii_clock_theme* t, clk_json_value* theme_obj,
+                                      clk_menu* menu, int tab_id, int font_id, int tfmt_id);
+
+/** Rescan the fonts directory and update the menu item if files changed. */
+void clk_cfg_ascii_clock_theme_sync_fonts(clk_cfg_ascii_clock_theme* t, clk_menu* menu, int tab_id,
+                                          int item_id);
+
+/** Copy the currently selected time format into time_formats.current. */
+void clk_cfg_ascii_clock_theme_switch_time(clk_cfg_ascii_clock_theme* t);
+
+void clk_cfg_ascii_clock_theme_deinit(clk_cfg_ascii_clock_theme* t);
 
 /* ------------------------------------------------------------------
  *  Themes
@@ -75,28 +142,37 @@ void clk_cfg_themes_deinit(clk_cfg_themes* t);
  *  Time formats
  * ------------------------------------------------------------------ */
 
-/** Load from the "time_format" JSON object. */
-void clk_cfg_time_formats_init(clk_cfg_time_formats* tf, clk_json_value* time_obj);
+/* ------------------------------------------------------------------
+ *  Clock (alarms + pomodoros wrapped)
+ * ------------------------------------------------------------------ */
 
-/** Rebuild the time format menu item after a config reload. */
-void clk_cfg_time_formats_reload(clk_cfg_time_formats* tf, clk_json_value* time_obj, clk_menu* menu,
-                                 int tab_id, int item_id);
+typedef struct {
+    clk_cfg_alarms alarms;
+    clk_cfg_pomodoros pomodoros;
+} clk_cfg_clock;
 
-/** Copy the currently selected format string into tf->current.
- *  Call after tf->idx has been changed. */
-void clk_cfg_time_formats_switch(clk_cfg_time_formats* tf);
+void clk_cfg_clock_init(clk_cfg_clock* c, clk_json_value* clock_obj);
+void clk_cfg_clock_deinit(clk_cfg_clock* c);
 
-void clk_cfg_time_formats_deinit(clk_cfg_time_formats* tf);
+/* ------------------------------------------------------------------
+ *  BGM
+ * ------------------------------------------------------------------ */
+
+/** Parse the "BGM" JSON array into clk_cfg_bgm entries. */
+void clk_cfg_bgms_init(clk_cfg_bgms* b, clk_json_value* json_array);
+
+void clk_cfg_bgms_deinit(clk_cfg_bgms* b);
 
 /* ------------------------------------------------------------------
  *  Aggregate
  * ------------------------------------------------------------------ */
 
 typedef struct {
-    clk_cfg_fonts fonts;
+    clk_cfg_ascii_clock_theme ascii_clock;
     clk_cfg_themes themes;
-    clk_cfg_time_formats time_formats;
-    clk_json_value* json; /* raw parse tree — used for save */
+    clk_cfg_clock clock;
+    clk_cfg_bgms bgm;
+    clk_json_value* json;
 } clk_app_config;
 
 /** Load all modules from @p path.  Returns false on any failure. */

@@ -402,7 +402,7 @@ static void clk_add_cell_to_ansi_output(const clk_cell* cell, int x, int y) {
         return;
 
     const clk_style* style = clk_get_style(cell->style_id);
-    char buf[256];
+    char buf[CLK_ANSI_CELL_BUF_SIZE];
     int len = 0;
 
     APPENDF(buf, sizeof(buf), len, "\033[%d;%dH", y + 1, x + 1);

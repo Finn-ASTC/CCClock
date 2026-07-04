@@ -150,6 +150,30 @@ int main(void) {
     ok = clk_clock_pomodoro_remove_segment(&clock, 0, (int)pp->segment_count);
     TEST("remove_segment OOB fails", !ok);
 
+    /* --- add_segment_at --- */
+    {
+        int before_count = pp->segment_count;
+        strcpy(seg.name, "Head");
+        ok = clk_clock_pomodoro_add_segment_at(&clock, 0, &seg, 0);
+        TEST("add_segment_at head succeeds", ok);
+        TEST("add_segment_at head: seg[0].name == Head", strcmp(pp->segments[0].name, "Head") == 0);
+        TEST("add_segment_at head: seg_count ++", pp->segment_count == before_count + 1);
+    }
+
+    {
+        clk_clock_pomodoro_remove_segment(&clock, 0, (int)pp->segment_count - 1);
+        strcpy(seg.name, "Tail");
+        ok = clk_clock_pomodoro_add_segment_at(&clock, 0, &seg, pp->segment_count);
+        TEST("add_segment_at tail succeeds", ok);
+        TEST("add_segment_at tail: last == Tail",
+             strcmp(pp->segments[pp->segment_count - 1].name, "Tail") == 0);
+    }
+
+    ok = clk_clock_pomodoro_add_segment_at(&clock, 0, &seg, 999);
+    TEST("add_segment_at OOB fails", !ok);
+    ok = clk_clock_pomodoro_add_segment_at(&clock, 0, &seg, -1);
+    TEST("add_segment_at negative fails", !ok);
+
     /* --- start / pause / resume / stop --- */
     clk_clock_pomodoro_start(&clock, 0);
     TEST("pomodoro_start sets current", pp->current_segment == 0);
@@ -170,6 +194,16 @@ int main(void) {
     TEST("pomodoro_start OOB safe", 1);
     clk_clock_pomodoro_stop(&clock, 99);
     TEST("pomodoro_stop OOB safe", 1);
+
+    /* --- set_enabled --- */
+    clk_clock_pomodoro_set_enabled(&clock, 0, false);
+    TEST("set_enabled false", !pp->enabled);
+    clk_clock_pomodoro_set_enabled(&clock, 0, true);
+    TEST("set_enabled true", pp->enabled);
+    clk_clock_pomodoro_set_enabled(&clock, -1, false);
+    TEST("set_enabled OOB safe", 1);
+    clk_clock_pomodoro_set_enabled(&clock, 99, false);
+    TEST("set_enabled OOB >count safe", 1);
 
     /* --- count --- */
     TEST("pomodoro_count == 1", clk_clock_pomodoro_count(&clock) == 1);

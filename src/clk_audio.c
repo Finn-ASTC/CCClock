@@ -57,10 +57,10 @@ void clk_audio_shutdown(clk_audio_engine* engine) {
 void clk_audio_engine_set_volume(clk_audio_engine* engine, float volume) {
     if (!engine)
         return;
-    if (volume < 0.0f)
-        volume = 0.0f;
-    if (volume > 1.0f)
-        volume = 1.0f;
+    if (volume < CLK_AUDIO_VOLUME_MIN)
+        volume = CLK_AUDIO_VOLUME_MIN;
+    if (volume > CLK_AUDIO_VOLUME_MAX)
+        volume = CLK_AUDIO_VOLUME_MAX;
     ma_engine_set_volume(&engine->engine, volume);
 }
 
@@ -152,10 +152,10 @@ void clk_audio_stop(clk_audio_sound* sound) {
 void clk_audio_sound_set_volume(clk_audio_sound* sound, float volume) {
     if (!sound)
         return;
-    if (volume < 0.0f)
-        volume = 0.0f;
-    if (volume > 1.0f)
-        volume = 1.0f;
+    if (volume < CLK_AUDIO_VOLUME_MIN)
+        volume = CLK_AUDIO_VOLUME_MIN;
+    if (volume > CLK_AUDIO_VOLUME_MAX)
+        volume = CLK_AUDIO_VOLUME_MAX;
     ma_sound_set_volume(&sound->sound, volume);
 }
 

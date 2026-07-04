@@ -27,12 +27,12 @@ int main(void) {
     TEST_REQUIRE("load valid for real", ok);
 
     /* --- fonts --- */
-    TEST("fonts.count > 0", cfg.fonts.count > 0);
-    TEST("fonts.paths != NULL", cfg.fonts.paths != NULL);
-    TEST("fonts.names != NULL", cfg.fonts.names != NULL);
-    TEST("fonts.idx restored", cfg.fonts.idx >= 0);
+    TEST("fonts.count > 0", cfg.ascii_clock.fonts.count > 0);
+    TEST("fonts.paths != NULL", cfg.ascii_clock.fonts.paths != NULL);
+    TEST("fonts.names != NULL", cfg.ascii_clock.fonts.names != NULL);
+    TEST("fonts.idx restored", cfg.ascii_clock.fonts.idx >= 0);
     TEST("fonts[0] = test_clock_config",
-         strcmp(cfg.fonts.names[cfg.fonts.idx], "test_clock_config") == 0);
+         strcmp(cfg.ascii_clock.fonts.names[cfg.ascii_clock.fonts.idx], "test_clock_config") == 0);
 
     /* --- themes --- */
     TEST("themes.count > 0", cfg.themes.count > 0);
@@ -43,32 +43,49 @@ int main(void) {
          strcmp(cfg.themes.names[cfg.themes.idx], "menu_theme_config") == 0);
 
     /* --- time_formats --- */
-    TEST("tfmt.count == 2", cfg.time_formats.count == 2);
-    TEST("tfmt.options != NULL", cfg.time_formats.options != NULL);
-    TEST("tfmt.strings != NULL", cfg.time_formats.strings != NULL);
-    TEST("tfmt.idx == 1 (hh:MM)", cfg.time_formats.idx == 1);
-    TEST("tfmt.current = hh:MM", strcmp(cfg.time_formats.current, "hh:MM") == 0);
+    TEST("tfmt.count == 2", cfg.ascii_clock.time_formats.count == 2);
+    TEST("tfmt.options != NULL", cfg.ascii_clock.time_formats.options != NULL);
+    TEST("tfmt.strings != NULL", cfg.ascii_clock.time_formats.strings != NULL);
+    TEST("tfmt.idx == 1 (hh:MM)", cfg.ascii_clock.time_formats.idx == 1);
+    TEST("tfmt.current = hh:MM", strcmp(cfg.ascii_clock.time_formats.current, "hh:MM") == 0);
 
     /* --- time_formats switch --- */
-    cfg.time_formats.idx = 0;
-    clk_cfg_time_formats_switch(&cfg.time_formats);
-    TEST("tfmt_switch: current = hh:MM:ss", strcmp(cfg.time_formats.current, "hh:MM:ss") == 0);
+    cfg.ascii_clock.time_formats.idx = 0;
+    clk_cfg_ascii_clock_theme_switch_time(&cfg.ascii_clock);
+    TEST("tfmt_switch: current = hh:MM:ss",
+         strcmp(cfg.ascii_clock.time_formats.current, "hh:MM:ss") == 0);
+
+    /* --- clock (alarms + pomodoros) --- */
+    TEST("clock.alarms.count == 1", cfg.clock.alarms.count == 1);
+    TEST("clock.alarms[0].hour == 8", cfg.clock.alarms.items[0].hour == 8);
+    TEST("clock.alarms[0].enabled", cfg.clock.alarms.items[0].enabled);
+    TEST("clock.pomodoros.count == 1", cfg.clock.pomodoros.count == 1);
+    TEST("clock.pomodoros[0].segment_count == 2", cfg.clock.pomodoros.items[0].segment_count == 2);
+    TEST("clock.pomodoros[0].seg[0] minutes→seconds == 1500",
+         cfg.clock.pomodoros.items[0].segments[0].duration_seconds == 1500);
+
+    /* --- bgm --- */
+    TEST("bgm.count == 1", cfg.bgm.count == 1);
+    TEST("bgm[0].volume == 80", cfg.bgm.items[0].volume == 80);
+    TEST("bgm[0].enabled", cfg.bgm.items[0].enabled);
 
     /* --- reload: non-matching saved name keeps idx --- */
     {
-        int saved_idx = cfg.fonts.idx;
-        clk_json_value* fonts_obj = clk_json_object_get(cfg.json, "fonts");
-        clk_cfg_fonts_reload(&cfg.fonts, fonts_obj, NULL, 0, 0);
-        TEST("fonts reload: idx unchanged", cfg.fonts.idx == saved_idx);
+        int saved_idx = cfg.ascii_clock.fonts.idx;
+        clk_json_value* theme_obj = clk_json_object_get(cfg.json, "ascii_clock_theme");
+        clk_json_value* fonts_obj = theme_obj ? clk_json_object_get(theme_obj, "fonts") : NULL;
+        clk_cfg_ascii_clock_theme_reload(&cfg.ascii_clock, theme_obj, NULL, 0, 0, 0);
+        TEST("fonts reload: idx unchanged", cfg.ascii_clock.fonts.idx == saved_idx);
     }
 
     /* --- deinit --- */
     clk_app_config_deinit(&cfg);
     TEST("deinit: json freed", cfg.json == NULL);
-    TEST("deinit: fonts cleared", cfg.fonts.count == 0 && cfg.fonts.paths == NULL);
+    TEST("deinit: fonts cleared",
+         cfg.ascii_clock.fonts.count == 0 && cfg.ascii_clock.fonts.paths == NULL);
     TEST("deinit: themes cleared", cfg.themes.count == 0 && cfg.themes.paths == NULL);
     TEST("deinit: time_formats cleared",
-         cfg.time_formats.count == 0 && cfg.time_formats.strings == NULL);
+         cfg.ascii_clock.time_formats.count == 0 && cfg.ascii_clock.time_formats.strings == NULL);
     clk_app_config_deinit(&cfg);
     TEST("deinit double safe", 1);
 
