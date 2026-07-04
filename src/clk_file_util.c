@@ -3,6 +3,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+/* ================================================================
+ *  File I/O
+ * ================================================================ */
+
 char* clk_file_read_all(const char* path, size_t* out_size) {
     if (out_size)
         *out_size = 0;

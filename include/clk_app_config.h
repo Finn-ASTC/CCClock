@@ -96,10 +96,6 @@ typedef struct {
 } clk_cfg_bgms;
 
 /* ------------------------------------------------------------------
- *  Fonts
- * ------------------------------------------------------------------ */
-
-/* ------------------------------------------------------------------
  *  Ascii Clock Theme (fonts + time formats wrapped)
  * ------------------------------------------------------------------ */
 
@@ -137,10 +133,6 @@ void clk_cfg_themes_reload(clk_cfg_themes* t, clk_json_value* menu_obj, clk_menu
 void clk_cfg_themes_sync(clk_cfg_themes* t, clk_menu* menu, int tab_id, int item_id);
 
 void clk_cfg_themes_deinit(clk_cfg_themes* t);
-
-/* ------------------------------------------------------------------
- *  Time formats
- * ------------------------------------------------------------------ */
 
 /* ------------------------------------------------------------------
  *  Clock (alarms + pomodoros wrapped)

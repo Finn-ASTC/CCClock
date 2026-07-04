@@ -264,7 +264,9 @@ clk_key_event clk_get_key_event(void) {
     return ring_pop();
 }
 
-/* --- string input --- */
+/* ------------------------------------------------------------------
+ *  String input mode
+ * ------------------------------------------------------------------ */
 
 void clk_key_io_text_start(char* buf, size_t buf_size, size_t* len, size_t* pos) {
     if (!buf || !buf_size || !len || !pos)
@@ -343,7 +345,9 @@ uint32_t clk_key_io_text_poll(void) {
     return CLK_KEY_NONE;
 }
 
-/* --- test hook (not part of public API) --- */
+/* ------------------------------------------------------------------
+ *  Test hook (not part of public API)
+ * ------------------------------------------------------------------ */
 
 void clk_key_io_test_inject(uint32_t key) {
     clk_key_event ev = {key, 0, {0, 0}};

@@ -18,17 +18,24 @@ extern "C" {
 #define CLK_ALARM_MAX 64
 #define CLK_POMODORO_MAX 64
 
-/* Alarm repeat day constants */
+/* Alarm repeat day constants
+ *
+ * Weekday values match tm_wday after Sunday→7 mapping:
+ *   tm_wday: Sun=0 Mon=1 Tue=2 Wed=3 Thu=4 Fri=5 Sat=6
+ *   mapped:  Sun=7 Mon=1 Tue=2 Wed=3 Thu=4 Fri=5 Sat=6
+ *
+ * TODAY and EVERYDAY use non-weekday values so they never collide.
+ */
 typedef enum {
     CLK_REPEAT_TODAY = 0,
-    CLK_REPEAT_EVERYDAY,
-    CLK_REPEAT_MONDAY,
+    CLK_REPEAT_MONDAY = 1,
     CLK_REPEAT_TUESDAY,
     CLK_REPEAT_WEDNESDAY,
     CLK_REPEAT_THURSDAY,
     CLK_REPEAT_FRIDAY,
     CLK_REPEAT_SATURDAY,
-    CLK_REPEAT_SUNDAY
+    CLK_REPEAT_SUNDAY,
+    CLK_REPEAT_EVERYDAY
 } clk_repeat_days;
 
 /* ------------------------------------------------------------------

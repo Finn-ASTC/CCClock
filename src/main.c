@@ -31,7 +31,9 @@ enum {
     CLK_ITEM_QUIT = 4,
 };
 
-/* ── recenter ── */
+/* ------------------------------------------------------------------
+ *  Layout helpers
+ * ------------------------------------------------------------------ */
 
 static void recenter_clock(clk_ascii_render* render, const char* time_format, int term_w,
                            int term_h) {
@@ -48,7 +50,9 @@ static void recenter_menu(clk_menu_instance* instance, int term_w, int term_h) {
                                    (term_h - instance->tex.tex_h) / 2);
 }
 
-/* ── menu io ── */
+/* ------------------------------------------------------------------
+ *  Menu input translation
+ * ------------------------------------------------------------------ */
 
 static clk_menu_input translate_menu_key(clk_key_event key_event) {
     switch (key_event.key) {
@@ -74,7 +78,9 @@ static clk_menu_input translate_menu_key(clk_key_event key_event) {
     }
 }
 
-/* ── focus ── */
+/* ------------------------------------------------------------------
+ *  Focus model
+ * ------------------------------------------------------------------ */
 
 typedef enum { FOCUS_CLOCK, FOCUS_MENU } focus_t;
 

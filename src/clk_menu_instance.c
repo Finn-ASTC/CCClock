@@ -128,6 +128,8 @@ void clk_menu_instance_remove_from_term(clk_menu_instance* instance) {
 
 clk_menu_event clk_menu_instance_handle_input(clk_menu_instance* instance, clk_menu_input input) {
     clk_menu_event ev = {.type = CLK_MENU_EVENT_NONE};
+    /* Reject input when the texture is smaller than the theme minimum —
+     * would cause rendering out of bounds. */
     if (!instance || (instance->sprite && instance->sprite->is_hidden) ||
         instance->tex.tex_w < instance->theme->min_width ||
         instance->tex.tex_h < instance->theme->min_height)
@@ -471,8 +473,6 @@ static int render_dyn_str(const clk_menu* menu, clk_texture* tex, const clk_menu
     return len;
 }
 
-/* ── clk_render_row ── */
-
 /** Walks to the rightmost leaf of a def, recursing into the last composite
  *  member, and returns that leaf's style id. */
 static int last_leaf_style(const clk_menu_def* def) {
@@ -596,9 +596,13 @@ static int render_item_list_section(clk_menu_instance* instance, const clk_menu*
 
     int remaining_rows = (item_cnt * sec->row_count) % avail_rows;
 
+    /* True when the active item moved up on screen (its P-index decreased) */
     bool up =
         (instance->active_item_pos_idx - instance->last_active_item_pos_idx > 0) ? false : true;
 
+    /* P-index edge snapping: when the cursor reaches the top or bottom of the
+     * visible window, snap the scroll alignment so the active item stays
+     * clamped to that edge, leaving a partial item on the trailing side. */
     if (up && instance->last_active_item_pos_idx == 0) {
         instance->align_top = true;
         instance->active_item_pos_idx = 0;

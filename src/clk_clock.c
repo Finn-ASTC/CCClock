@@ -200,6 +200,7 @@ int clk_clock_bell_count(const clk_clock* clock) {
  * ================================================================ */
 
 static void add_bell(clk_clock* clock, clk_audio_sound* sound) {
+    /* Skip if already active — prevents duplicate entries and double-stops */
     for (int i = 0; i < clock->active_bell_count; ++i)
         if (clock->active_bells[i] == sound)
             return;
@@ -269,6 +270,11 @@ void clk_clock_update(clk_clock* clock) {
  *  Time format translation
  * ================================================================ */
 
+/** Convert user-facing time tokens to strftime format strings.
+ *  yyyy→%Y  yy→%y  MM→%M (minute)  dd→%d  hh→%H  mm→%m (month)  ss→%S
+ *  NOTE: MM/mm capitalization is inverted vs strftime — see section header
+ *  in clk_clock.h for details. Other characters pass through literally.
+ *  Returns false on truncation or unrecognized token. */
 bool clk_clock_translate_format(const char* user_format, char* strftime_format,
                                 size_t strftime_format_size) {
     if (!user_format || !strftime_format || strftime_format_size == 0)

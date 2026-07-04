@@ -74,8 +74,8 @@ bool clk_ascii_render_change_font(clk_ascii_render* render, const char* new_font
  *  Query
  * ------------------------------------------------------------------ */
 
-/** Return the total pixel size the rendered string occupies on screen.
- *  Computed from the string's geometry. */
+/** Return the total cell dimensions (in character cells) the rendered
+ *  string occupies. Computed from the string's geometry. */
 bool clk_ascii_render_get_size(const clk_ascii_render* render, const char* string, int* width,
                                int* height);
 

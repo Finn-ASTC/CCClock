@@ -9,7 +9,9 @@
 #include "clk_json.h"
 #include "clk_menu.h"
 
-/* ── internal helpers ── */
+/* ------------------------------------------------------------------
+ *  Internal helpers
+ * ------------------------------------------------------------------ */
 
 static const char* json_get_str(clk_json_value* obj, const char* key) {
     clk_json_value* v = clk_json_object_get(obj, key);
@@ -27,6 +29,9 @@ static double json_get_number_default(clk_json_value* obj, const char* key, doub
     return fallback;
 }
 
+/** Parse a JSON string array into a char**.
+ *  Returned strings borrow pointers from the JSON tree — do NOT free
+ *  them individually; the JSON must outlive the returned array. */
 static char** parse_time_formats_arr(clk_json_value* time_obj, int* out_count) {
     *out_count = 0;
     clk_json_value* array = clk_json_object_get(time_obj, "time_formats");

@@ -59,7 +59,7 @@ clk_menu_event clk_menu_instance_handle_input(clk_menu_instance* instance, clk_m
  *  Dynamic rebind
  * ------------------------------------------------------------------ */
 
-/** Swap the menu data pointer without changing theme or display state. */
+/** Swap the menu data pointer and reset scroll/alignment state to defaults. */
 void clk_menu_instance_change_menu(clk_menu_instance* instance, clk_menu* menu);
 
 /** Hot-reload the theme from @p path. The instance stays alive,

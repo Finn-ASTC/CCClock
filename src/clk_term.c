@@ -150,7 +150,7 @@ bool clk_term_init(void) {
 
     clk_is_term_init = true;
 
-    printf("\033[2J\033[H\033[?25l");
+    printf("\033[2J\033[H\033[?25l"); /* clear screen, home cursor, hide cursor */
     fflush(stdout);
     return true;
 }
@@ -182,7 +182,7 @@ void clk_term_close(void) {
 
     clk_is_term_init = false;
 
-    printf("\033[2J\033[H\033[?25h");
+    printf("\033[2J\033[H\033[?25h"); /* clear screen, home cursor, show cursor */
     fflush(stdout);
 }
 

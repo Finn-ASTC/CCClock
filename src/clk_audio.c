@@ -5,6 +5,10 @@
 #define MINIAUDIO_IMPLEMENTATION
 #include <miniaudio.h>
 
+/* ================================================================
+ *  Engine & lifecycle
+ * ================================================================ */
+
 /* ------------------------------------------------------------------
  *  Internal structs
  * ------------------------------------------------------------------ */
@@ -92,6 +96,10 @@ void clk_audio_destroy(clk_audio_sound* sound) {
     free(sound);
 }
 
+/* ================================================================
+ *  Playback & managed tracking
+ * ================================================================ */
+
 /* ------------------------------------------------------------------
  *  Playback
  * ------------------------------------------------------------------ */
@@ -107,6 +115,7 @@ void clk_audio_play(clk_audio_sound* sound, float volume, bool loop, int count) 
     sound->managed = true;
     sound->managed_looping = loop;
     sound->managed_remaining = loop ? 0 : count;
+    /* Prepend to head so newest sounds are processed first in the update loop */
     sound->managed_next = managed_head;
     managed_head = sound;
 

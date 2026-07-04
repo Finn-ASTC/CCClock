@@ -62,7 +62,8 @@ typedef struct {
  * ================================================================ */
 
 /** Portable strndup replacement — copies at most n bytes, stopping
- *  early at the first NUL. Always null-terminates. */
+ *  at the first NUL. Always null-terminates.
+ *  Returns NULL if src is NULL; returns an empty string if n is 0. */
 static char* clk_json_strndup(const char* src, size_t n) {
     if (!src || n == 0) {
         if (!src)

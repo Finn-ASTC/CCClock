@@ -174,10 +174,13 @@ void clk_menu_set_item_range(clk_menu* menu, int tab_id, int item_id, double min
  * ------------------------------------------------------------------ */
 
 /** Build display names from file paths (strip directory + extension).
- *  Each returned string is malloc'd; caller frees via clk_path_list_free. */
+ *  Each returned string is malloc'd; caller must free each string and the
+ *  array (e.g. via clk_fs_free_list if the paths came from clk_fs_scan_dir). */
 char** clk_menu_build_names(char** paths, int count);
 
-/** Wrap a char** as a const char** view (strings are not copied). */
+/** Wrap a char** as a const char** view (strings are not copied).
+ *  The returned array is calloc'd; caller must free() it (but not the
+ *  pointed-to strings). */
 const char** clk_menu_wrap_strings(char** strings, int count);
 
 /** Find the index of a string in an array.  Returns @p fallback when not found. */

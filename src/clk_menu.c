@@ -337,7 +337,9 @@ static clk_menu_item* clk_menu_insert_item(clk_menu* menu, int tab_id, int item_
     return item;
 }
 
-/* ── _at variants ────────────────────────────────────────── */
+/* ------------------------------------------------------------------
+ *  _at variants (insert at position, -1 = append)
+ * ------------------------------------------------------------------ */
 
 void clk_menu_add_item_str_at(clk_menu* menu, int tab_id, int item_id, const char* label,
                               int default_idx, const char** options, int option_count,
