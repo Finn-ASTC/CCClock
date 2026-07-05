@@ -76,7 +76,7 @@ typedef enum { FOCUS_CLOCK, FOCUS_MENU } focus_t;
 
 int main(void) {
     if (!clk_term_init()) {
-        printf("term init fail\n");
+        fprintf(stderr, "term init fail\n");
         return 1;
     }
 
@@ -87,7 +87,7 @@ int main(void) {
     clk_app_config cfg;
     if (!clk_app_config_load(&cfg, APP_CONFIG)) {
         clk_term_close();
-        printf("config load fail\n");
+        fprintf(stderr, "config load fail\n");
         return 1;
     }
 
@@ -99,7 +99,7 @@ int main(void) {
     if (!clk_app_setup_render(&render, &cfg.ascii_clock)) {
         clk_app_config_deinit(&cfg);
         clk_term_close();
-        printf("render setup fail\n");
+        fprintf(stderr, "render setup fail\n");
         return 1;
     }
 

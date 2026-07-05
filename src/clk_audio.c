@@ -92,6 +92,8 @@ clk_audio_sound* clk_audio_load(clk_audio_engine* engine, const char* path) {
 void clk_audio_destroy(clk_audio_sound* sound) {
     if (!sound)
         return;
+    if (sound->managed)
+        clk_audio_stop(sound);
     ma_sound_uninit(&sound->sound);
     free(sound);
 }
