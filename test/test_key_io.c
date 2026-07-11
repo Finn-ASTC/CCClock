@@ -172,7 +172,7 @@ int main(void) {
     TEST("ESC → buf[0]='\\0'", buf[0] == '\0');
 
     /* --- full buffer --- */
-    clk_key_io_text_start(buf, 4, &len, &pos);
+    clk_key_io_text_start(buf, 3, &len, &pos);
     clk_key_io_test_inject('1');
     clk_key_io_text_poll();
     clk_key_io_test_inject('2');

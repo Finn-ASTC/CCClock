@@ -272,7 +272,7 @@ void clk_key_io_text_start(char* buf, size_t buf_size, size_t* len, size_t* pos)
     if (!buf || !buf_size || !len || !pos)
         return;
     key_input_buf = buf;
-    key_input_buf_size = buf_size;
+    key_input_buf_size = buf_size + 1;
     key_input_len = len;
     key_input_pos = pos;
     key_mode = KEY_MODE_STRING_INPUT;

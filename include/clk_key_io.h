@@ -56,8 +56,9 @@ clk_key_event clk_get_key_event(void);
  *  String input
  * ------------------------------------------------------------------ */
 
-/** Enter string-input mode.  Binds @p buf for accumulation.  While
- *  active, clk_get_key_event() returns CLK_KEY_NONE automatically. */
+/** Enter string-input mode.  Binds @p buf (must be at least
+ *  @p buf_size + 1 bytes to allow for the NUL terminator).
+ *  While active, clk_get_key_event() returns CLK_KEY_NONE automatically. */
 void clk_key_io_text_start(char* buf, size_t buf_size, size_t* len, size_t* pos);
 
 /** Poll one character from the ring buffer and append it to the bound

@@ -6,6 +6,7 @@
 
 #define INPUT_FIELD_HEIGHT 5
 #define INPUT_FIELD_WEIDTH 46
+#define MAX_INPUT_LEN (INPUT_FIELD_WEIDTH - 7)
 
 static void draw_border(clk_texture* tex, int style_id) {
     int w = tex->tex_w;
@@ -72,7 +73,7 @@ int main() {
                         running = false;
                         break;
                     case 'w':
-                        clk_key_io_text_start(buf, sizeof(buf), &len, &pos);
+                        clk_key_io_text_start(buf, MAX_INPUT_LEN, &len, &pos);
                         is_typing = true;
                         mod = INPUT;
                         break;
