@@ -71,6 +71,12 @@ static clk_style* style_registry;
 static int style_count = 0;
 static int style_capacity = 0;
 
+static struct {
+    int x, y;
+    clk_cursor_shape shape;
+    bool visible;
+} cursor = {.shape = 1};
+
 static const clk_style* clk_get_style(int style_id) {
     if (style_id <= 0 || style_id >= style_count)
         return NULL;
@@ -150,8 +156,9 @@ bool clk_term_init(void) {
 
     clk_is_term_init = true;
 
-    printf("\033[2J\033[H\033[?25l"); /* clear screen, home cursor, hide cursor */
+    printf("\033[2J\033[H");
     fflush(stdout);
+    clk_term_cursor_hide();
     return true;
 }
 
@@ -182,12 +189,38 @@ void clk_term_close(void) {
 
     clk_is_term_init = false;
 
-    printf("\033[2J\033[H\033[?25h"); /* clear screen, home cursor, show cursor */
+    printf("\033[2J\033[H");
     fflush(stdout);
+    clk_term_cursor_show();
 }
 
 bool clk_term_is_init(void) {
     return clk_is_term_init;
+}
+
+/* ================================================================
+ *  Hardware cursor
+ * ================================================================ */
+
+void clk_term_cursor_set_pos(int x, int y) {
+    cursor.x = x;
+    cursor.y = y;
+}
+
+void clk_term_cursor_set_shape(clk_cursor_shape shape) {
+    cursor.shape = shape;
+}
+
+void clk_term_cursor_show(void) {
+    cursor.visible = true;
+    printf("\033[?25h");
+    fflush(stdout);
+}
+
+void clk_term_cursor_hide(void) {
+    cursor.visible = false;
+    printf("\033[?25l");
+    fflush(stdout);
 }
 
 /* ================================================================
@@ -216,8 +249,7 @@ int clk_term_register_style(Color24 fg, Color24 bg, uint8_t attrs) {
     return style_count++;
 }
 
-/** Parse an attribute string into an ATTR_* bitmask. */
-static uint8_t parse_attrs_str(const char* str) {
+uint8_t clk_term_parse_attrs(const char* str) {
     if (!str)
         return ATTR_NONE;
     uint8_t attrs = ATTR_NONE;
@@ -241,23 +273,22 @@ static uint8_t parse_attrs_str(const char* str) {
 }
 
 int clk_term_register_style_rgb(int fg_r, int fg_g, int fg_b, int bg_r, int bg_g, int bg_b,
-                                const char* attrs_str) {
+                                uint8_t attrs) {
     if (fg_r < 0 || fg_r > 255 || fg_g < 0 || fg_g > 255 || fg_b < 0 || fg_b > 255 || bg_r < 0 ||
         bg_r > 255 || bg_g < 0 || bg_g > 255 || bg_b < 0 || bg_b > 255)
         return 0;
 
     Color24 fg = {.rgb = {(uint8_t)fg_r, (uint8_t)fg_g, (uint8_t)fg_b}};
     Color24 bg = {.rgb = {(uint8_t)bg_r, (uint8_t)bg_g, (uint8_t)bg_b}};
-    uint8_t attrs = parse_attrs_str(attrs_str);
     return clk_term_register_style(fg, bg, attrs);
 }
 
-int clk_term_register_style_hex(const char* fg_hex, const char* bg_hex, const char* attrs_str) {
+int clk_term_register_style_hex(const char* fg_hex, const char* bg_hex, uint8_t attrs) {
     int fg_r, fg_g, fg_b, bg_r, bg_g, bg_b;
     if (!clk_term_parse_hex_color(fg_hex, &fg_r, &fg_g, &fg_b) ||
         !clk_term_parse_hex_color(bg_hex, &bg_r, &bg_g, &bg_b))
         return 0;
-    return clk_term_register_style_rgb(fg_r, fg_g, fg_b, bg_r, bg_g, bg_b, attrs_str);
+    return clk_term_register_style_rgb(fg_r, fg_g, fg_b, bg_r, bg_g, bg_b, attrs);
 }
 
 bool clk_term_parse_hex_color(const char* hex, int* r, int* g, int* b) {
@@ -543,6 +574,12 @@ void clk_term_draw(void) {
         fwrite(ansi_output, 1, ansi_output_length, stdout);
         fflush(stdout);
         ansi_output_length = 0;
+    }
+
+    if (cursor.visible) {
+        fprintf(stdout, "\033[%d;%dH\033[%d q\033[?25h", cursor.y + 1, cursor.x + 1,
+                (int)cursor.shape);
+        fflush(stdout);
     }
 }
 

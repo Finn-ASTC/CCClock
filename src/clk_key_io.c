@@ -325,6 +325,7 @@ uint32_t clk_key_io_text_poll(void) {
             memmove(key_input_buf + p - 1, key_input_buf + p, *key_input_len - p);
             (*key_input_pos)--;
             (*key_input_len)--;
+            key_input_buf[*key_input_len] = '\0';
         }
         return CLK_KEY_NONE;
     }
@@ -338,6 +339,7 @@ uint32_t clk_key_io_text_poll(void) {
             key_input_buf[*key_input_pos] = (char)key;
             (*key_input_pos)++;
             (*key_input_len)++;
+            key_input_buf[*key_input_len] = '\0';
         }
         return CLK_KEY_NONE;
     }

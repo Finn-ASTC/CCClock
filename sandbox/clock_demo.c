@@ -54,8 +54,8 @@ int main() {
     if (!clk_ascii_render_add_to_term(&render))
         goto fail;
 
-    int red_style = clk_term_register_style_rgb(255, 0, 0, 0, 0, 0, "bold");
-    int green_style = clk_term_register_style_rgb(0, 255, 0, 0, 0, 0, "bold");
+    int red_style = clk_term_register_style_rgb(255, 0, 0, 0, 0, 0, ATTR_BOLD);
+    int green_style = clk_term_register_style_rgb(0, 255, 0, 0, 0, 0, ATTR_BOLD);
 
     int bw = 10, bh = 5;
     red_tex = clk_texture_create(bw, bh);

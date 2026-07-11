@@ -84,7 +84,7 @@ static bool register_styles(const clk_json_value* styles_json, clk_json_value* t
         if (!attr || !clk_json_is_string(attr) || clk_json_get_string(attr, &attr_str) != 0)
             return false;
 
-        int id = clk_term_register_style_hex(fg_str, bg_str, attr_str);
+        int id = clk_term_register_style_hex(fg_str, bg_str, clk_term_parse_attrs(attr_str));
         if (id == 0)
             return false;
 

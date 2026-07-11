@@ -102,19 +102,23 @@ bool clk_term_is_init(void);
 int clk_term_register_style(Color24 fg, Color24 bg, uint8_t attrs);
 
 /** Convenience: register a style from raw RGB ints (0–255) and an
- *  attribute string ("bold", "dim" etc.). Returns 0 on invalid
- *  colour range or if the term is not initialised. */
+ *  ATTR_* bitmask. Returns 0 on invalid colour range or if the term
+ *  is not initialised. */
 int clk_term_register_style_rgb(int fg_r, int fg_g, int fg_b, int bg_r, int bg_g, int bg_b,
-                                const char* attrs_str);
+                                uint8_t attrs);
 
 /** Register a style from "#RRGGBB" hex colour strings.
  *  Convenience wrapper around parse_hex_color + register_style_rgb.
  *  Returns 0 on invalid format. */
-int clk_term_register_style_hex(const char* fg_hex, const char* bg_hex, const char* attrs_str);
+int clk_term_register_style_hex(const char* fg_hex, const char* bg_hex, uint8_t attrs);
 
 /** Parse a "#RRGGBB" hex colour string into r/g/b components (0–255).
  *  Returns false if the string is NULL or does not match the format. */
 bool clk_term_parse_hex_color(const char* hex, int* r, int* g, int* b);
+
+/** Parse an attribute string ("bold", "italic", etc.) into an ATTR_* bitmask.
+ *  Returns ATTR_NONE for NULL or unrecognised input. */
+uint8_t clk_term_parse_attrs(const char* str);
 
 /* ------------------------------------------------------------------
  *  Texture — data
@@ -229,6 +233,24 @@ bool clk_term_size_changed(void);
 
 /** Suspend execution for @p ms milliseconds. Cross-platform. */
 void clk_term_sleep_ms(int ms);
+
+/* ------------------------------------------------------------------
+ *  Hardware cursor
+ * ------------------------------------------------------------------ */
+
+typedef enum {
+    CLK_CURSOR_BLOCK_BLINK      = 1,
+    CLK_CURSOR_BLOCK_STEADY     = 2,
+    CLK_CURSOR_UNDERLINE_BLINK  = 3,
+    CLK_CURSOR_UNDERLINE_STEADY = 4,
+    CLK_CURSOR_BAR_BLINK        = 5,
+    CLK_CURSOR_BAR_STEADY       = 6,
+} clk_cursor_shape;
+
+void clk_term_cursor_set_pos(int x, int y);
+void clk_term_cursor_set_shape(clk_cursor_shape shape);
+void clk_term_cursor_show(void);
+void clk_term_cursor_hide(void);
 
 #ifdef __cplusplus
 }

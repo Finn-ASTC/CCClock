@@ -48,7 +48,7 @@ static int register_inline_style(const clk_json_value* obj) {
     if (attr_json)
         clk_json_get_string(attr_json, &attr);
 
-    int style_id = clk_term_register_style_hex(fg, bg, attr);
+    int style_id = clk_term_register_style_hex(fg, bg, clk_term_parse_attrs(attr));
     return style_id == 0 ? -1 : style_id;
 }
 

@@ -99,6 +99,7 @@ add_clk_exec(audio_demo sandbox/audio_demo.c)
 add_clk_exec(key_io_demo sandbox/key_io_demo.c)
 add_clk_exec(json_benchmark sandbox/json_benchmark.c)
 add_clk_exec(menu_demo sandbox/menu_demo.c)
+add_clk_exec(write_demo sandbox/write_demo.c)
 
 enable_testing()
 add_clk_test(key_io)
