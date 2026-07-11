@@ -71,6 +71,7 @@ static clk_style* style_registry;
 static int style_count = 0;
 static int style_capacity = 0;
 
+/** Hardware cursor state — consumed by clk_term_draw() at end of frame. */
 static struct {
     int x, y;
     clk_cursor_shape shape;

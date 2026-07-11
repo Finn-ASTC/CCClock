@@ -2,7 +2,7 @@
   "ascii_clock_theme": {
     "fonts": {
       "fonts_dir": "assets/config/ascii_fonts",
-      "font": "ascii_num"
+      "font": "ascii_num1"
     },
     "time_format": {
       "time_formats": ["hh:MM:ss","yyyy:mm:dd\n hh:MM:ss","hh:MM","dd:hh:MM"],

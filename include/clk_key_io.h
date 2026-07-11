@@ -62,9 +62,9 @@ clk_key_event clk_get_key_event(void);
 void clk_key_io_text_start(char* buf, size_t buf_size, size_t* len, size_t* pos);
 
 /** Poll one character from the ring buffer and append it to the bound
- *  buffer.  Supports Left/Right arrows, Backspace, Delete, and
- *  printable ASCII (32-126).  Insert semantics — new characters are
- *  placed at *pos.
+ *  buffer.  Supports Left/Right arrows, Backspace, and printable
+ *  ASCII (32-126).  Insert semantics — new characters are placed at
+ *  *pos.  The buffer is always NUL-terminated at *len.
  *
  *  Returns '\r' on Enter, CLK_KEY_ESC on cancel, or CLK_KEY_NONE
  *  while input is still in progress.  On Enter or ESC the mode

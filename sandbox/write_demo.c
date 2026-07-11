@@ -6,8 +6,15 @@
 
 #define INPUT_FIELD_HEIGHT 5
 #define INPUT_FIELD_WEIDTH 46
+/** Characters before hitting right border: "> " at x=2..3, text at
+ *  x=4, right margin at WIDTH-4 → usable = (WIDTH-4) - 4 + 1. */
 #define MAX_INPUT_LEN (INPUT_FIELD_WEIDTH - 7)
 
+/* ------------------------------------------------------------------
+ *  Layout helpers
+ * ------------------------------------------------------------------ */
+
+/** Draw a box-drawing border around the entire texture perimeter. */
 static void draw_border(clk_texture* tex, int style_id) {
     int w = tex->tex_w;
     int h = tex->tex_h;
@@ -28,6 +35,7 @@ static void draw_border(clk_texture* tex, int style_id) {
     clk_texture_write_cell(tex, w - 1, h - 1, "┘", style_id);
 }
 
+/** Re-centre the input field sprite on the terminal window. */
 static void set_field_pos(clk_sprite* input_field) {
     int term_w = 0, term_h = 0;
 
@@ -39,6 +47,10 @@ static void set_field_pos(clk_sprite* input_field) {
 }
 
 int main() {
+    /* ================================================================
+     *  Init
+     * ================================================================ */
+
     if (!clk_term_init())
         return -1;
 
@@ -62,7 +74,12 @@ int main() {
 
     bool running = true;
 
+    /* ================================================================
+     *  Main loop
+     * ================================================================ */
+
     while (running) {
+        /* ---- Input ---- */
         clk_key_event event;
 
         switch (mod) {
@@ -96,6 +113,7 @@ int main() {
             }
         }
 
+        /* ---- Render ---- */
         clk_texture_clear_all(&input_field_tex);
 
         draw_border(&input_field_tex, text_style);
@@ -111,11 +129,16 @@ int main() {
                                      text_style);
         }
 
+        /* ---- Flush ---- */
         set_field_pos(input_field);
         clk_term_update();
         clk_term_draw();
         clk_term_sleep_ms(16);
     }
+
+    /* ================================================================
+     *  Cleanup
+     * ================================================================ */
 
     clk_sprite_destroy(input_field);
     clk_texture_destroy(&input_field_tex);

@@ -238,18 +238,28 @@ void clk_term_sleep_ms(int ms);
  *  Hardware cursor
  * ------------------------------------------------------------------ */
 
+/** Cursor shape — maps to DECSCUSR \033[N q.
+ *  BLINK variants are terminal-managed (no app-side tick needed). */
 typedef enum {
-    CLK_CURSOR_BLOCK_BLINK      = 1,
-    CLK_CURSOR_BLOCK_STEADY     = 2,
-    CLK_CURSOR_UNDERLINE_BLINK  = 3,
+    CLK_CURSOR_BLOCK_BLINK = 1,
+    CLK_CURSOR_BLOCK_STEADY = 2,
+    CLK_CURSOR_UNDERLINE_BLINK = 3,
     CLK_CURSOR_UNDERLINE_STEADY = 4,
-    CLK_CURSOR_BAR_BLINK        = 5,
-    CLK_CURSOR_BAR_STEADY       = 6,
+    CLK_CURSOR_BAR_BLINK = 5,
+    CLK_CURSOR_BAR_STEADY = 6,
 } clk_cursor_shape;
 
+/** Set screen-space cursor position (0-based).  Applied at the end
+ *  of the next clk_term_draw() to recover from diff-output jumps. */
 void clk_term_cursor_set_pos(int x, int y);
+
+/** Set cursor shape.  Defaults to CLK_CURSOR_BLOCK_BLINK (1). */
 void clk_term_cursor_set_shape(clk_cursor_shape shape);
+
+/** Enable the hardware cursor.  Immediately outputs \033[?25h. */
 void clk_term_cursor_show(void);
+
+/** Hide the hardware cursor.  Immediately outputs \033[?25l. */
 void clk_term_cursor_hide(void);
 
 #ifdef __cplusplus
