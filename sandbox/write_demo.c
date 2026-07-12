@@ -129,8 +129,9 @@ int main() {
                                      text_style);
         }
 
-        /* ---- Flush ---- */
         set_field_pos(input_field);
+
+        /* ---- Flush ---- */
         clk_term_update();
         clk_term_draw();
         clk_term_sleep_ms(16);
