@@ -67,10 +67,12 @@ bool clk_app_setup_render(clk_ascii_render* render, const clk_cfg_ascii_clock_th
     return true;
 }
 
-void clk_app_setup_theme(clk_menu_theme* theme, const clk_cfg_themes* themes) {
+bool clk_app_setup_theme(clk_menu_theme* theme, const clk_cfg_themes* themes) {
     if (!theme || !themes)
-        return;
+        return false;
+    if (themes->idx < 0 || themes->idx >= themes->count)
+        return false;
 
     memset(theme, 0, sizeof(*theme));
-    clk_menu_theme_load(themes->paths[themes->idx], theme);
+    return clk_menu_theme_load(themes->paths[themes->idx], theme);
 }

@@ -28,10 +28,9 @@ int main(void) {
         return 1;
     }
 
-    clk_audio_sound* sound_alarm_a = clk_audio_load(engine, SOUND_ALARM);
-    clk_audio_sound* sound_alarm_b = clk_audio_load(engine, SOUND_ALARM);
+    clk_audio_sound* sound_alarm = clk_audio_load(engine, SOUND_ALARM);
     clk_audio_sound* sound_rain = clk_audio_load(engine, SOUND_RAIN);
-    if (!sound_alarm_a || !sound_alarm_b || !sound_rain) {
+    if (!sound_alarm || !sound_rain) {
         printf("load fail\n");
         clk_audio_shutdown(engine);
         clk_term_close();
@@ -49,14 +48,18 @@ int main(void) {
         memset(&a, 0, sizeof(a));
         snprintf(a.name, sizeof(a.name), "Alarm %d", i + 1);
         set_alarm_time(&a.alarm, delays[i]);
-        a.sound = (i == 0) ? sound_alarm_a : (i == 1) ? sound_rain : sound_alarm_b;
+        a.sound = (i == 1) ? sound_rain : sound_alarm;
         a.volume = 0.8f;
         a.loop = true;
         a.repeat_days = CLK_REPEAT_TODAY;
         {
-            struct tm dtm;
-            clk_time_localtime(&dtm);
-            a.today_date = dtm.tm_mday;
+            struct tm dtm = {0};
+            time_t now = time(NULL);
+            clk_time_localtime_from(now, &dtm);
+            dtm.tm_sec = 0;
+            dtm.tm_min = 0;
+            dtm.tm_hour = 0;
+            a.today_date = mktime(&dtm);
         }
         clk_clock_add_alarm(&clock, &a);
     }
@@ -70,19 +73,21 @@ int main(void) {
 
     clk_clock_pomodoro_segment seg;
     memset(&seg, 0, sizeof(seg));
-    seg.sound = sound_alarm_a;
     seg.volume = 0.6f;
     seg.loop = false;
     seg.repeat_count = 2;
 
     strcpy(seg.name, "Work");
     seg.duration_seconds = 8;
+    seg.sound = sound_alarm;
     clk_clock_pomodoro_add_segment(&clock, 0, &seg);
     strcpy(seg.name, "Break");
     seg.duration_seconds = 3;
+    seg.sound = sound_alarm;
     clk_clock_pomodoro_add_segment(&clock, 0, &seg);
     strcpy(seg.name, "Work");
     seg.duration_seconds = 8;
+    seg.sound = sound_alarm;
     clk_clock_pomodoro_add_segment(&clock, 0, &seg);
 
     clk_clock_pomodoro_start(&clock, 0);
@@ -153,8 +158,7 @@ int main(void) {
     }
 
     clk_clock_deinit(&clock);
-    clk_audio_destroy(sound_alarm_a);
-    clk_audio_destroy(sound_alarm_b);
+    clk_audio_destroy(sound_alarm);
     clk_audio_destroy(sound_rain);
     clk_audio_shutdown(engine);
     clk_term_close();

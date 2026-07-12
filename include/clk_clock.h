@@ -78,7 +78,7 @@ typedef struct {
     clk_clock_pomodoro pomodoros[CLK_POMODORO_MAX];
     int pomodoro_count;
     clk_audio_engine* audio_engine;
-    clk_audio_sound* active_bells[CLK_ALARM_MAX + CLK_POMODORO_MAX];
+    clk_audio_play_inst* active_bells[CLK_ALARM_MAX + CLK_POMODORO_MAX];
     int active_bell_count;
 } clk_clock;
 
@@ -89,7 +89,7 @@ typedef struct {
 /** Zero-initialise and bind an audio engine. */
 void clk_clock_init(clk_clock* clock, clk_audio_engine* audio_engine);
 
-/** Stop all active bells.  Does NOT free any clk_audio_sound*. */
+/** Stop all active bells.  Stops and destroys all bell instances. */
 void clk_clock_deinit(clk_clock* clock);
 
 /* ================================================================
@@ -154,8 +154,8 @@ int clk_clock_bell_count(const clk_clock* clock);
  * ================================================================ */
 
 /** Check all alarms / pomodoros.  Triggers audio via
- *  clk_audio_play_loop / clk_audio_play_times when timers fire.
- *  Caller must also call clk_audio_update() each frame. */
+ *  clk_audio_play() when timers fire.  Caller must also call
+ *  clk_audio_update() each frame. */
 void clk_clock_update(clk_clock* clock);
 
 /* ================================================================

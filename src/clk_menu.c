@@ -693,7 +693,8 @@ void clk_menu_rebuild_item(clk_menu* menu, int tab_id, int item_id, const char**
     clk_menu_clear_options(menu, tab_id, item_id);
     for (int i = 0; i < count; ++i)
         clk_menu_add_option(menu, tab_id, item_id, options[i]);
-    clk_menu_set_value_str(menu, tab_id, item_id, options[new_index]);
+    if (count > 0)
+        clk_menu_set_value_str(menu, tab_id, item_id, options[new_index]);
 }
 
 bool clk_menu_set_value_int(clk_menu* menu, int tab_id, int item_id, double val) {

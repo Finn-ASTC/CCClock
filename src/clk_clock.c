@@ -156,7 +156,8 @@ void clk_clock_pomodoro_stop(clk_clock* clock, int index) {
     clk_clock_pomodoro* p = &clock->pomodoros[index];
     p->enabled = false;
     p->paused = false;
-    clk_timer_pause(&p->timer);
+    p->timer.running = false;
+    p->timer.paused = false;
     p->current_segment = 0;
 }
 
@@ -199,14 +200,10 @@ int clk_clock_bell_count(const clk_clock* clock) {
  *  Per-frame update
  * ================================================================ */
 
-static void add_bell(clk_clock* clock, clk_audio_sound* sound) {
-    /* Skip if already active — prevents duplicate entries and double-stops */
-    for (int i = 0; i < clock->active_bell_count; ++i)
-        if (clock->active_bells[i] == sound)
-            return;
+static void add_bell(clk_clock* clock, clk_audio_play_inst* inst) {
     if (clock->active_bell_count <
         (int)(sizeof(clock->active_bells) / sizeof(clock->active_bells[0])))
-        clock->active_bells[clock->active_bell_count++] = sound;
+        clock->active_bells[clock->active_bell_count++] = inst;
 }
 
 void clk_clock_update(clk_clock* clock) {
@@ -224,7 +221,12 @@ void clk_clock_update(clk_clock* clock) {
 
         /* repeat_days filter */
         if (a->repeat_days == CLK_REPEAT_TODAY) {
-            if (a->today_date != (time_t)ti.tm_mday)
+            /* Compare full date (year+month+day) to avoid cross-month false triggers */
+            struct tm alarm_tm;
+            if (!clk_time_localtime_from(a->today_date, &alarm_tm))
+                continue;
+            if (alarm_tm.tm_year != ti.tm_year || alarm_tm.tm_mon != ti.tm_mon ||
+                alarm_tm.tm_mday != ti.tm_mday)
                 continue;
         } else if (a->repeat_days == CLK_REPEAT_EVERYDAY) {
             /* no day-of-week filter */
@@ -238,8 +240,10 @@ void clk_clock_update(clk_clock* clock) {
             continue;
 
         if (a->sound) {
-            clk_audio_play(a->sound, a->volume, a->loop, a->loop ? 0 : a->repeat_count);
-            add_bell(clock, a->sound);
+            clk_audio_play_inst* inst =
+                clk_audio_play(a->sound, a->volume, a->loop, a->loop ? 0 : a->repeat_count);
+            if (inst)
+                add_bell(clock, inst);
         }
 
         if (a->repeat_days != CLK_REPEAT_TODAY)
@@ -256,9 +260,10 @@ void clk_clock_update(clk_clock* clock) {
         if (p->current_segment >= 0 && p->current_segment < p->segment_count) {
             clk_clock_pomodoro_segment* seg = &p->segments[p->current_segment];
             if (seg->sound) {
-                clk_audio_play(seg->sound, seg->volume, seg->loop,
-                               seg->loop ? 0 : seg->repeat_count);
-                add_bell(clock, seg->sound);
+                clk_audio_play_inst* inst = clk_audio_play(seg->sound, seg->volume, seg->loop,
+                                                           seg->loop ? 0 : seg->repeat_count);
+                if (inst)
+                    add_bell(clock, inst);
             }
         }
         p->current_segment = (p->current_segment + 1) % p->segment_count;

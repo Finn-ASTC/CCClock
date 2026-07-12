@@ -5,10 +5,10 @@
 #include "clk_term.h"
 
 #define INPUT_FIELD_HEIGHT 5
-#define INPUT_FIELD_WEIDTH 46
+#define INPUT_FIELD_WIDTH 46
 /** Characters before hitting right border: "> " at x=2..3, text at
  *  x=4, right margin at WIDTH-4 → usable = (WIDTH-4) - 4 + 1. */
-#define MAX_INPUT_LEN (INPUT_FIELD_WEIDTH - 7)
+#define MAX_INPUT_LEN (INPUT_FIELD_WIDTH - 7)
 
 /* ------------------------------------------------------------------
  *  Layout helpers
@@ -54,7 +54,7 @@ int main() {
     if (!clk_term_init())
         return -1;
 
-    clk_texture input_field_tex = clk_texture_create(INPUT_FIELD_WEIDTH, INPUT_FIELD_HEIGHT);
+    clk_texture input_field_tex = clk_texture_create(INPUT_FIELD_WIDTH, INPUT_FIELD_HEIGHT);
     clk_sprite* input_field = clk_sprite_create_with_texture(&input_field_tex, 0, 0, 0);
 
     set_field_pos(input_field);

@@ -34,8 +34,8 @@ clk_menu* clk_app_setup_menu(const clk_app_config* cfg);
 bool clk_app_setup_render(clk_ascii_render* render, const clk_cfg_ascii_clock_theme* ascii_clock);
 
 /** Load the theme file selected in @p themes (zero-initialises @p theme
- *  then calls clk_menu_theme_load). */
-void clk_app_setup_theme(clk_menu_theme* theme, const clk_cfg_themes* themes);
+ *  then calls clk_menu_theme_load).  Returns false if loading failed. */
+bool clk_app_setup_theme(clk_menu_theme* theme, const clk_cfg_themes* themes);
 
 #ifdef __cplusplus
 }

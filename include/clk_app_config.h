@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <time.h>
 
 #include "clk_clock.h"
 #include "clk_json.h"
@@ -21,6 +22,7 @@ extern "C" {
 #define CLK_CFG_VOLUME_DEFAULT 50
 #define CLK_CFG_SOUND_REPEAT_DEFAULT 1
 #define CLK_CFG_POMO_MINUTES_DEFAULT 25
+#define CLK_BGM_MAX 16
 #define CLK_MINUTES_TO_SECONDS(m) ((m) * 60)
 
 typedef struct {
@@ -57,6 +59,7 @@ typedef struct {
     int volume;
     bool loop;
     clk_repeat_days repeat_days;
+    time_t today_date; /* midnight of target date, only when CLK_REPEAT_TODAY */
 } clk_cfg_alarm;
 
 typedef struct {

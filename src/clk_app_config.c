@@ -1,6 +1,7 @@
 #include "clk_app_config.h"
 
 #include <stddef.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -54,6 +55,8 @@ static char** parse_time_formats_arr(clk_json_value* time_obj, int* out_count) {
 }
 
 static void copy_time_format(char* dst, const char* src) {
+    if (!src)
+        return;
     size_t len = strlen(src);
     if (len >= CLK_CLOCK_FORMAT_MAX_LENGTH)
         len = CLK_CLOCK_FORMAT_MAX_LENGTH - 1;
@@ -181,12 +184,6 @@ static void clk_cfg_time_formats_reload(clk_cfg_time_formats* tf, clk_json_value
     free(tf->options);
 
     tf->strings = parse_time_formats_arr(time_obj, &tf->count);
-    if (!tf->strings) {
-        tf->strings = calloc(1, sizeof(char*));
-        if (!tf->strings)
-            tf->strings = NULL;
-        tf->count = 0;
-    }
     tf->options = clk_menu_wrap_strings(tf->strings, tf->count);
 
     const char* saved = json_get_str(time_obj, "selected_time_format");
@@ -305,6 +302,17 @@ static void parse_one_alarm(clk_cfg_alarm* alarm, clk_json_value* obj) {
     }
 
     alarm->repeat_days = parse_repeat_days(json_get_str(obj, "repeat"));
+
+    alarm->today_date = (time_t)0;
+    str = json_get_str(obj, "today_date");
+    if (str) {
+        struct tm date_tm = {0};
+        if (sscanf(str, "%d-%d-%d", &date_tm.tm_year, &date_tm.tm_mon, &date_tm.tm_mday) == 3) {
+            date_tm.tm_year -= 1900;
+            date_tm.tm_mon -= 1;
+            alarm->today_date = mktime(&date_tm);
+        }
+    }
 }
 
 static void clk_cfg_alarms_init(clk_cfg_alarms* a, clk_json_value* json_array) {
@@ -475,11 +483,12 @@ void clk_cfg_bgms_init(clk_cfg_bgms* b, clk_json_value* json_array) {
     if (json_count <= 0)
         return;
 
-    b->items = calloc(json_count, sizeof(clk_cfg_bgm));
-    if (!b->items)
+    b->count = json_count < CLK_BGM_MAX ? json_count : CLK_BGM_MAX;
+    b->items = calloc(b->count, sizeof(clk_cfg_bgm));
+    if (!b->items) {
+        b->count = 0;
         return;
-
-    b->count = json_count;
+    }
     for (int i = 0; i < b->count; ++i) {
         clk_json_value* obj = clk_json_array_get(json_array, i);
         if (!obj || !clk_json_is_object(obj))

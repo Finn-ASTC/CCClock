@@ -37,6 +37,9 @@ int main(void) {
         return 1;
     }
 
+    clk_audio_play_inst* inst1 = NULL;
+    clk_audio_play_inst* inst2 = NULL;
+
     focus_t focus = FOCUS_SOUND1;
     bool loop1 = true, loop2 = true;
     int repeat1 = 3, repeat2 = 3;
@@ -59,19 +62,28 @@ int main(void) {
                 focus = FOCUS_SOUND2;
                 break;
             case ' ':
-                if (*active_loop)
-                    clk_audio_play(active, *active_vol, true, 0);
+                if (focus == FOCUS_SOUND1)
+                    inst1 = clk_audio_play(sound1, *active_vol, *active_loop,
+                                           *active_loop ? 0 : *active_repeat);
                 else
-                    clk_audio_play(active, *active_vol, false, *active_repeat);
+                    inst2 = clk_audio_play(sound2, *active_vol, *active_loop,
+                                           *active_loop ? 0 : *active_repeat);
                 break;
             case 's':
             case 'S':
-                clk_audio_stop(sound1);
-                clk_audio_stop(sound2);
+                clk_audio_stop(inst1);
+                clk_audio_stop(inst2);
+                inst1 = inst2 = NULL;
                 break;
             case 'l':
             case 'L':
-                clk_audio_stop(active);
+                if (focus == FOCUS_SOUND1) {
+                    clk_audio_stop(inst1);
+                    inst1 = NULL;
+                } else {
+                    clk_audio_stop(inst2);
+                    inst2 = NULL;
+                }
                 *active_loop = !*active_loop;
                 break;
             case CLK_KEY_UP:
@@ -86,11 +98,19 @@ int main(void) {
                 *active_vol += 0.1f;
                 if (*active_vol > 1.0f)
                     *active_vol = 1.0f;
+                if (focus == FOCUS_SOUND1 && inst1)
+                    clk_audio_inst_set_volume(inst1, *active_vol);
+                if (focus == FOCUS_SOUND2 && inst2)
+                    clk_audio_inst_set_volume(inst2, *active_vol);
                 break;
             case '-':
                 *active_vol -= 0.1f;
                 if (*active_vol < 0.0f)
                     *active_vol = 0.0f;
+                if (focus == FOCUS_SOUND1 && inst1)
+                    clk_audio_inst_set_volume(inst1, *active_vol);
+                if (focus == FOCUS_SOUND2 && inst2)
+                    clk_audio_inst_set_volume(inst2, *active_vol);
                 break;
             case 'q':
             case 'Q':
@@ -105,7 +125,7 @@ int main(void) {
         printf("%s  Sound 1 \u2014 alarm %s\n", focus == FOCUS_SOUND1 ? "\033[33m" : "",
                focus == FOCUS_SOUND1 ? "\033[0m" : "");
         printf("  %s  Loop: %s  Repeat: %d  Vol: ",
-               clk_audio_is_playing(sound1) ? "\033[32m\u25b6 PLAYING\033[0m" : "\u23f9 STOPPED",
+               clk_audio_is_playing(inst1) ? "\033[32m\u25b6 PLAYING\033[0m" : "\u23f9 STOPPED",
                loop1 ? "ON" : "OFF", repeat1);
         draw_volume_bar(10, vol1);
         printf("\n\n");
@@ -113,7 +133,7 @@ int main(void) {
         printf("%s  Sound 2 \u2014 rain %s\n", focus == FOCUS_SOUND2 ? "\033[33m" : "",
                focus == FOCUS_SOUND2 ? "\033[0m" : "");
         printf("  %s  Loop: %s  Repeat: %d  Vol: ",
-               clk_audio_is_playing(sound2) ? "\033[32m\u25b6 PLAYING\033[0m" : "\u23f9 STOPPED",
+               clk_audio_is_playing(inst2) ? "\033[32m\u25b6 PLAYING\033[0m" : "\u23f9 STOPPED",
                loop2 ? "ON" : "OFF", repeat2);
         draw_volume_bar(10, vol2);
         printf("\n\n");
@@ -127,8 +147,8 @@ int main(void) {
         clk_term_sleep_ms(16);
     }
 
-    clk_audio_stop(sound1);
-    clk_audio_stop(sound2);
+    clk_audio_stop(inst1);
+    clk_audio_stop(inst2);
     clk_audio_destroy(sound1);
     clk_audio_destroy(sound2);
     clk_audio_shutdown(engine);

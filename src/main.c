@@ -108,9 +108,17 @@ int main(void) {
      * ================================================================ */
 
     clk_menu* menu = clk_app_setup_menu(&cfg);
+    if (!menu) {
+        clk_ascii_render_destroy(&render);
+        clk_app_config_deinit(&cfg);
+        clk_term_close();
+        fprintf(stderr, "menu setup fail\n");
+        return 1;
+    }
 
     clk_menu_theme theme;
-    clk_app_setup_theme(&theme, &cfg.themes);
+    if (!clk_app_setup_theme(&theme, &cfg.themes))
+        fprintf(stderr, "theme load fail, using defaults\n");
 
     clk_menu_instance* menu_inst = clk_menu_instance_create(menu, &theme);
     clk_menu_instance_set_size(menu_inst, CLK_MENU_DEFAULT_WIDTH, CLK_MENU_DEFAULT_HEIGHT);
