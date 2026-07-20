@@ -3,6 +3,7 @@
 
 #include "clk_key_io.h"
 #include "clk_term.h"
+#include "clk_time.h"
 
 int main(void) {
     clk_term_init();
@@ -40,7 +41,7 @@ int main(void) {
             }
         }
 
-        clk_term_sleep_ms(16);
+        clk_time_sleep_ms(16);
     }
 
     clk_term_close();

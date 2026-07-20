@@ -2,6 +2,7 @@
 #define CLK_TERM_H
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 #ifdef __cplusplus
 extern "C" {
@@ -231,9 +232,6 @@ bool clk_term_get_size(int* term_w, int* term_h);
 /** Return true if the terminal size differs from the last known size. */
 bool clk_term_size_changed(void);
 
-/** Suspend execution for @p ms milliseconds. Cross-platform. */
-void clk_term_sleep_ms(int ms);
-
 /* ------------------------------------------------------------------
  *  Hardware cursor
  * ------------------------------------------------------------------ */
@@ -261,6 +259,11 @@ void clk_term_cursor_show(void);
 
 /** Hide the hardware cursor.  Immediately outputs \033[?25l. */
 void clk_term_cursor_hide(void);
+
+/** Compute display-width columns for the first byte_len bytes of a
+ *  UTF-8 string.  CJK / fullwidth characters count as 2; ASCII as 1.
+ *  Returns a best-effort estimate on broken UTF-8. */
+int clk_term_utf8_display_width(const char* str, size_t byte_len);
 
 #ifdef __cplusplus
 }

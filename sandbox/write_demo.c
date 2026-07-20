@@ -2,13 +2,15 @@
 #include <stddef.h>
 
 #include "clk_key_io.h"
+#include "clk_key_io2.h"
 #include "clk_term.h"
+#include "clk_time.h"
 
 #define INPUT_FIELD_HEIGHT 5
 #define INPUT_FIELD_WIDTH 46
-/** Characters before hitting right border: "> " at x=2..3, text at
+/** Display columns before hitting right border: "> " at x=2..3, text at
  *  x=4, right margin at WIDTH-4 → usable = (WIDTH-4) - 4 + 1. */
-#define MAX_INPUT_LEN (INPUT_FIELD_WIDTH - 7)
+#define MAX_COLUMNS (INPUT_FIELD_WIDTH - 7)
 
 /* ------------------------------------------------------------------
  *  Layout helpers
@@ -54,6 +56,9 @@ int main() {
     if (!clk_term_init())
         return -1;
 
+    clk_key_io_close(); /* kill old background thread — io2 will own stdin */
+    clk_key_io2_init();
+
     clk_texture input_field_tex = clk_texture_create(INPUT_FIELD_WIDTH, INPUT_FIELD_HEIGHT);
     clk_sprite* input_field = clk_sprite_create_with_texture(&input_field_tex, 0, 0, 0);
 
@@ -80,17 +85,18 @@ int main() {
 
     while (running) {
         /* ---- Input ---- */
-        clk_key_event event;
 
         switch (mod) {
-            case NORMAL:
-                event = clk_get_key_event();
-                switch (event.key) {
-                    case 'q':
+            case NORMAL: {
+                clk_key_event2 ev = clk_normal_get_key_event2();
+                switch (ev.key_mask) {
+                    case KEY_q_LOWER:
+                    case KEY_Q_UPPER:
                         running = false;
                         break;
-                    case 'w':
-                        clk_key_io_text_start(buf, MAX_INPUT_LEN, &len, &pos);
+                    case KEY_w_LOWER:
+                    case KEY_W_UPPER:
+                        clk_key_io2_set_input(buf, sizeof(buf) - 1, &len, &pos);
                         is_typing = true;
                         mod = INPUT;
                         break;
@@ -98,15 +104,43 @@ int main() {
                         break;
                 }
                 break;
+            }
             case INPUT: {
-                uint32_t result = clk_key_io_text_poll();
-                switch (result) {
-                    case CLK_KEY_ESC:
-                    case '\r':
+                clk_key_event2 ev2 = clk_input_get_key_event2();
+                switch (ev2.key_mask) {
+                    case KEY_LEFT:
+                        clk_input_move_cursor(-1);
+                        break;
+                    case KEY_RIGHT:
+                        clk_input_move_cursor(1);
+                        break;
+                    case KEY_BS:
+                        clk_input_delete_before();
+                        break;
+                    case KEY_DEL:
+                        clk_input_delete_after();
+                        break;
+                    case KEY_HOME:
+                    case KEY_UP:
+                        clk_input_move_cursor(-9999);
+                        break;
+                    case KEY_END:
+                    case KEY_DOWN:
+                        clk_input_move_cursor(9999);
+                        break;
+                    case KEY_ESC:
+                    case KEY_ENTER:
+                        clk_key_io2_set_normal();
                         is_typing = false;
                         mod = NORMAL;
                         break;
                     default:
+                        if (ev2.has_text) {
+                            int cur_cols = clk_term_utf8_display_width(buf, len);
+                            int add_cols = clk_term_utf8_display_width(ev2.text, ev2.text_len);
+                            if (cur_cols + add_cols <= MAX_COLUMNS)
+                                clk_input_write(CLK_WRITE_INSERT, ev2.text, ev2.text_len);
+                        }
                         break;
                 }
                 break;
@@ -121,7 +155,10 @@ int main() {
         if (is_typing) {
             clk_texture_write_string(&input_field_tex, 2, 2, "> ", text_style);
             clk_texture_write_string(&input_field_tex, 4, 2, buf, text_style);
-            clk_term_cursor_set_pos(input_field->posx + 4 + (int)pos, input_field->posy + 2);
+            {
+                int col = clk_term_utf8_display_width(buf, pos);
+                clk_term_cursor_set_pos(input_field->posx + 4 + col, input_field->posy + 2);
+            }
             clk_term_cursor_show();
         } else {
             clk_term_cursor_hide();
@@ -134,13 +171,14 @@ int main() {
         /* ---- Flush ---- */
         clk_term_update();
         clk_term_draw();
-        clk_term_sleep_ms(16);
+        clk_time_sleep_ms(16);
     }
 
     /* ================================================================
      *  Cleanup
      * ================================================================ */
 
+    clk_key_io2_close();
     clk_sprite_destroy(input_field);
     clk_texture_destroy(&input_field_tex);
     clk_term_close();

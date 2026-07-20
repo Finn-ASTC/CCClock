@@ -59,6 +59,7 @@ add_library(libclock STATIC
     src/clk_menu_theme.c
     src/clk_menu_instance.c
     src/clk_audio.c
+    src/clk_key_io2.c
 )
 target_include_directories(libclock PRIVATE include)
 
@@ -113,3 +114,4 @@ add_clk_test(menu)
 add_clk_test(menu_theme)
 add_clk_test(menu_instance)
 add_clk_test(audio)
+add_clk_test(key_io2)

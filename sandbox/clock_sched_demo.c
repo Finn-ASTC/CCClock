@@ -154,7 +154,7 @@ int main(void) {
         printf("  [Space]StopBell  [E]TogglePomo  [P]Pause  [Q]Quit\n");
 
         fflush(stdout);
-        clk_term_sleep_ms(100);
+        clk_time_sleep_ms(100);
     }
 
     clk_clock_deinit(&clock);

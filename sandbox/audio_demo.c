@@ -4,6 +4,7 @@
 #include "clk_audio.h"
 #include "clk_key_io.h"
 #include "clk_term.h"
+#include "clk_time.h"
 
 #define SOUND1_PATH "sandbox/audio/alarm.mp3"
 #define SOUND2_PATH "sandbox/audio/rain.mp3"
@@ -144,7 +145,7 @@ int main(void) {
             "[Q]Quit\n");
 
         fflush(stdout);
-        clk_term_sleep_ms(16);
+        clk_time_sleep_ms(16);
     }
 
     clk_audio_stop(inst1);

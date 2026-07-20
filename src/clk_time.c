@@ -2,6 +2,12 @@
 
 #include <time.h>
 
+#if defined(_WIN32) || defined(_WIN64)
+#include <windows.h>
+#else
+#include <unistd.h>
+#endif
+
 /* ================================================================
  *  Utility
  * ================================================================ */
@@ -119,6 +125,20 @@ void clk_alarm_disable(clk_alarm* alarm) {
     if (!alarm)
         return;
     alarm->enabled = false;
+}
+
+/* ================================================================
+ *  Sleep
+ * ================================================================ */
+
+void clk_time_sleep_ms(int ms) {
+    if (ms <= 0)
+        return;
+#if defined(_WIN32) || defined(_WIN64)
+    Sleep(ms);
+#else
+    usleep(ms * 1000);
+#endif
 }
 
 void clk_alarm_enable(clk_alarm* alarm) {

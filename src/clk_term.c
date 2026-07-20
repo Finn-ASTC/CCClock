@@ -190,7 +190,7 @@ void clk_term_close(void) {
 
     clk_is_term_init = false;
 
-    printf("\033[2J\033[H");
+    printf("\033[2J\033[H\033[0 q");
     fflush(stdout);
     clk_term_cursor_show();
 }
@@ -222,6 +222,43 @@ void clk_term_cursor_hide(void) {
     cursor.visible = false;
     printf("\033[?25l");
     fflush(stdout);
+}
+
+/* ================================================================
+ *  UTF-8 display width
+ * ================================================================ */
+
+static int clk_cell_char_width(const char* utf8);
+
+int clk_term_utf8_display_width(const char* str, size_t byte_len) {
+    int width = 0;
+    size_t i = 0;
+
+    while (i < byte_len && str[i] != '\0') {
+        unsigned char c = (unsigned char)str[i];
+        int ch_bytes;
+
+        if ((c & 0x80) == 0)
+            ch_bytes = 1;
+        else if ((c & 0xE0) == 0xC0)
+            ch_bytes = 2;
+        else if ((c & 0xF0) == 0xE0)
+            ch_bytes = 3;
+        else if ((c & 0xF8) == 0xF0)
+            ch_bytes = 4;
+        else {
+            i++;
+            width++;
+            continue;
+        }
+
+        if (i + ch_bytes > byte_len)
+            break;
+
+        width += clk_cell_char_width(str + i);
+        i += ch_bytes;
+    }
+    return width;
 }
 
 /* ================================================================
@@ -553,8 +590,10 @@ void clk_term_draw(void) {
                 }
 
                 if_rendered_sign[idx] = 1;
-                if (cell->type == CELL_WIDE_LEAD && x + 1 < screen_w)
+                if (cell->type == CELL_WIDE_LEAD && x + 1 < screen_w) {
                     if_rendered_sign[idx + 1] = 1;
+                    screen_buffer[idx + 1] = (clk_cell){.type = CELL_WIDE_TRAIL, .is_empty = false};
+                }
             }
         }
     }
@@ -698,16 +737,6 @@ bool clk_term_size_changed(void) {
     if (!clk_term_get_size(&w, &h))
         return false;
     return (w != screen_w || h != screen_h);
-}
-
-void clk_term_sleep_ms(int ms) {
-    if (ms <= 0)
-        return;
-#if defined(_WIN32) || defined(_WIN64)
-    Sleep(ms);
-#else
-    usleep(ms * 1000);
-#endif
 }
 
 /* ================================================================

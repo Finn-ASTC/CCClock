@@ -7,6 +7,7 @@
 #include "clk_menu_instance.h"
 #include "clk_menu_theme.h"
 #include "clk_term.h"
+#include "clk_time.h"
 
 #define THEME_PATH "assets/config/menu_config/menu_theme_pinkblue.json"
 
@@ -146,7 +147,7 @@ int main(void) {
     fflush(stdout);
 
     while (clk_get_key_event().key == CLK_KEY_NONE)
-        clk_term_sleep_ms(16);
+        clk_time_sleep_ms(16);
 
     printf("\033[2J\033[H");
     fflush(stdout);
@@ -204,7 +205,7 @@ int main(void) {
 
         clk_menu_instance_render(inst);
         clk_term_draw();
-        clk_term_sleep_ms(50);
+        clk_time_sleep_ms(50);
     }
 
     clk_menu_instance_destroy(inst);

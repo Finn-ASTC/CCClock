@@ -85,7 +85,7 @@ int main() {
     while (clk_get_key_event().key != CLK_KEY_NONE)
         ;
     while (clk_get_key_event().key == CLK_KEY_NONE)
-        clk_term_sleep_ms(16);
+        clk_time_sleep_ms(16);
 
     printf("\033[2J\033[H");
 
@@ -141,7 +141,7 @@ int main() {
 
         clk_term_update();
         clk_term_draw();
-        clk_term_sleep_ms(16);
+        clk_time_sleep_ms(16);
     }
 
     clk_ascii_render_destroy(&render);

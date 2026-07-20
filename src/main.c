@@ -239,7 +239,7 @@ int main(void) {
         clk_menu_instance_render(menu_inst);
         clk_term_update();
         clk_term_draw();
-        clk_term_sleep_ms(CLK_FRAME_MS);
+        clk_time_sleep_ms(CLK_FRAME_MS);
 
         if (++hot_tick > CLK_HOTRELOAD_TICKS) {
             hot_tick = 0;

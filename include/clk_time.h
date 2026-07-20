@@ -85,6 +85,9 @@ bool clk_time_localtime(struct tm* out);
 /** Convert a specific @p timestamp into local time in @p out. */
 bool clk_time_localtime_from(time_t timestamp, struct tm* out);
 
+/** Suspend execution for @p ms milliseconds.  Cross-platform. */
+void clk_time_sleep_ms(int ms);
+
 #ifdef __cplusplus
 }
 #endif

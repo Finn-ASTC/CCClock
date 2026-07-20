@@ -315,6 +315,21 @@ int main(void) {
     hex_bad = clk_term_register_style_hex("#ZZZZZZ", "#000000", ATTR_NONE);
     TEST("register_style_hex invalid hex chars fails", hex_bad == 0);
 
+    /* ================================================================
+     *  UTF-8 display width
+     * ================================================================ */
+
+    TEST("utf8_width '' → 0", clk_term_utf8_display_width("", 0) == 0);
+    TEST("utf8_width 'abc' → 3", clk_term_utf8_display_width("abc", 3) == 3);
+    TEST("utf8_width '中文' → 4", clk_term_utf8_display_width("\xE4\xB8\xAD\xE6\x96\x87", 6) == 4);
+    TEST("utf8_width 'a中b' → 4", clk_term_utf8_display_width("a\xE4\xB8\xAD"
+                                                              "b",
+                                                              5) == 4);
+    TEST("utf8_width truncated byte_len=2 on CJK → 0",
+         clk_term_utf8_display_width("\xE4\xB8\xAD", 2) == 0);
+    TEST("utf8_width 'ab' truncated on CJK → 2",
+         clk_term_utf8_display_width("ab\xE4\xB8\xAD", 5) == 2);
+
     /* ---- re-test set_cell style association with real style_id ---- */
     clk_texture_write_cell(&tex, 5, 2, "Y", red_id);
     c = &tex.data[5 + 2 * tex.tex_w];

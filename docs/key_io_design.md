@@ -163,7 +163,7 @@ switch (ev.key_mask) {
     case KEY_BS:                 clk_input_delete_before(); break;
     default:
         if (ev.has_text)
-            clk_input_write_at_cursor(ev.text, ev.text_len);
+            clk_input_write(CLK_WRITE_INSERT, ev.text, ev.text_len);
         break;
 }
 ```
@@ -174,13 +174,12 @@ switch (ev.key_mask) {
 
 仅 INPUT 模式生效，操作绑定的 `buf/len/pos`。全部**字符粒度**，内部处理 UTF-8 字节边界。
 
-| 函数                                            | 语义                                            |
-| ----------------------------------------------- | ----------------------------------------------- |
-| `clk_input_write_at_cursor(text, byte_len)`     | 在光标位置插入文本，pos 后移                    |
-| `clk_input_overwrite_at_cursor(text, byte_len)` | 在光标位置覆写（替换），pos 后移                |
-| `clk_input_move_cursor(offset)`                 | 光标移 offset 个字符，负左正右                  |
-| `clk_input_delete_before()`                     | 删除光标前一字符（Backspace），pos/len 同步更新 |
-| `clk_input_delete_after()`                      | 删除光标处字符（Delete），len 更新 pos 不动     |
+| 函数                                    | 语义                                                   |
+| --------------------------------------- | ------------------------------------------------------ |
+| `clk_input_write(mode, text, byte_len)` | 按 mode(INSERT/OVERWRITE) 在光标位置写入文本，pos 后移 |
+| `clk_input_move_cursor(offset)`         | 光标移 offset 个字符，负左正右                         |
+| `clk_input_delete_before()`             | 删除光标前一字符（Backspace），pos/len 同步更新        |
+| `clk_input_delete_after()`              | 删除光标处字符（Delete），len 更新 pos 不动            |
 
 内部使用 static 工具函数处理 UTF-8 边界扫描和字符宽度判断。
 
