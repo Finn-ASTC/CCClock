@@ -50,15 +50,19 @@ static clk_key_event ring_pop(void) {
  *  Mode state
  * ================================================================ */
 
-typedef enum { MODE_NORMAL, MODE_INPUT } mode_t;
+typedef enum { MODE_NORMAL, MODE_INPUT } key_mode_t;
 
-static mode_t current_mode = MODE_NORMAL;
+static key_mode_t current_mode = MODE_NORMAL;
 static char* input_buf;
 static size_t input_buf_max_bytes; /* derived byte ceiling */
 static size_t *input_len, *input_pos;
 
 #ifndef _WIN32
 static struct termios old_tio;
+#else
+static HANDLE g_hStdin;
+static DWORD g_old_console_mode;
+static bool g_console_mode_saved;
 #endif
 
 static int test_next_byte = -1; /* test hook — override for raw_getch */
@@ -69,10 +73,50 @@ static int test_next_byte = -1; /* test hook — override for raw_getch */
 
 #if defined(_WIN32) || defined(_WIN64)
 
-#include <conio.h>
+#include <conio.h> /* _kbhit / _getch */
+
+/* ---- readahead buffer — one greedy ReadFile per burst, then serve from cache ---- */
+static unsigned char ra_buf[4096];
+static size_t ra_pos, ra_len;
+
+static int fill_readahead(void) {
+    ra_pos = 0;
+    ra_len = 0;
+
+    DWORD available;
+    /* real pipe — read exactly the known count */
+    if (PeekNamedPipe(g_hStdin, NULL, 0, NULL, &available, NULL)) {
+        if (available == 0)
+            return -1;
+        DWORD to_read = available < sizeof(ra_buf) ? available : (DWORD)sizeof(ra_buf);
+        DWORD read;
+        if (ReadFile(g_hStdin, ra_buf, to_read, &read, NULL) && read > 0) {
+            ra_len = read;
+            return 0;
+        }
+        return -1;
+    }
+
+    /* ConPTY / console — peek first so ReadFile never blocks */
+    if (WaitForSingleObject(g_hStdin, 0) != WAIT_OBJECT_0)
+        return -1;
+    {
+        DWORD read;
+        if (ReadFile(g_hStdin, ra_buf, sizeof(ra_buf), &read, NULL) && read > 0) {
+            ra_len = read;
+            return 0;
+        }
+    }
+
+    return -1;
+}
 
 static bool raw_kbhit(void) {
     if (test_next_byte >= 0)
+        return true;
+    if (ra_pos < ra_len)
+        return true;
+    if (fill_readahead() == 0)
         return true;
     return _kbhit() != 0;
 }
@@ -83,7 +127,11 @@ static int raw_getch(void) {
         test_next_byte = -1;
         return ch;
     }
-    return _getch();
+    if (ra_pos < ra_len)
+        return ra_buf[ra_pos++];
+    if (fill_readahead() == 0)
+        return ra_buf[ra_pos++];
+    return -1;
 }
 
 #else /* POSIX */
@@ -310,40 +358,19 @@ static int csi_param(int idx) {
 }
 
 static __uint128_t csi_mod_mask(int code) {
-    switch (code) {
-        case 2:
-            return MOD_SHIFT;
-        case 3:
-            return MOD_ALT;
-        case 4:
-            return MOD_SHIFT | MOD_ALT;
-        case 5:
-            return MOD_CTRL;
-        case 6:
-            return MOD_CTRL | MOD_SHIFT;
-        case 7:
-            return MOD_CTRL | MOD_ALT;
-        case 8:
-            return MOD_CTRL | MOD_SHIFT | MOD_ALT;
-        case 9:
-            return MOD_META;
-        case 10:
-            return MOD_META | MOD_SHIFT;
-        case 11:
-            return MOD_META | MOD_ALT;
-        case 12:
-            return MOD_META | MOD_SHIFT | MOD_ALT;
-        case 13:
-            return MOD_META | MOD_CTRL;
-        case 14:
-            return MOD_META | MOD_CTRL | MOD_SHIFT;
-        case 15:
-            return MOD_META | MOD_CTRL | MOD_ALT;
-        case 16:
-            return MOD_META | MOD_CTRL | MOD_SHIFT | MOD_ALT;
-        default:
-            return 0;
-    }
+    if (code < 2 || code > 16)
+        return 0;
+    int bits = code - 1;
+    uint64_t hi = 0;
+    if (bits & 1)
+        hi |= UINT64_C(1) << 53; /* MOD_SHIFT: bit 117 = 64+53 */
+    if (bits & 2)
+        hi |= UINT64_C(1) << 55; /* MOD_ALT:   bit 119 = 64+55 */
+    if (bits & 4)
+        hi |= UINT64_C(1) << 54; /* MOD_CTRL:  bit 118 = 64+54 */
+    if (bits & 8)
+        hi |= UINT64_C(1) << 56; /* MOD_META:  bit 120 = 64+56 */
+    return (__uint128_t)hi << 64;
 }
 
 static clk_key_event csi_term_event(unsigned char term) {
@@ -566,6 +593,101 @@ static clk_key_event process_byte(int ch) {
         return ev;
     }
 
+#if defined(_WIN32) || defined(_WIN64)
+    /* ---- Windows extended-key prefix (0xE0 / 0x00) ----
+     *
+     * On non-ConPTY consoles, _getch() returns extended keys as a
+     * two-byte sequence.  Must be handled BEFORE UTF-8 lead-byte
+     * detection because 0xE0 is also a valid 3-byte UTF-8 lead
+     * on POSIX. */
+    if ((ch == 0xE0 || ch == 0x00) && sm == SM_NORMAL) {
+        if (raw_kbhit()) {
+            int ch2 = raw_getch();
+            switch (ch2) {
+                case 0x47:
+                    ev.key_mask = KEY_HOME;
+                    break;
+                case 0x48:
+                    ev.key_mask = KEY_UP;
+                    break;
+                case 0x49:
+                    ev.key_mask = KEY_PAGE_UP;
+                    break;
+                case 0x4B:
+                    ev.key_mask = KEY_LEFT;
+                    break;
+                case 0x4D:
+                    ev.key_mask = KEY_RIGHT;
+                    break;
+                case 0x4F:
+                    ev.key_mask = KEY_END;
+                    break;
+                case 0x50:
+                    ev.key_mask = KEY_DOWN;
+                    break;
+                case 0x51:
+                    ev.key_mask = KEY_PAGE_DOWN;
+                    break;
+                case 0x52:
+                    ev.key_mask = KEY_INSERT;
+                    break;
+                case 0x53:
+                    ev.key_mask = KEY_DEL;
+                    break;
+                case 0x3B:
+                    ev.key_mask = KEY_F1;
+                    break;
+                case 0x3C:
+                    ev.key_mask = KEY_F2;
+                    break;
+                case 0x3D:
+                    ev.key_mask = KEY_F3;
+                    break;
+                case 0x3E:
+                    ev.key_mask = KEY_F4;
+                    break;
+                case 0x3F:
+                    ev.key_mask = KEY_F5;
+                    break;
+                case 0x40:
+                    ev.key_mask = KEY_F6;
+                    break;
+                case 0x41:
+                    ev.key_mask = KEY_F7;
+                    break;
+                case 0x42:
+                    ev.key_mask = KEY_F8;
+                    break;
+                case 0x43:
+                    ev.key_mask = KEY_F9;
+                    break;
+                case 0x44:
+                    ev.key_mask = KEY_F10;
+                    break;
+                case 0x57:
+                    ev.key_mask = KEY_F11;
+                    break;
+                case 0x58:
+                    ev.key_mask = KEY_F12;
+                    break;
+                case 0x85:
+                    ev.key_mask = KEY_F11;
+                    break;
+                case 0x86:
+                    ev.key_mask = KEY_F12;
+                    break;
+                case 0x5B:
+                case 0x5C:
+                    ev.key_mask = MOD_META;
+                    break;
+                case 0x5D:
+                    break;
+            }
+        }
+        return ev;
+    }
+#endif
+
     /* ---- UTF-8 lead byte ---- */
     if ((ch & 0xE0) == 0xC0) {
         if (ch >= 0xC2) {
@@ -659,6 +781,8 @@ void clk_key_io_init(void) {
     memset(&utf8_state, 0, sizeof(utf8_state));
     memset(csi_params, 0, sizeof(csi_params));
     csi_nparams = 0;
+    ra_pos = 0;
+    ra_len = 0;
 
 #ifndef _WIN32
     {
@@ -668,6 +792,15 @@ void clk_key_io_init(void) {
         new_tio.c_lflag &= ~(ICANON | ECHO | ISIG);
         new_tio.c_iflag &= ~(ICRNL | IXON);
         tcsetattr(STDIN_FILENO, TCSANOW, &new_tio);
+    }
+#else
+    g_hStdin = GetStdHandle(STD_INPUT_HANDLE);
+    if (GetConsoleMode(g_hStdin, &g_old_console_mode)) {
+        g_console_mode_saved = true;
+        DWORD mode = g_old_console_mode;
+        mode &= ~(ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT);
+        mode |= ENABLE_EXTENDED_FLAGS | ENABLE_VIRTUAL_TERMINAL_INPUT;
+        SetConsoleMode(g_hStdin, mode);
     }
 #endif
     paste_mode = false;
@@ -698,6 +831,9 @@ void clk_key_io_close(void) {
 
 #ifndef _WIN32
     tcsetattr(STDIN_FILENO, TCSANOW, &old_tio);
+#else
+    if (g_console_mode_saved)
+        SetConsoleMode(g_hStdin, g_old_console_mode);
 #endif
     printf("\033[?2004l");
     fflush(stdout);
@@ -961,6 +1097,8 @@ void clk_key_io_test_reset(void) {
     csi_nparams = 0;
     pending_byte = -1;
     paste_mode = false;
+    ra_pos = 0;
+    ra_len = 0;
 }
 
 void clk_key_io_test_pause(void) {

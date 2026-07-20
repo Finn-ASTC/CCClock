@@ -30,7 +30,8 @@ extern "C" {
  *  109-116  function keys F1-F8
  *  117-120  modifiers
  *  121-122  bracketed paste
- *  123-127  reserved
+ *  123-126  function keys F9-F12
+ *      127  reserved
  * ================================================================ */
 
 /* ---- Upper-case letters (0-25) ---- */
@@ -164,7 +165,7 @@ extern "C" {
 #define KEY_BS ((__uint128_t)1 << 107)
 #define KEY_ESC ((__uint128_t)1 << 108)
 
-/* ---- Function keys (109-116) ---- */
+/* ---- Function keys F1-F8 (109-116) ---- */
 #define KEY_F1 ((__uint128_t)1 << 109)
 #define KEY_F2 ((__uint128_t)1 << 110)
 #define KEY_F3 ((__uint128_t)1 << 111)
@@ -183,6 +184,12 @@ extern "C" {
 /* ---- Bracketed paste (121-122) ---- */
 #define KEY_PASTE_START ((__uint128_t)1 << 121)
 #define KEY_PASTE_END ((__uint128_t)1 << 122)
+
+/* ---- Function keys F9-F12 (123-126) ---- */
+#define KEY_F9 ((__uint128_t)1 << 123)
+#define KEY_F10 ((__uint128_t)1 << 124)
+#define KEY_F11 ((__uint128_t)1 << 125)
+#define KEY_F12 ((__uint128_t)1 << 126)
 
 /* ================================================================
  *  Event
