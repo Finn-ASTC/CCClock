@@ -38,19 +38,18 @@ static const char* time_formats[] = {"hh:MM:ss", "yyyy:mm:dd\n  hh:ss", "hh:MM",
 static const char* speed_opts[] = {"slow", "normal", "fast", "ultra"};
 
 static clk_menu_input map_input(clk_key_event ev) {
-    switch (ev.key) {
-        case CLK_KEY_UP:
+    switch (ev.key_mask) {
+        case KEY_UP:
             return CLK_MENU_INPUT_PREV_ITEM;
-        case CLK_KEY_DOWN:
+        case KEY_DOWN:
             return CLK_MENU_INPUT_NEXT_ITEM;
-        case CLK_KEY_LEFT:
+        case KEY_LEFT:
             return CLK_MENU_INPUT_DEC_VALUE;
-        case CLK_KEY_RIGHT:
+        case KEY_RIGHT:
             return CLK_MENU_INPUT_INC_VALUE;
-        case '\t':
+        case KEY_TAB:
             return CLK_MENU_INPUT_NEXT_TAB;
-        case '\r':
-        case '\n':
+        case KEY_ENTER:
             return CLK_MENU_INPUT_CONFIRM;
         default:
             return CLK_MENU_INPUT_NONE;
@@ -146,7 +145,7 @@ int main(void) {
         "Press Enter...\n");
     fflush(stdout);
 
-    while (clk_get_key_event().key == CLK_KEY_NONE)
+    while (clk_normal_get_key_event().key_mask == 0)
         clk_time_sleep_ms(16);
 
     printf("\033[2J\033[H");
@@ -154,8 +153,8 @@ int main(void) {
 
     bool running = true;
     while (running) {
-        clk_key_event ev = clk_get_key_event();
-        if (ev.key == 'q' || ev.key == 'Q') {
+        clk_key_event ev = clk_normal_get_key_event();
+        if (ev.key_mask == KEY_q_LOWER || ev.key_mask == KEY_Q_UPPER) {
             running = false;
             continue;
         }

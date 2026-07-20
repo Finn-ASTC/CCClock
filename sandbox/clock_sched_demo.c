@@ -98,24 +98,24 @@ int main(void) {
         clk_clock_update(&clock);
         clk_audio_update();
 
-        clk_key_event ev = clk_get_key_event();
-        switch (ev.key) {
-            case ' ':
+        clk_key_event ev = clk_normal_get_key_event();
+        switch (ev.key_mask) {
+            case KEY_SPACE:
                 clk_clock_stop_bell(&clock);
                 break;
-            case 'e':
-            case 'E':
+            case KEY_e_LOWER:
+            case KEY_E_UPPER:
                 clk_clock_pomodoro_set_enabled(&clock, 0, !clock.pomodoros[0].enabled);
                 break;
-            case 'p':
-            case 'P':
+            case KEY_p_LOWER:
+            case KEY_P_UPPER:
                 if (clock.pomodoros[0].paused)
                     clk_clock_pomodoro_resume(&clock, 0);
                 else
                     clk_clock_pomodoro_pause(&clock, 0);
                 break;
-            case 'q':
-            case 'Q':
+            case KEY_q_LOWER:
+            case KEY_Q_UPPER:
                 running = false;
                 break;
         }

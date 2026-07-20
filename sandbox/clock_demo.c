@@ -82,21 +82,21 @@ int main() {
         "  q  : quit\n\n"
         "Press any key to start...\n");
 
-    while (clk_get_key_event().key != CLK_KEY_NONE)
+    while (clk_normal_get_key_event().key_mask != 0)
         ;
-    while (clk_get_key_event().key == CLK_KEY_NONE)
+    while (clk_normal_get_key_event().key_mask == 0)
         clk_time_sleep_ms(16);
 
     printf("\033[2J\033[H");
 
     for (;;) {
-        clk_key_event event = clk_get_key_event();
-        if (event.key == 'q' || event.key == 'Q')
+        clk_key_event event = clk_normal_get_key_event();
+        if (event.key_mask == KEY_q_LOWER || event.key_mask == KEY_Q_UPPER)
             break;
 
-        switch (event.key) {
-            case 'f':
-            case 'F':
+        switch (event.key_mask) {
+            case KEY_f_LOWER:
+            case KEY_F_UPPER:
                 fmt_idx = (fmt_idx + 1) % ARRAY_SIZE(formats);
                 {
                     size_t l = strlen(formats[fmt_idx]);
@@ -108,18 +108,18 @@ int main() {
                 recenter_clock(&render, time_format, term_w, term_h);
                 break;
 
-            case 'r':
-            case 'R':
+            case KEY_r_LOWER:
+            case KEY_R_UPPER:
                 font_idx = (font_idx + 1) % ARRAY_SIZE(font_files);
                 clk_ascii_render_change_font(&render, font_files[font_idx]);
                 recenter_clock(&render, time_format, term_w, term_h);
                 break;
 
-            case CLK_KEY_UP:
+            case KEY_UP:
                 clk_ascii_render_set_z_order(&render, clk_ascii_render_get_z_order(&render) + 1);
                 break;
 
-            case CLK_KEY_DOWN:
+            case KEY_DOWN:
                 clk_ascii_render_set_z_order(&render, clk_ascii_render_get_z_order(&render) - 1);
                 break;
         }

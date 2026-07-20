@@ -53,16 +53,16 @@ int main(void) {
         int* active_repeat = (focus == FOCUS_SOUND1) ? &repeat1 : &repeat2;
         float* active_vol = (focus == FOCUS_SOUND1) ? &vol1 : &vol2;
 
-        clk_key_event key_event = clk_get_key_event();
+        clk_key_event key_event = clk_normal_get_key_event();
 
-        switch (key_event.key) {
-            case '1':
+        switch (key_event.key_mask) {
+            case KEY_1:
                 focus = FOCUS_SOUND1;
                 break;
-            case '2':
+            case KEY_2:
                 focus = FOCUS_SOUND2;
                 break;
-            case ' ':
+            case KEY_SPACE:
                 if (focus == FOCUS_SOUND1)
                     inst1 = clk_audio_play(sound1, *active_vol, *active_loop,
                                            *active_loop ? 0 : *active_repeat);
@@ -70,14 +70,14 @@ int main(void) {
                     inst2 = clk_audio_play(sound2, *active_vol, *active_loop,
                                            *active_loop ? 0 : *active_repeat);
                 break;
-            case 's':
-            case 'S':
+            case KEY_s_LOWER:
+            case KEY_S_UPPER:
                 clk_audio_stop(inst1);
                 clk_audio_stop(inst2);
                 inst1 = inst2 = NULL;
                 break;
-            case 'l':
-            case 'L':
+            case KEY_l_LOWER:
+            case KEY_L_UPPER:
                 if (focus == FOCUS_SOUND1) {
                     clk_audio_stop(inst1);
                     inst1 = NULL;
@@ -87,15 +87,15 @@ int main(void) {
                 }
                 *active_loop = !*active_loop;
                 break;
-            case CLK_KEY_UP:
+            case KEY_UP:
                 (*active_repeat)++;
                 break;
-            case CLK_KEY_DOWN:
+            case KEY_DOWN:
                 if (*active_repeat > 1)
                     (*active_repeat)--;
                 break;
-            case '+':
-            case '=':
+            case KEY_PLUS:
+            case KEY_EQUALS:
                 *active_vol += 0.1f;
                 if (*active_vol > 1.0f)
                     *active_vol = 1.0f;
@@ -104,7 +104,7 @@ int main(void) {
                 if (focus == FOCUS_SOUND2 && inst2)
                     clk_audio_inst_set_volume(inst2, *active_vol);
                 break;
-            case '-':
+            case KEY_DASH:
                 *active_vol -= 0.1f;
                 if (*active_vol < 0.0f)
                     *active_vol = 0.0f;
@@ -113,8 +113,8 @@ int main(void) {
                 if (focus == FOCUS_SOUND2 && inst2)
                     clk_audio_inst_set_volume(inst2, *active_vol);
                 break;
-            case 'q':
-            case 'Q':
+            case KEY_q_LOWER:
+            case KEY_Q_UPPER:
                 running = false;
                 break;
         }

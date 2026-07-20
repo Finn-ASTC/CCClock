@@ -7,6 +7,7 @@
 
 int main(void) {
     clk_term_init();
+    clk_key_io_init();
 
     char buf[64];
     size_t len = 0, pos = 0;
@@ -14,36 +15,40 @@ int main(void) {
     bool running = true;
 
     while (running) {
-        clk_key_event ev = clk_get_key_event();
-
         if (mode == MODE_NAVIGATE) {
-            if (ev.key == 'q')
+            clk_key_event ev = clk_normal_get_key_event();
+            if (ev.key_mask == KEY_q_LOWER)
                 running = false;
-            else if (ev.key == 's') {
-                clk_key_io_text_start(buf, sizeof(buf), &len, &pos);
+            else if (ev.key_mask == KEY_s_LOWER) {
+                clk_key_io_set_input(buf, sizeof(buf) - 1, &len, &pos);
                 mode = MODE_TEXT;
-            } else if (ev.key == CLK_KEY_UP)
+            } else if (ev.key_mask == KEY_UP)
                 printf("UP\n");
-            else if (ev.key == CLK_KEY_DOWN)
+            else if (ev.key_mask == KEY_DOWN)
                 printf("DOWN\n");
-            else if (ev.key == CLK_KEY_LEFT)
+            else if (ev.key_mask == KEY_LEFT)
                 printf("LEFT\n");
-            else if (ev.key == CLK_KEY_RIGHT)
+            else if (ev.key_mask == KEY_RIGHT)
                 printf("RIGHT\n");
         } else {
-            uint32_t result = clk_key_io_text_poll();
-            if (result == '\r') {
+            clk_key_event ev = clk_input_get_key_event();
+            if (ev.key_mask == KEY_ENTER) {
                 printf("text: \"%s\"\n", buf);
+                clk_key_io_set_normal();
                 mode = MODE_NAVIGATE;
-            } else if (result == CLK_KEY_ESC) {
+            } else if (ev.key_mask == KEY_ESC) {
                 printf("cancelled\n");
+                clk_key_io_set_normal();
                 mode = MODE_NAVIGATE;
+            } else if (ev.has_text) {
+                clk_input_write(CLK_WRITE_INSERT, ev.text, ev.text_len);
             }
         }
 
         clk_time_sleep_ms(16);
     }
 
+    clk_key_io_close();
     clk_term_close();
     return 0;
 }

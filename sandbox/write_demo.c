@@ -1,8 +1,8 @@
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdio.h>
 
 #include "clk_key_io.h"
-#include "clk_key_io2.h"
 #include "clk_term.h"
 #include "clk_time.h"
 
@@ -57,7 +57,7 @@ int main() {
         return -1;
 
     clk_key_io_close(); /* kill old background thread — io2 will own stdin */
-    clk_key_io2_init();
+    clk_key_io_init();
 
     clk_texture input_field_tex = clk_texture_create(INPUT_FIELD_WIDTH, INPUT_FIELD_HEIGHT);
     clk_sprite* input_field = clk_sprite_create_with_texture(&input_field_tex, 0, 0, 0);
@@ -88,7 +88,7 @@ int main() {
 
         switch (mod) {
             case NORMAL: {
-                clk_key_event2 ev = clk_normal_get_key_event2();
+                clk_key_event ev = clk_normal_get_key_event();
                 switch (ev.key_mask) {
                     case KEY_q_LOWER:
                     case KEY_Q_UPPER:
@@ -96,7 +96,7 @@ int main() {
                         break;
                     case KEY_w_LOWER:
                     case KEY_W_UPPER:
-                        clk_key_io2_set_input(buf, sizeof(buf) - 1, &len, &pos);
+                        clk_key_io_set_input(buf, sizeof(buf) - 1, &len, &pos);
                         is_typing = true;
                         mod = INPUT;
                         break;
@@ -106,7 +106,7 @@ int main() {
                 break;
             }
             case INPUT: {
-                clk_key_event2 ev2 = clk_input_get_key_event2();
+                clk_key_event ev2 = clk_input_get_key_event();
                 switch (ev2.key_mask) {
                     case KEY_LEFT:
                         clk_input_move_cursor(-1);
@@ -130,7 +130,7 @@ int main() {
                         break;
                     case KEY_ESC:
                     case KEY_ENTER:
-                        clk_key_io2_set_normal();
+                        clk_key_io_set_normal();
                         is_typing = false;
                         mod = NORMAL;
                         break;
@@ -178,7 +178,7 @@ int main() {
      *  Cleanup
      * ================================================================ */
 
-    clk_key_io2_close();
+    clk_key_io_close();
     clk_sprite_destroy(input_field);
     clk_texture_destroy(&input_field_tex);
     clk_term_close();

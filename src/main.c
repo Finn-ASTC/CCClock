@@ -45,23 +45,22 @@ static void recenter_menu(clk_menu_instance* instance, int term_w, int term_h) {
  * ------------------------------------------------------------------ */
 
 static clk_menu_input translate_menu_key(clk_key_event key_event) {
-    switch (key_event.key) {
-        case CLK_KEY_UP:
-        case 'k':
+    switch (key_event.key_mask) {
+        case KEY_UP:
+        case KEY_k_LOWER:
             return CLK_MENU_INPUT_PREV_ITEM;
-        case CLK_KEY_DOWN:
-        case 'j':
+        case KEY_DOWN:
+        case KEY_j_LOWER:
             return CLK_MENU_INPUT_NEXT_ITEM;
-        case CLK_KEY_LEFT:
-        case 'h':
+        case KEY_LEFT:
+        case KEY_h_LOWER:
             return CLK_MENU_INPUT_DEC_VALUE;
-        case CLK_KEY_RIGHT:
-        case 'l':
+        case KEY_RIGHT:
+        case KEY_l_LOWER:
             return CLK_MENU_INPUT_INC_VALUE;
-        case '\t':
+        case KEY_TAB:
             return CLK_MENU_INPUT_NEXT_TAB;
-        case '\r':
-        case '\n':
+        case KEY_ENTER:
             return CLK_MENU_INPUT_CONFIRM;
         default:
             return CLK_MENU_INPUT_NONE;
@@ -151,16 +150,18 @@ int main(void) {
     bool running = true;
 
     while (running) {
-        clk_key_event key_event = clk_get_key_event();
+        clk_key_event key_event = clk_normal_get_key_event();
 
         switch (focus) {
             case FOCUS_CLOCK:
-                if (key_event.key == 's' || key_event.key == 'S') {
+                if (key_event.key_mask == KEY_s_LOWER ||
+                    key_event.key_mask == KEY_S_UPPER) {
                     clk_menu_instance_set_visible(menu_inst, true);
                     focus = FOCUS_MENU;
                     continue;
                 }
-                if (key_event.key == 'f' || key_event.key == 'F') {
+                if (key_event.key_mask == KEY_f_LOWER ||
+                    key_event.key_mask == KEY_F_UPPER) {
                     cfg.ascii_clock.time_formats.idx =
                         (cfg.ascii_clock.time_formats.idx + 1) % cfg.ascii_clock.time_formats.count;
                     clk_cfg_ascii_clock_theme_switch_time(&cfg.ascii_clock);
@@ -168,7 +169,8 @@ int main(void) {
                         menu, 0, CLK_BASIC_ITEM_TFMT,
                         cfg.ascii_clock.time_formats.strings[cfg.ascii_clock.time_formats.idx]);
                 }
-                if (key_event.key == 'r' || key_event.key == 'R') {
+                if (key_event.key_mask == KEY_r_LOWER ||
+                    key_event.key_mask == KEY_R_UPPER) {
                     cfg.ascii_clock.fonts.idx =
                         (cfg.ascii_clock.fonts.idx + 1) % cfg.ascii_clock.fonts.count;
                     clk_ascii_render_change_font(
@@ -176,12 +178,14 @@ int main(void) {
                     clk_menu_set_value_str(menu, 0, CLK_BASIC_ITEM_FONT,
                                            cfg.ascii_clock.fonts.names[cfg.ascii_clock.fonts.idx]);
                 }
-                if (key_event.key == 'q' || key_event.key == 'Q')
+                if (key_event.key_mask == KEY_q_LOWER ||
+                    key_event.key_mask == KEY_Q_UPPER)
                     running = false;
                 break;
 
             case FOCUS_MENU:
-                if (key_event.key == 'q' || key_event.key == 'Q') {
+                if (key_event.key_mask == KEY_q_LOWER ||
+                    key_event.key_mask == KEY_Q_UPPER) {
                     clk_menu_instance_set_visible(menu_inst, false);
                     focus = FOCUS_CLOCK;
                     continue;
