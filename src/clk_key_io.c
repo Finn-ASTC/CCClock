@@ -66,6 +66,7 @@ static bool g_console_mode_saved;
 #endif
 
 static int test_next_byte = -1; /* test hook — override for raw_getch */
+static size_t ra_pos, ra_len;   /* readahead cursor + length (used by fill_readahead) */
 
 /* ================================================================
  *  Platform helpers
@@ -77,7 +78,6 @@ static int test_next_byte = -1; /* test hook — override for raw_getch */
 
 /* ---- readahead buffer — one greedy ReadFile per burst, then serve from cache ---- */
 static unsigned char ra_buf[4096];
-static size_t ra_pos, ra_len;
 
 static int fill_readahead(void) {
     ra_pos = 0;
