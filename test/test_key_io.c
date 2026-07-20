@@ -555,8 +555,8 @@ int main(void) {
     TEST("delete_after at end → false", !clk_input_delete_after());
 
     /* ---- illegal write mode ---- */
-    TEST("write mode -1 → false", !clk_input_write((clk_write_mode_t)(-1), "x", 1));
-    TEST("write mode 99 → false", !clk_input_write((clk_write_mode_t)99, "x", 1));
+    TEST("write mode -1 → false", !clk_input_write((clk_write_mode)(-1), "x", 1));
+    TEST("write mode 99 → false", !clk_input_write((clk_write_mode)99, "x", 1));
 
     clk_key_io_set_normal();
     clk_key_io_test_resume();

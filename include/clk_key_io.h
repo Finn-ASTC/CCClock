@@ -254,7 +254,7 @@ clk_key_event clk_input_get_key_event(void);
  *  clk_key_io_set_input().  All functions use character granularity.
  * ================================================================ */
 
-typedef enum { CLK_WRITE_INSERT, CLK_WRITE_OVERWRITE } clk_write_mode_t;
+typedef enum { CLK_WRITE_INSERT, CLK_WRITE_OVERWRITE } clk_write_mode;
 
 /** Write text at the cursor position according to @p mode.
  *
@@ -266,7 +266,7 @@ typedef enum { CLK_WRITE_INSERT, CLK_WRITE_OVERWRITE } clk_write_mode_t;
  *  Both modes write as many complete UTF-8 characters as fit.
  *  Returns true only when every byte was written
  *  (false indicates truncation; partial writes are kept). */
-bool clk_input_write(clk_write_mode_t mode, const char* text, size_t byte_len);
+bool clk_input_write(clk_write_mode mode, const char* text, size_t byte_len);
 
 /** Move the cursor by @p offset characters.
  *  Negative = left, positive = right.  Clamped to valid range. */

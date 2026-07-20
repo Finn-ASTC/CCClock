@@ -50,9 +50,9 @@ static clk_key_event ring_pop(void) {
  *  Mode state
  * ================================================================ */
 
-typedef enum { MODE_NORMAL, MODE_INPUT } key_mode_t;
+typedef enum { MODE_NORMAL, MODE_INPUT } key_mode;
 
-static key_mode_t current_mode = MODE_NORMAL;
+static key_mode current_mode = MODE_NORMAL;
 static char* input_buf;
 static size_t input_buf_max_bytes; /* derived byte ceiling */
 static size_t *input_len, *input_pos;
@@ -60,13 +60,13 @@ static size_t *input_len, *input_pos;
 #ifndef _WIN32
 static struct termios old_tio;
 #else
-static HANDLE g_hStdin;
-static DWORD g_old_console_mode;
-static bool g_console_mode_saved;
+static HANDLE stdin_handle;
+static DWORD saved_console_mode;
+static bool has_console_mode;
 #endif
 
-static int test_next_byte = -1; /* test hook — override for raw_getch */
-static size_t ra_pos, ra_len;   /* readahead cursor + length (used by fill_readahead) */
+static int test_next_byte = -1;             /* test hook — override for raw_getch */
+static size_t readahead_pos, readahead_len; /* readahead cursor + length */
 
 /* ================================================================
  *  Platform helpers
@@ -77,33 +77,34 @@ static size_t ra_pos, ra_len;   /* readahead cursor + length (used by fill_reada
 #include <conio.h> /* _kbhit / _getch */
 
 /* ---- readahead buffer — one greedy ReadFile per burst, then serve from cache ---- */
-static unsigned char ra_buf[4096];
+static unsigned char readahead_buf[4096];
 
 static int fill_readahead(void) {
-    ra_pos = 0;
-    ra_len = 0;
+    readahead_pos = 0;
+    readahead_len = 0;
 
     DWORD available;
     /* real pipe — read exactly the known count */
-    if (PeekNamedPipe(g_hStdin, NULL, 0, NULL, &available, NULL)) {
+    if (PeekNamedPipe(stdin_handle, NULL, 0, NULL, &available, NULL)) {
         if (available == 0)
             return -1;
-        DWORD to_read = available < sizeof(ra_buf) ? available : (DWORD)sizeof(ra_buf);
+        DWORD to_read =
+            available < sizeof(readahead_buf) ? available : (DWORD)sizeof(readahead_buf);
         DWORD read;
-        if (ReadFile(g_hStdin, ra_buf, to_read, &read, NULL) && read > 0) {
-            ra_len = read;
+        if (ReadFile(stdin_handle, readahead_buf, to_read, &read, NULL) && read > 0) {
+            readahead_len = read;
             return 0;
         }
         return -1;
     }
 
     /* ConPTY / console — peek first so ReadFile never blocks */
-    if (WaitForSingleObject(g_hStdin, 0) != WAIT_OBJECT_0)
+    if (WaitForSingleObject(stdin_handle, 0) != WAIT_OBJECT_0)
         return -1;
     {
         DWORD read;
-        if (ReadFile(g_hStdin, ra_buf, sizeof(ra_buf), &read, NULL) && read > 0) {
-            ra_len = read;
+        if (ReadFile(stdin_handle, readahead_buf, sizeof(readahead_buf), &read, NULL) && read > 0) {
+            readahead_len = read;
             return 0;
         }
     }
@@ -114,7 +115,7 @@ static int fill_readahead(void) {
 static bool raw_kbhit(void) {
     if (test_next_byte >= 0)
         return true;
-    if (ra_pos < ra_len)
+    if (readahead_pos < readahead_len)
         return true;
     if (fill_readahead() == 0)
         return true;
@@ -127,10 +128,10 @@ static int raw_getch(void) {
         test_next_byte = -1;
         return ch;
     }
-    if (ra_pos < ra_len)
-        return ra_buf[ra_pos++];
+    if (readahead_pos < readahead_len)
+        return readahead_buf[readahead_pos++];
     if (fill_readahead() == 0)
-        return ra_buf[ra_pos++];
+        return readahead_buf[readahead_pos++];
     return -1;
 }
 
@@ -162,9 +163,9 @@ static int raw_getch(void) {
  *  Key-event parser
  * ================================================================ */
 
-typedef enum { SM_NORMAL, SM_UTF8, SM_CSI, SM_SS3 } parser_sm_t;
+typedef enum { STATE_NORMAL, STATE_UTF8, STATE_CSI, STATE_SS3 } parser_state;
 
-static parser_sm_t sm = SM_NORMAL;
+static parser_state parse_state = STATE_NORMAL;
 
 /* ---- UTF-8 accumulation ---- */
 static struct {
@@ -175,8 +176,8 @@ static struct {
 
 /* ---- CSI accumulation ---- */
 static int csi_params[4];
-static int csi_nparams;
-static int csi_cur;
+static int csi_param_count;
+static int csi_current;
 
 /* ---- byte already consumed by ESC detection but not yet processed ---- */
 static int pending_byte = -1;
@@ -336,28 +337,29 @@ static __uint128_t ascii_key_mask(int ch) {
  * ================================================================ */
 
 static void csi_init(void) {
-    csi_nparams = 0;
-    csi_cur = -1;
+    csi_param_count = 0;
+    csi_current = -1;
 }
 
 static void csi_add_digit(int digit) {
-    if (csi_cur < 0)
-        csi_cur = 0;
-    csi_cur = csi_cur * 10 + digit;
+    if (csi_current < 0)
+        csi_current = 0;
+    csi_current = csi_current * 10 + digit;
 }
 
 static void csi_push_param(void) {
-    if (csi_nparams < 4) {
-        csi_params[csi_nparams++] = (csi_cur >= 0) ? csi_cur : 0;
-        csi_cur = -1;
+    if (csi_param_count < 4) {
+        csi_params[csi_param_count++] = (csi_current >= 0) ? csi_current : 0;
+        csi_current = -1;
     }
 }
 
 static int csi_param(int idx) {
-    return (idx < csi_nparams) ? csi_params[idx] : 0;
+    return (idx < csi_param_count) ? csi_params[idx] : 0;
 }
 
 static __uint128_t csi_mod_mask(int code) {
+#if defined(__MINGW32__) || defined(__MINGW64__)
     if (code < 2 || code > 16)
         return 0;
     int bits = code - 1;
@@ -371,25 +373,61 @@ static __uint128_t csi_mod_mask(int code) {
     if (bits & 8)
         hi |= UINT64_C(1) << 56; /* MOD_META:  bit 120 = 64+56 */
     return (__uint128_t)hi << 64;
+#else
+    switch (code) {
+        case 2:
+            return MOD_SHIFT;
+        case 3:
+            return MOD_ALT;
+        case 4:
+            return MOD_SHIFT | MOD_ALT;
+        case 5:
+            return MOD_CTRL;
+        case 6:
+            return MOD_CTRL | MOD_SHIFT;
+        case 7:
+            return MOD_CTRL | MOD_ALT;
+        case 8:
+            return MOD_CTRL | MOD_SHIFT | MOD_ALT;
+        case 9:
+            return MOD_META;
+        case 10:
+            return MOD_META | MOD_SHIFT;
+        case 11:
+            return MOD_META | MOD_ALT;
+        case 12:
+            return MOD_META | MOD_SHIFT | MOD_ALT;
+        case 13:
+            return MOD_META | MOD_CTRL;
+        case 14:
+            return MOD_META | MOD_CTRL | MOD_SHIFT;
+        case 15:
+            return MOD_META | MOD_CTRL | MOD_ALT;
+        case 16:
+            return MOD_META | MOD_CTRL | MOD_SHIFT | MOD_ALT;
+        default:
+            return 0;
+    }
+#endif
 }
 
 static clk_key_event csi_term_event(unsigned char term) {
     clk_key_event ev = {0};
     __uint128_t mod = csi_mod_mask(csi_param(1));
-    int p0 = csi_param(0);
+    int param0 = csi_param(0);
 
     if (term == 'u') {
-        __uint128_t m = ascii_key_mask(p0);
-        if ((unsigned int)p0 <= 127 && m != 0) {
+        __uint128_t m = ascii_key_mask(param0);
+        if ((unsigned int)param0 <= 127 && m != 0) {
             if (mod & MOD_SHIFT) {
                 mod &= (__uint128_t)~MOD_SHIFT;
             }
-        } else if ((unsigned)p0 >= 1 && (unsigned)p0 <= 26) {
-            m = ((__uint128_t)1 << ((unsigned)p0 - 1));
+        } else if ((unsigned)param0 >= 1 && (unsigned)param0 <= 26) {
+            m = ((__uint128_t)1 << ((unsigned)param0 - 1));
         }
         ev.key_mask = m | mod;
         if (m != 0 && !(mod & (MOD_CTRL | MOD_ALT))) {
-            ev.text[0] = (char)p0;
+            ev.text[0] = (char)param0;
             ev.text_len = 1;
             ev.has_text = true;
         }
@@ -420,7 +458,7 @@ static clk_key_event csi_term_event(unsigned char term) {
             mod = MOD_SHIFT;
             break;
         case '~':
-            switch (p0) {
+            switch (param0) {
                 case 1:
                     ev.key_mask = KEY_HOME;
                     break;
@@ -491,24 +529,24 @@ static clk_key_event process_byte(int ch) {
         return ev;
 
     /* ---- UTF-8 continuation ---- */
-    if (sm == SM_UTF8) {
+    if (parse_state == STATE_UTF8) {
         if ((ch & 0xC0) == 0x80) {
             utf8_state.pending[utf8_state.received++] = (char)ch;
             if (utf8_state.received == utf8_state.expected) {
                 memcpy(ev.text, utf8_state.pending, (size_t)utf8_state.received);
                 ev.text_len = (uint8_t)utf8_state.received;
                 ev.has_text = true;
-                sm = SM_NORMAL;
+                parse_state = STATE_NORMAL;
             }
             return ev;
         }
         /* broken sequence — discard */
-        sm = SM_NORMAL;
+        parse_state = STATE_NORMAL;
         /* fall through to re-interpret ch */
     }
 
     /* ---- CSI continuation ---- */
-    if (sm == SM_CSI) {
+    if (parse_state == STATE_CSI) {
         if (ch >= '0' && ch <= '9') {
             csi_add_digit(ch - '0');
         } else if (ch == ';') {
@@ -516,14 +554,14 @@ static clk_key_event process_byte(int ch) {
         } else {
             csi_push_param();
             ev = csi_term_event((unsigned char)ch);
-            sm = SM_NORMAL;
+            parse_state = STATE_NORMAL;
         }
         return ev;
     }
 
     /* ---- SS3 (ESC O)  ---- */
-    if (sm == SM_SS3) {
-        sm = SM_NORMAL;
+    if (parse_state == STATE_SS3) {
+        parse_state = STATE_NORMAL;
         switch (ch) {
             case 'P':
                 ev.key_mask = KEY_F1;
@@ -570,10 +608,10 @@ static clk_key_event process_byte(int ch) {
             int ch2 = raw_getch();
             if (ch2 == '[') {
                 csi_init();
-                sm = SM_CSI;
+                parse_state = STATE_CSI;
                 return ev;
             } else if (ch2 == 'O') {
-                sm = SM_SS3;
+                parse_state = STATE_SS3;
                 return ev;
             } else {
                 pending_byte = ch2;
@@ -600,7 +638,7 @@ static clk_key_event process_byte(int ch) {
      * two-byte sequence.  Must be handled BEFORE UTF-8 lead-byte
      * detection because 0xE0 is also a valid 3-byte UTF-8 lead
      * on POSIX. */
-    if ((ch == 0xE0 || ch == 0x00) && sm == SM_NORMAL) {
+    if ((ch == 0xE0 || ch == 0x00) && parse_state == STATE_NORMAL) {
         if (raw_kbhit()) {
             int ch2 = raw_getch();
             switch (ch2) {
@@ -694,7 +732,7 @@ static clk_key_event process_byte(int ch) {
             utf8_state.pending[0] = (char)ch;
             utf8_state.expected = 2;
             utf8_state.received = 1;
-            sm = SM_UTF8;
+            parse_state = STATE_UTF8;
         }
         return ev;
     }
@@ -702,14 +740,14 @@ static clk_key_event process_byte(int ch) {
         utf8_state.pending[0] = (char)ch;
         utf8_state.expected = 3;
         utf8_state.received = 1;
-        sm = SM_UTF8;
+        parse_state = STATE_UTF8;
         return ev;
     }
     if ((ch & 0xF8) == 0xF0 && ch <= 0xF4) {
         utf8_state.pending[0] = (char)ch;
         utf8_state.expected = 4;
         utf8_state.received = 1;
-        sm = SM_UTF8;
+        parse_state = STATE_UTF8;
         return ev;
     }
 
@@ -776,13 +814,13 @@ void clk_key_io_init(void) {
     input_len = NULL;
     input_pos = NULL;
 
-    sm = SM_NORMAL;
+    parse_state = STATE_NORMAL;
     pending_byte = -1;
     memset(&utf8_state, 0, sizeof(utf8_state));
     memset(csi_params, 0, sizeof(csi_params));
-    csi_nparams = 0;
-    ra_pos = 0;
-    ra_len = 0;
+    csi_param_count = 0;
+    readahead_pos = 0;
+    readahead_len = 0;
 
 #ifndef _WIN32
     {
@@ -794,13 +832,13 @@ void clk_key_io_init(void) {
         tcsetattr(STDIN_FILENO, TCSANOW, &new_tio);
     }
 #else
-    g_hStdin = GetStdHandle(STD_INPUT_HANDLE);
-    if (GetConsoleMode(g_hStdin, &g_old_console_mode)) {
-        g_console_mode_saved = true;
-        DWORD mode = g_old_console_mode;
+    stdin_handle = GetStdHandle(STD_INPUT_HANDLE);
+    if (GetConsoleMode(stdin_handle, &saved_console_mode)) {
+        has_console_mode = true;
+        DWORD mode = saved_console_mode;
         mode &= ~(ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT);
         mode |= ENABLE_EXTENDED_FLAGS | ENABLE_VIRTUAL_TERMINAL_INPUT;
-        SetConsoleMode(g_hStdin, mode);
+        SetConsoleMode(stdin_handle, mode);
     }
 #endif
     paste_mode = false;
@@ -832,8 +870,8 @@ void clk_key_io_close(void) {
 #ifndef _WIN32
     tcsetattr(STDIN_FILENO, TCSANOW, &old_tio);
 #else
-    if (g_console_mode_saved)
-        SetConsoleMode(g_hStdin, g_old_console_mode);
+    if (has_console_mode)
+        SetConsoleMode(stdin_handle, saved_console_mode);
 #endif
     printf("\033[?2004l");
     fflush(stdout);
@@ -1009,7 +1047,7 @@ static bool overwrite_at_cursor(const char* text, size_t byte_len) {
     return !truncated;
 }
 
-bool clk_input_write(clk_write_mode_t mode, const char* text, size_t byte_len) {
+bool clk_input_write(clk_write_mode mode, const char* text, size_t byte_len) {
     switch (mode) {
         case CLK_WRITE_INSERT:
             return write_at_cursor(text, byte_len);
@@ -1091,14 +1129,14 @@ void clk_key_io_test_reset(void) {
     ring_read = ring_write;
     memset(ring, 0, sizeof(ring));
     pthread_mutex_unlock(&ring_mutex);
-    sm = SM_NORMAL;
+    parse_state = STATE_NORMAL;
     memset(&utf8_state, 0, sizeof(utf8_state));
     memset(csi_params, 0, sizeof(csi_params));
-    csi_nparams = 0;
+    csi_param_count = 0;
     pending_byte = -1;
     paste_mode = false;
-    ra_pos = 0;
-    ra_len = 0;
+    readahead_pos = 0;
+    readahead_len = 0;
 }
 
 void clk_key_io_test_pause(void) {
