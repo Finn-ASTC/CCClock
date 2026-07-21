@@ -82,11 +82,11 @@ bool clk_clock_pomodoro_add_segment(clk_clock* clock, int pomodoro_index,
                                     const clk_clock_pomodoro_segment* segment) {
     if (!clock || !segment || pomodoro_index < 0 || pomodoro_index >= clock->pomodoro_count)
         return false;
-    clk_clock_pomodoro* p = &clock->pomodoros[pomodoro_index];
-    if (p->segment_count >= CLK_POMODORO_MAX_SEGMENTS)
+    clk_clock_pomodoro* pomodoro = &clock->pomodoros[pomodoro_index];
+    if (pomodoro->segment_count >= CLK_POMODORO_MAX_SEGMENTS)
         return false;
-    p->segments[p->segment_count] = *segment;
-    p->segment_count++;
+    pomodoro->segments[pomodoro->segment_count] = *segment;
+    pomodoro->segment_count++;
     return true;
 }
 
@@ -95,70 +95,70 @@ bool clk_clock_pomodoro_add_segment_at(clk_clock* clock, int pomodoro_index,
                                        int segment_index) {
     if (!clock || !segment || pomodoro_index < 0 || pomodoro_index >= clock->pomodoro_count)
         return false;
-    clk_clock_pomodoro* p = &clock->pomodoros[pomodoro_index];
-    if (segment_index < 0 || segment_index > p->segment_count ||
-        p->segment_count >= CLK_POMODORO_MAX_SEGMENTS)
+    clk_clock_pomodoro* pomodoro = &clock->pomodoros[pomodoro_index];
+    if (segment_index < 0 || segment_index > pomodoro->segment_count ||
+        pomodoro->segment_count >= CLK_POMODORO_MAX_SEGMENTS)
         return false;
-    for (int i = p->segment_count - 1; i >= segment_index; --i)
-        p->segments[i + 1] = p->segments[i];
-    p->segments[segment_index] = *segment;
-    p->segment_count++;
+    for (int i = pomodoro->segment_count - 1; i >= segment_index; --i)
+        pomodoro->segments[i + 1] = pomodoro->segments[i];
+    pomodoro->segments[segment_index] = *segment;
+    pomodoro->segment_count++;
     return true;
 }
 
 bool clk_clock_pomodoro_remove_segment(clk_clock* clock, int pomodoro_index, int segment_index) {
     if (!clock || pomodoro_index < 0 || pomodoro_index >= clock->pomodoro_count)
         return false;
-    clk_clock_pomodoro* p = &clock->pomodoros[pomodoro_index];
-    if (segment_index < 0 || segment_index >= p->segment_count)
+    clk_clock_pomodoro* pomodoro = &clock->pomodoros[pomodoro_index];
+    if (segment_index < 0 || segment_index >= pomodoro->segment_count)
         return false;
-    for (int i = segment_index; i < p->segment_count - 1; ++i)
-        p->segments[i] = p->segments[i + 1];
-    p->segment_count--;
+    for (int i = segment_index; i < pomodoro->segment_count - 1; ++i)
+        pomodoro->segments[i] = pomodoro->segments[i + 1];
+    pomodoro->segment_count--;
     return true;
 }
 
 void clk_clock_pomodoro_start(clk_clock* clock, int index) {
     if (!clock || index < 0 || index >= clock->pomodoro_count)
         return;
-    clk_clock_pomodoro* p = &clock->pomodoros[index];
-    if (p->segment_count == 0)
+    clk_clock_pomodoro* pomodoro = &clock->pomodoros[index];
+    if (pomodoro->segment_count == 0)
         return;
-    p->enabled = true;
-    p->paused = false;
-    p->current_segment = 0;
-    clk_timer_start(&p->timer, p->segments[0].duration_seconds);
+    pomodoro->enabled = true;
+    pomodoro->paused = false;
+    pomodoro->current_segment = 0;
+    clk_timer_start(&pomodoro->timer, pomodoro->segments[0].duration_seconds);
 }
 
 void clk_clock_pomodoro_pause(clk_clock* clock, int index) {
     if (!clock || index < 0 || index >= clock->pomodoro_count)
         return;
-    clk_clock_pomodoro* p = &clock->pomodoros[index];
-    if (!p->enabled || p->paused)
+    clk_clock_pomodoro* pomodoro = &clock->pomodoros[index];
+    if (!pomodoro->enabled || pomodoro->paused)
         return;
-    clk_timer_pause(&p->timer);
-    p->paused = true;
+    clk_timer_pause(&pomodoro->timer);
+    pomodoro->paused = true;
 }
 
 void clk_clock_pomodoro_resume(clk_clock* clock, int index) {
     if (!clock || index < 0 || index >= clock->pomodoro_count)
         return;
-    clk_clock_pomodoro* p = &clock->pomodoros[index];
-    if (!p->paused)
+    clk_clock_pomodoro* pomodoro = &clock->pomodoros[index];
+    if (!pomodoro->paused)
         return;
-    clk_timer_resume(&p->timer);
-    p->paused = false;
+    clk_timer_resume(&pomodoro->timer);
+    pomodoro->paused = false;
 }
 
 void clk_clock_pomodoro_stop(clk_clock* clock, int index) {
     if (!clock || index < 0 || index >= clock->pomodoro_count)
         return;
-    clk_clock_pomodoro* p = &clock->pomodoros[index];
-    p->enabled = false;
-    p->paused = false;
-    p->timer.running = false;
-    p->timer.paused = false;
-    p->current_segment = 0;
+    clk_clock_pomodoro* pomodoro = &clock->pomodoros[index];
+    pomodoro->enabled = false;
+    pomodoro->paused = false;
+    pomodoro->timer.running = false;
+    pomodoro->timer.paused = false;
+    pomodoro->current_segment = 0;
 }
 
 void clk_clock_pomodoro_set_enabled(clk_clock* clock, int index, bool enabled) {
@@ -210,55 +210,56 @@ void clk_clock_update(clk_clock* clock) {
     if (!clock)
         return;
 
-    struct tm ti;
-    if (!clk_time_localtime(&ti))
+    struct tm time_info;
+    if (!clk_time_localtime(&time_info))
         return;
 
     for (int i = 0; i < clock->alarm_count; ++i) {
-        clk_clock_alarm* a = &clock->alarms[i];
-        if (!a->alarm.enabled)
+        clk_clock_alarm* alarm_ptr = &clock->alarms[i];
+        if (!alarm_ptr->alarm.enabled)
             continue;
 
         /* repeat_days filter */
-        if (a->repeat_days == CLK_REPEAT_TODAY) {
+        if (alarm_ptr->repeat_days == CLK_REPEAT_TODAY) {
             /* Compare full date (year+month+day) to avoid cross-month false triggers */
             struct tm alarm_tm;
-            if (!clk_time_localtime_from(a->today_date, &alarm_tm))
+            if (!clk_time_localtime_from(alarm_ptr->today_date, &alarm_tm))
                 continue;
-            if (alarm_tm.tm_year != ti.tm_year || alarm_tm.tm_mon != ti.tm_mon ||
-                alarm_tm.tm_mday != ti.tm_mday)
+            if (alarm_tm.tm_year != time_info.tm_year || alarm_tm.tm_mon != time_info.tm_mon ||
+                alarm_tm.tm_mday != time_info.tm_mday)
                 continue;
-        } else if (a->repeat_days == CLK_REPEAT_EVERYDAY) {
+        } else if (alarm_ptr->repeat_days == CLK_REPEAT_EVERYDAY) {
             /* no day-of-week filter */
         } else {
-            int today_wday = ti.tm_wday == 0 ? 7 : ti.tm_wday;
-            if (today_wday != (int)a->repeat_days)
+            int today_wday = time_info.tm_wday == 0 ? 7 : time_info.tm_wday;
+            if (today_wday != (int)alarm_ptr->repeat_days)
                 continue;
         }
 
-        if (!clk_alarm_check(&a->alarm))
+        if (!clk_alarm_check(&alarm_ptr->alarm))
             continue;
 
-        if (a->sound) {
+        if (alarm_ptr->sound) {
             clk_audio_play_inst* inst =
-                clk_audio_play(a->sound, a->volume, a->loop, a->loop ? 0 : a->repeat_count);
+                clk_audio_play(alarm_ptr->sound, alarm_ptr->volume, alarm_ptr->loop,
+                               alarm_ptr->loop ? 0 : alarm_ptr->repeat_count);
             if (inst)
                 add_bell(clock, inst);
         }
 
-        if (a->repeat_days != CLK_REPEAT_TODAY)
-            clk_alarm_rearm(&a->alarm);
+        if (alarm_ptr->repeat_days != CLK_REPEAT_TODAY)
+            clk_alarm_rearm(&alarm_ptr->alarm);
     }
 
     for (int i = 0; i < clock->pomodoro_count; ++i) {
-        clk_clock_pomodoro* p = &clock->pomodoros[i];
-        if (!p->enabled || p->paused || p->segment_count == 0)
+        clk_clock_pomodoro* pomodoro = &clock->pomodoros[i];
+        if (!pomodoro->enabled || pomodoro->paused || pomodoro->segment_count == 0)
             continue;
-        if (!clk_timer_finished(&p->timer))
+        if (!clk_timer_finished(&pomodoro->timer))
             continue;
 
-        if (p->current_segment >= 0 && p->current_segment < p->segment_count) {
-            clk_clock_pomodoro_segment* seg = &p->segments[p->current_segment];
+        if (pomodoro->current_segment >= 0 && pomodoro->current_segment < pomodoro->segment_count) {
+            clk_clock_pomodoro_segment* seg = &pomodoro->segments[pomodoro->current_segment];
             if (seg->sound) {
                 clk_audio_play_inst* inst = clk_audio_play(seg->sound, seg->volume, seg->loop,
                                                            seg->loop ? 0 : seg->repeat_count);
@@ -266,8 +267,9 @@ void clk_clock_update(clk_clock* clock) {
                     add_bell(clock, inst);
             }
         }
-        p->current_segment = (p->current_segment + 1) % p->segment_count;
-        clk_timer_start(&p->timer, p->segments[p->current_segment].duration_seconds);
+        pomodoro->current_segment = (pomodoro->current_segment + 1) % pomodoro->segment_count;
+        clk_timer_start(&pomodoro->timer,
+                        pomodoro->segments[pomodoro->current_segment].duration_seconds);
     }
 }
 
@@ -287,9 +289,9 @@ bool clk_clock_translate_format(const char* user_format, char* strftime_format,
 
     int i = 0, o = 0;
     int end = (int)strlen(user_format);
-    int out_end = (int)strftime_format_size - 1;
+    int output_end = (int)strftime_format_size - 1;
 
-    while (i < end && o < out_end) {
+    while (i < end && o < output_end) {
         char c = user_format[i];
 
         switch (c) {

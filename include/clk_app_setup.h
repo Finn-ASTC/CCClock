@@ -18,7 +18,7 @@ extern "C" {
 #define CLK_TAB_POMODORO 2
 
 /* Basic tab item IDs */
-#define CLK_BASIC_ITEM_TFMT 1
+#define CLK_BASIC_ITEM_TIME_FORMAT 1
 #define CLK_BASIC_ITEM_FONT 2
 #define CLK_BASIC_ITEM_THEME 3
 #define CLK_BASIC_ITEM_QUIT 4

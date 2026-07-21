@@ -55,7 +55,7 @@ typedef struct {
 } clk_menu_row_elem;
 
 typedef struct {
-    clk_menu_row_elem* elems;
+    clk_menu_row_elem* elements;
     int count;
 } clk_menu_row;
 

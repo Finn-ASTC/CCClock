@@ -205,20 +205,20 @@ int main(void) {
 
     {
         clk_key_event e = {.key_mask = MOD_CTRL | KEY_S_UPPER};
-        TEST("key_is2 Ctrl+S(+) ", clk_key_is(e, KEY_S_UPPER, MOD_CTRL));
-        TEST("key_is2 Ctrl+S(−) wrong key", !clk_key_is(e, KEY_T_UPPER, MOD_CTRL));
-        TEST("key_is2 Ctrl+S(−) wrong mod", !clk_key_is(e, KEY_S_UPPER, MOD_META));
-        TEST("key_is2 Ctrl+S(−) no mod", !clk_key_is(e, KEY_S_UPPER, 0));
+        TEST("key_is Ctrl+S(+) ", clk_key_is(e, KEY_S_UPPER, MOD_CTRL));
+        TEST("key_is Ctrl+S(−) wrong key", !clk_key_is(e, KEY_T_UPPER, MOD_CTRL));
+        TEST("key_is Ctrl+S(−) wrong mod", !clk_key_is(e, KEY_S_UPPER, MOD_META));
+        TEST("key_is Ctrl+S(−) no mod", !clk_key_is(e, KEY_S_UPPER, 0));
     }
     {
         clk_key_event e = {.key_mask = KEY_ESC};
-        TEST("key_is2 ESC(+) ", clk_key_is(e, KEY_ESC, 0));
-        TEST("key_is2 ESC(−) stray mod", !clk_key_is(e, KEY_ESC, MOD_CTRL));
+        TEST("key_is ESC(+) ", clk_key_is(e, KEY_ESC, 0));
+        TEST("key_is ESC(−) stray mod", !clk_key_is(e, KEY_ESC, MOD_CTRL));
     }
     {
         clk_key_event e = {.key_mask = MOD_CTRL | MOD_SHIFT | KEY_J_UPPER};
-        TEST("key_is2 Ctrl+Shift+J(+) ", clk_key_is(e, KEY_J_UPPER, MOD_CTRL | MOD_SHIFT));
-        TEST("key_is2 Ctrl+Shift+J(−) missing mod", !clk_key_is(e, KEY_J_UPPER, MOD_CTRL));
+        TEST("key_is Ctrl+Shift+J(+) ", clk_key_is(e, KEY_J_UPPER, MOD_CTRL | MOD_SHIFT));
+        TEST("key_is Ctrl+Shift+J(−) missing mod", !clk_key_is(e, KEY_J_UPPER, MOD_CTRL));
     }
 
     /* ================================================================

@@ -68,20 +68,20 @@ static char* clk_json_strndup(const char* src, size_t n) {
     if (!src || n == 0) {
         if (!src)
             return NULL;
-        char* dst = malloc(1);
-        if (dst)
-            dst[0] = '\0';
-        return dst;
+        char* destination = malloc(1);
+        if (destination)
+            destination[0] = '\0';
+        return destination;
     }
     size_t len = 0;
     while (len < n && src[len] != '\0')
         len++;
-    char* dst = malloc(len + 1);
-    if (dst) {
-        memcpy(dst, src, len);
-        dst[len] = '\0';
+    char* destination = malloc(len + 1);
+    if (destination) {
+        memcpy(destination, src, len);
+        destination[len] = '\0';
     }
-    return dst;
+    return destination;
 }
 
 static bool clk_json_is_delimiter(char c) {
@@ -103,7 +103,7 @@ static bool clk_json_is_delimiter(char c) {
     }
 }
 
-static unsigned int parse_hex4(clk_json_lexer* lexer) {
+static unsigned int parse_unicode_escape(clk_json_lexer* lexer) {
     if (lexer->pos + 4 > lexer->json_len)
         return 0xFFFFFFFF;
     unsigned int codepoint = 0;
@@ -123,24 +123,24 @@ static unsigned int parse_hex4(clk_json_lexer* lexer) {
     return codepoint;
 }
 
-static int encode_utf8(unsigned int codepoint, char* dst) {
+static int encode_utf8(unsigned int codepoint, char* destination) {
     if (codepoint <= 0x7F) {
-        dst[0] = codepoint;
+        destination[0] = codepoint;
         return 1;
     } else if (codepoint <= 0x7FF) {
-        dst[0] = 0xC0 | (codepoint >> 6);
-        dst[1] = 0x80 | (codepoint & 0x3F);
+        destination[0] = 0xC0 | (codepoint >> 6);
+        destination[1] = 0x80 | (codepoint & 0x3F);
         return 2;
     } else if (codepoint <= 0xFFFF) {
-        dst[0] = 0xE0 | (codepoint >> 12);
-        dst[1] = 0x80 | ((codepoint >> 6) & 0x3F);
-        dst[2] = 0x80 | (codepoint & 0x3F);
+        destination[0] = 0xE0 | (codepoint >> 12);
+        destination[1] = 0x80 | ((codepoint >> 6) & 0x3F);
+        destination[2] = 0x80 | (codepoint & 0x3F);
         return 3;
     } else {
-        dst[0] = 0xF0 | (codepoint >> 18);
-        dst[1] = 0x80 | ((codepoint >> 12) & 0x3F);
-        dst[2] = 0x80 | ((codepoint >> 6) & 0x3F);
-        dst[3] = 0x80 | (codepoint & 0x3F);
+        destination[0] = 0xF0 | (codepoint >> 18);
+        destination[1] = 0x80 | ((codepoint >> 12) & 0x3F);
+        destination[2] = 0x80 | ((codepoint >> 6) & 0x3F);
+        destination[3] = 0x80 | (codepoint & 0x3F);
         return 4;
     }
 }
@@ -319,7 +319,7 @@ static void clk_json_lexer_next(clk_json_lexer* lexer, clk_json_token* token) {
                             /* skip 'u' */
                             lexer->pos++;
                             lexer->col++;
-                            unsigned int codepoint = parse_hex4(lexer);
+                            unsigned int codepoint = parse_unicode_escape(lexer);
 
                             if (codepoint == 0xFFFFFFFF ||
                                 (codepoint >= 0xDC00 && codepoint <= 0xDFFF)) {
@@ -338,7 +338,7 @@ static void clk_json_lexer_next(clk_json_lexer* lexer, clk_json_token* token) {
                                     lexer->json[lexer->pos + 1] == 'u') {
                                     lexer->pos += 2;
                                     lexer->col += 2;
-                                    unsigned int low = parse_hex4(lexer);
+                                    unsigned int low = parse_unicode_escape(lexer);
                                     if (low >= 0xDC00 && low <= 0xDFFF) {
                                         codepoint =
                                             0x10000 + ((codepoint - 0xD800) << 10) + (low - 0xDC00);
@@ -601,21 +601,21 @@ clk_json_value* clk_json_parse_ex(const char* json_str, char* errbuf, size_t err
 clk_json_value* clk_json_create_null(void) {
     clk_json_value* v = clk_json_alloc_node();
     if (v)
-        v->type = JSON_NULL;
+        v->type = CLK_JSON_NULL;
     return v;
 }
 
 clk_json_value* clk_json_create_true(void) {
     clk_json_value* v = clk_json_alloc_node();
     if (v)
-        v->type = JSON_TRUE;
+        v->type = CLK_JSON_TRUE;
     return v;
 }
 
 clk_json_value* clk_json_create_false(void) {
     clk_json_value* v = clk_json_alloc_node();
     if (v)
-        v->type = JSON_FALSE;
+        v->type = CLK_JSON_FALSE;
     return v;
 }
 
@@ -623,7 +623,7 @@ clk_json_value* clk_json_create_number(double num) {
     clk_json_value* v = clk_json_alloc_node();
     if (!v)
         return NULL;
-    v->type = JSON_NUMBER;
+    v->type = CLK_JSON_NUMBER;
     v->num_value = num;
     return v;
 }
@@ -632,7 +632,7 @@ clk_json_value* clk_json_create_string(const char* str) {
     clk_json_value* v = clk_json_alloc_node();
     if (!v)
         return NULL;
-    v->type = JSON_STRING;
+    v->type = CLK_JSON_STRING;
     v->str_value = clk_json_strndup(str, strlen(str));
     if (!v->str_value) {
         clk_json_free(v);
@@ -645,7 +645,7 @@ clk_json_value* clk_json_create_array(void) {
     clk_json_value* v = clk_json_alloc_node();
     if (!v)
         return NULL;
-    v->type = JSON_ARRAY;
+    v->type = CLK_JSON_ARRAY;
     v->array_value.capacity = CLK_JSON_CONTAINER_DEFAULT_CAP;
     v->array_value.items = malloc(v->array_value.capacity * sizeof(clk_json_value*));
     if (!v->array_value.items) {
@@ -659,7 +659,7 @@ clk_json_value* clk_json_create_object(void) {
     clk_json_value* v = clk_json_alloc_node();
     if (!v)
         return NULL;
-    v->type = JSON_OBJECT;
+    v->type = CLK_JSON_OBJECT;
     v->object_value.capacity = CLK_JSON_CONTAINER_DEFAULT_CAP;
     v->object_value.pairs = malloc(v->object_value.capacity * sizeof(clk_json_key_value_pair));
     if (!v->object_value.pairs) {
@@ -675,44 +675,44 @@ clk_json_value* clk_json_create_object(void) {
 
 clk_json_type clk_json_get_type(const clk_json_value* value) {
     if (!value)
-        return JSON_NULL;
+        return CLK_JSON_NULL;
     return value->type;
 }
 
 bool clk_json_is_null(const clk_json_value* value) {
-    return value && value->type == JSON_NULL;
+    return value && value->type == CLK_JSON_NULL;
 }
 
 bool clk_json_is_true(const clk_json_value* value) {
-    return value && value->type == JSON_TRUE;
+    return value && value->type == CLK_JSON_TRUE;
 }
 
 bool clk_json_is_false(const clk_json_value* value) {
-    return value && value->type == JSON_FALSE;
+    return value && value->type == CLK_JSON_FALSE;
 }
 
 bool clk_json_is_number(const clk_json_value* value) {
-    return value && value->type == JSON_NUMBER;
+    return value && value->type == CLK_JSON_NUMBER;
 }
 
 bool clk_json_is_string(const clk_json_value* value) {
-    return value && value->type == JSON_STRING;
+    return value && value->type == CLK_JSON_STRING;
 }
 
 bool clk_json_is_array(const clk_json_value* value) {
-    return value && value->type == JSON_ARRAY;
+    return value && value->type == CLK_JSON_ARRAY;
 }
 
 bool clk_json_is_object(const clk_json_value* value) {
-    return value && value->type == JSON_OBJECT;
+    return value && value->type == CLK_JSON_OBJECT;
 }
 
 int clk_json_get_boolean(const clk_json_value* value, bool* bool_val) {
     if (!value || !bool_val)
         return -1;
-    if (value->type == JSON_TRUE) {
+    if (value->type == CLK_JSON_TRUE) {
         *bool_val = true;
-    } else if (value->type == JSON_FALSE) {
+    } else if (value->type == CLK_JSON_FALSE) {
         *bool_val = false;
     } else {
         return -1;
@@ -721,14 +721,14 @@ int clk_json_get_boolean(const clk_json_value* value, bool* bool_val) {
 }
 
 int clk_json_get_number(const clk_json_value* value, double* num_val) {
-    if (!value || value->type != JSON_NUMBER || !num_val)
+    if (!value || value->type != CLK_JSON_NUMBER || !num_val)
         return -1;
     *num_val = value->num_value;
     return 0;
 }
 
 int clk_json_get_string(const clk_json_value* value, const char** str_val) {
-    if (!value || value->type != JSON_STRING || !str_val)
+    if (!value || value->type != CLK_JSON_STRING || !str_val)
         return -1;
     *str_val = value->str_value;
     return 0;
@@ -742,15 +742,15 @@ void clk_json_free(clk_json_value* root) {
     if (!root)
         return;
     switch (root->type) {
-        case JSON_STRING:
+        case CLK_JSON_STRING:
             free(root->str_value);
             break;
-        case JSON_ARRAY:
+        case CLK_JSON_ARRAY:
             for (size_t i = 0; i < root->array_value.count; ++i)
                 clk_json_free(root->array_value.items[i]);
             free(root->array_value.items);
             break;
-        case JSON_OBJECT:
+        case CLK_JSON_OBJECT:
             for (size_t i = 0; i < root->object_value.count; ++i) {
                 free(root->object_value.pairs[i].key);
                 clk_json_free(root->object_value.pairs[i].value);
@@ -768,7 +768,7 @@ void clk_json_free(clk_json_value* root) {
  * ================================================================ */
 
 clk_json_value* clk_json_object_get(const clk_json_value* object, const char* key) {
-    if (!object || object->type != JSON_OBJECT || !key)
+    if (!object || object->type != CLK_JSON_OBJECT || !key)
         return NULL;
 
     for (size_t i = 0; i < object->object_value.count; ++i) {
@@ -779,7 +779,7 @@ clk_json_value* clk_json_object_get(const clk_json_value* object, const char* ke
 }
 
 int clk_json_object_set(clk_json_value* object, const char* key, clk_json_value* value) {
-    if (!object || object->type != JSON_OBJECT || !key || !value)
+    if (!object || object->type != CLK_JSON_OBJECT || !key || !value)
         return -1;
 
     for (size_t i = 0; i < object->object_value.count; ++i) {
@@ -827,7 +827,7 @@ int clk_json_object_set_string(clk_json_value* object, const char* key, const ch
 }
 
 int clk_json_object_remove(clk_json_value* object, const char* key) {
-    if (!object || object->type != JSON_OBJECT || !key)
+    if (!object || object->type != CLK_JSON_OBJECT || !key)
         return -1;
 
     for (size_t i = 0; i < object->object_value.count; ++i) {
@@ -844,13 +844,13 @@ int clk_json_object_remove(clk_json_value* object, const char* key) {
 }
 
 size_t clk_json_object_count(const clk_json_value* object) {
-    if (!object || object->type != JSON_OBJECT)
+    if (!object || object->type != CLK_JSON_OBJECT)
         return 0;
     return object->object_value.count;
 }
 
 int clk_json_object_iterator_init(const clk_json_value* object, clk_json_object_iterator* iter) {
-    if (!object || object->type != JSON_OBJECT || !iter)
+    if (!object || object->type != CLK_JSON_OBJECT || !iter)
         return -1;
     iter->opaque[0] = (uintptr_t)object;
     iter->opaque[1] = 0;
@@ -878,13 +878,13 @@ bool clk_json_object_iterator_next(clk_json_object_iterator* iter, clk_json_key_
  * ================================================================ */
 
 clk_json_value* clk_json_array_get(const clk_json_value* array, size_t index) {
-    if (!array || array->type != JSON_ARRAY || index >= array->array_value.count)
+    if (!array || array->type != CLK_JSON_ARRAY || index >= array->array_value.count)
         return NULL;
     return array->array_value.items[index];
 }
 
 int clk_json_array_append(clk_json_value* array, clk_json_value* value) {
-    if (!array || array->type != JSON_ARRAY || !value)
+    if (!array || array->type != CLK_JSON_ARRAY || !value)
         return -1;
 
     if (array->array_value.count >= array->array_value.capacity) {
@@ -902,7 +902,7 @@ int clk_json_array_append(clk_json_value* array, clk_json_value* value) {
 }
 
 int clk_json_array_remove(clk_json_value* array, size_t index) {
-    if (!array || array->type != JSON_ARRAY || index >= array->array_value.count)
+    if (!array || array->type != CLK_JSON_ARRAY || index >= array->array_value.count)
         return -1;
 
     clk_json_free(array->array_value.items[index]);
@@ -913,7 +913,7 @@ int clk_json_array_remove(clk_json_value* array, size_t index) {
 }
 
 int clk_json_array_insert(clk_json_value* array, size_t index, clk_json_value* value) {
-    if (!array || array->type != JSON_ARRAY || index > array->array_value.count || !value)
+    if (!array || array->type != CLK_JSON_ARRAY || index > array->array_value.count || !value)
         return -1;
 
     if (array->array_value.count >= array->array_value.capacity) {
@@ -934,7 +934,7 @@ int clk_json_array_insert(clk_json_value* array, size_t index, clk_json_value* v
 }
 
 int clk_json_array_set(clk_json_value* array, size_t index, clk_json_value* value) {
-    if (!array || array->type != JSON_ARRAY || index >= array->array_value.count || !value)
+    if (!array || array->type != CLK_JSON_ARRAY || index >= array->array_value.count || !value)
         return -1;
 
     clk_json_free(array->array_value.items[index]);
@@ -943,7 +943,7 @@ int clk_json_array_set(clk_json_value* array, size_t index, clk_json_value* valu
 }
 
 size_t clk_json_array_count(const clk_json_value* array) {
-    if (!array || array->type != JSON_ARRAY)
+    if (!array || array->type != CLK_JSON_ARRAY)
         return 0;
     return array->array_value.count;
 }
@@ -1085,19 +1085,19 @@ static bool clk_json_append_object_to_str(char** buf, size_t* len, size_t* cap,
 static bool clk_json_append_value_to_str(char** buf, size_t* len, size_t* cap,
                                          const clk_json_value* root) {
     switch (root->type) {
-        case JSON_NULL:
+        case CLK_JSON_NULL:
             return clk_json_append_null_to_str(buf, len, cap);
-        case JSON_TRUE:
+        case CLK_JSON_TRUE:
             return clk_json_append_true_to_str(buf, len, cap);
-        case JSON_FALSE:
+        case CLK_JSON_FALSE:
             return clk_json_append_false_to_str(buf, len, cap);
-        case JSON_NUMBER:
+        case CLK_JSON_NUMBER:
             return clk_json_append_number_to_str(buf, len, cap, root->num_value);
-        case JSON_STRING:
+        case CLK_JSON_STRING:
             return clk_json_append_string_to_str(buf, len, cap, root->str_value);
-        case JSON_ARRAY:
+        case CLK_JSON_ARRAY:
             return clk_json_append_array_to_str(buf, len, cap, root);
-        case JSON_OBJECT:
+        case CLK_JSON_OBJECT:
             return clk_json_append_object_to_str(buf, len, cap, root);
         default:
             return false;
@@ -1203,19 +1203,19 @@ static bool clk_json_append_object_to_str_pretty(char** buf, size_t* len, size_t
 static bool clk_json_append_value_to_str_pretty(char** buf, size_t* len, size_t* cap,
                                                 const clk_json_value* root, int depth) {
     switch (root->type) {
-        case JSON_NULL:
+        case CLK_JSON_NULL:
             return clk_json_append_null_to_str(buf, len, cap);
-        case JSON_TRUE:
+        case CLK_JSON_TRUE:
             return clk_json_append_true_to_str(buf, len, cap);
-        case JSON_FALSE:
+        case CLK_JSON_FALSE:
             return clk_json_append_false_to_str(buf, len, cap);
-        case JSON_NUMBER:
+        case CLK_JSON_NUMBER:
             return clk_json_append_number_to_str(buf, len, cap, root->num_value);
-        case JSON_STRING:
+        case CLK_JSON_STRING:
             return clk_json_append_string_to_str(buf, len, cap, root->str_value);
-        case JSON_ARRAY:
+        case CLK_JSON_ARRAY:
             return clk_json_append_array_to_str_pretty(buf, len, cap, root, depth);
-        case JSON_OBJECT:
+        case CLK_JSON_OBJECT:
             return clk_json_append_object_to_str_pretty(buf, len, cap, root, depth);
         default:
             return false;
@@ -1233,8 +1233,8 @@ static bool clk_json_append_array_to_str_pretty(char** buf, size_t* len, size_t*
      * arrays or objects get expanded. */
     bool new_line_needed = false;
     for (size_t i = 0; i < root->array_value.count; ++i) {
-        if (root->array_value.items[i]->type == JSON_ARRAY ||
-            root->array_value.items[i]->type == JSON_OBJECT) {
+        if (root->array_value.items[i]->type == CLK_JSON_ARRAY ||
+            root->array_value.items[i]->type == CLK_JSON_OBJECT) {
             new_line_needed = true;
             break;
         }
@@ -1348,15 +1348,15 @@ bool clk_json_equals(const clk_json_value* a, const clk_json_value* b) {
         return false;
 
     switch (a->type) {
-        case JSON_NULL:
-        case JSON_TRUE:
-        case JSON_FALSE:
+        case CLK_JSON_NULL:
+        case CLK_JSON_TRUE:
+        case CLK_JSON_FALSE:
             return true;
-        case JSON_NUMBER:
+        case CLK_JSON_NUMBER:
             return a->num_value == b->num_value;
-        case JSON_STRING:
+        case CLK_JSON_STRING:
             return strcmp(a->str_value, b->str_value) == 0;
-        case JSON_ARRAY:
+        case CLK_JSON_ARRAY:
             if (a->array_value.count != b->array_value.count)
                 return false;
             for (size_t i = 0; i < a->array_value.count; ++i) {
@@ -1364,7 +1364,7 @@ bool clk_json_equals(const clk_json_value* a, const clk_json_value* b) {
                     return false;
             }
             return true;
-        case JSON_OBJECT:
+        case CLK_JSON_OBJECT:
             if (a->object_value.count != b->object_value.count)
                 return false;
             {
@@ -1392,17 +1392,17 @@ clk_json_value* clk_json_deep_copy(const clk_json_value* src) {
         return NULL;
 
     switch (src->type) {
-        case JSON_NULL:
+        case CLK_JSON_NULL:
             return clk_json_create_null();
-        case JSON_TRUE:
+        case CLK_JSON_TRUE:
             return clk_json_create_true();
-        case JSON_FALSE:
+        case CLK_JSON_FALSE:
             return clk_json_create_false();
-        case JSON_NUMBER:
+        case CLK_JSON_NUMBER:
             return clk_json_create_number(src->num_value);
-        case JSON_STRING:
+        case CLK_JSON_STRING:
             return clk_json_create_string(src->str_value);
-        case JSON_ARRAY: {
+        case CLK_JSON_ARRAY: {
             clk_json_value* arr = clk_json_create_array();
             if (!arr)
                 return NULL;
@@ -1416,7 +1416,7 @@ clk_json_value* clk_json_deep_copy(const clk_json_value* src) {
             }
             return arr;
         }
-        case JSON_OBJECT: {
+        case CLK_JSON_OBJECT: {
             clk_json_value* obj = clk_json_create_object();
             if (!obj)
                 return NULL;
@@ -1443,7 +1443,7 @@ clk_json_value* clk_json_deep_copy(const clk_json_value* src) {
  * ================================================================ */
 
 int clk_json_merge_objects(clk_json_value* dest, const clk_json_value* src) {
-    if (!dest || dest->type != JSON_OBJECT || !src || src->type != JSON_OBJECT)
+    if (!dest || dest->type != CLK_JSON_OBJECT || !src || src->type != CLK_JSON_OBJECT)
         return -1;
 
     clk_json_object_iterator iter;
@@ -1476,7 +1476,7 @@ clk_json_value* clk_json_get_by_path(const clk_json_value* root, const char* pat
             case '\0':
                 return current;
             case '.': {
-                if (current->type != JSON_OBJECT)
+                if (current->type != CLK_JSON_OBJECT)
                     return NULL;
                 size_t start = pos;
                 while (path[pos] && path[pos] != '.' && path[pos] != '[')
@@ -1493,7 +1493,7 @@ clk_json_value* clk_json_get_by_path(const clk_json_value* root, const char* pat
                 break;
             }
             case '[': {
-                if (current->type != JSON_ARRAY)
+                if (current->type != CLK_JSON_ARRAY)
                     return NULL;
                 size_t start = pos;
                 while (path[pos] && path[pos] != ']')
@@ -1520,7 +1520,7 @@ clk_json_value* clk_json_get_by_path(const clk_json_value* root, const char* pat
             }
             default: {
                 /* bare key (not preceded by '.') */
-                if (current->type != JSON_OBJECT)
+                if (current->type != CLK_JSON_OBJECT)
                     return NULL;
                 size_t start = pos - 1;
                 while (path[pos] && path[pos] != '.' && path[pos] != '[')

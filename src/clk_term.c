@@ -50,22 +50,22 @@
  *  Global state — all file-scope static
  * ------------------------------------------------------------------ */
 
-static int clk_is_term_init = false;
-static bool clk_is_sprite_list_sorted = false;
+static int term_initialized = false;
+static bool sprite_list_sorted = false;
 
 static clk_cell* screen_buffer;
-static bool* if_rendered_sign;
+static bool* cell_claimed;
 
-static int screen_w, screen_h;
-static int screen_size;
+static int screen_width, screen_height;
+static int cell_count;
 
 static char* ansi_output;
 static int ansi_output_length;
 static int ansi_output_capacity;
 
 static clk_sprite** sprite_render_list;
-static int sprite_list_count = 0;
-static int sprite_list_capacity = CLK_SPRITE_LIST_DEFAULT_CAPACITY;
+static int sprite_count = 0;
+static int sprite_capacity = CLK_SPRITE_LIST_DEFAULT_CAPACITY;
 
 static clk_style* style_registry;
 static int style_count = 0;
@@ -89,73 +89,73 @@ static const clk_style* clk_get_style(int style_id) {
  * ================================================================ */
 
 bool clk_term_init(void) {
-    if (clk_is_term_init)
+    if (term_initialized)
         return true;
 
     clk_key_io_init();
 
-    int screen_w_tmp, screen_h_tmp;
-    if (!clk_term_get_size(&screen_w_tmp, &screen_h_tmp))
+    int detected_width, detected_height;
+    if (!clk_term_get_size(&detected_width, &detected_height))
         return false;
-    if (screen_w_tmp <= 0 || screen_h_tmp <= 0)
+    if (detected_width <= 0 || detected_height <= 0)
         return false;
-    screen_size = screen_w_tmp * screen_h_tmp;
-    screen_w = screen_w_tmp;
-    screen_h = screen_h_tmp;
+    cell_count = detected_width * detected_height;
+    screen_width = detected_width;
+    screen_height = detected_height;
 
     clk_cell empty_cell = {.is_empty = true};
 
-    clk_cell* tmp_screen = malloc(screen_size * sizeof(clk_cell));
-    if (!tmp_screen)
+    clk_cell* screen_buf = malloc(cell_count * sizeof(clk_cell));
+    if (!screen_buf)
         return false;
-    screen_buffer = tmp_screen;
-    for (int i = 0; i < screen_size; ++i)
+    screen_buffer = screen_buf;
+    for (int i = 0; i < cell_count; ++i)
         screen_buffer[i] = empty_cell;
 
-    clk_sprite** tmp_list = malloc(sprite_list_capacity * sizeof(clk_sprite*));
-    if (!tmp_list) {
+    clk_sprite** sprite_buf = malloc(sprite_capacity * sizeof(clk_sprite*));
+    if (!sprite_buf) {
         free(screen_buffer);
         return false;
     }
-    sprite_render_list = tmp_list;
-    for (int i = 0; i < sprite_list_capacity; ++i)
+    sprite_render_list = sprite_buf;
+    for (int i = 0; i < sprite_capacity; ++i)
         sprite_render_list[i] = NULL;
 
     /* per-cell "already claimed" flags for z-order masking */
-    bool* tmp_screenign = calloc(screen_size, sizeof(bool));
-    if (!tmp_screenign) {
+    bool* claimed_buf = calloc(cell_count, sizeof(bool));
+    if (!claimed_buf) {
         free(screen_buffer);
         free(sprite_render_list);
         return false;
     }
-    if_rendered_sign = tmp_screenign;
+    cell_claimed = claimed_buf;
 
-    char* tmp_ansi = calloc(1, screen_size * CLK_ANSI_OUTPUT_ESTIMATE_PER_CELL);
-    if (!tmp_ansi) {
+    char* ansi_buf = calloc(1, cell_count * CLK_ANSI_OUTPUT_ESTIMATE_PER_CELL);
+    if (!ansi_buf) {
         free(screen_buffer);
         free(sprite_render_list);
-        free(if_rendered_sign);
+        free(cell_claimed);
         return false;
     }
-    ansi_output = tmp_ansi;
+    ansi_output = ansi_buf;
     ansi_output_length = 0;
-    ansi_output_capacity = screen_size * CLK_ANSI_OUTPUT_ESTIMATE_PER_CELL;
+    ansi_output_capacity = cell_count * CLK_ANSI_OUTPUT_ESTIMATE_PER_CELL;
 
     /* style registry — slot 0 is the "no-style" default */
-    clk_style* tmp_styles = malloc(CLK_STYLE_DEFAULT_CAPACITY * sizeof(clk_style));
-    if (!tmp_styles) {
+    clk_style* styles_buf = malloc(CLK_STYLE_DEFAULT_CAPACITY * sizeof(clk_style));
+    if (!styles_buf) {
         free(screen_buffer);
         free(sprite_render_list);
-        free(if_rendered_sign);
+        free(cell_claimed);
         free(ansi_output);
         return false;
     }
-    style_registry = tmp_styles;
-    style_registry[0] = (clk_style){{.raw = 0}, {.raw = 0}, ATTR_NONE};
+    style_registry = styles_buf;
+    style_registry[0] = (clk_style){{.raw = 0}, {.raw = 0}, CLK_ATTR_NONE};
     style_count = 1;
     style_capacity = CLK_STYLE_DEFAULT_CAPACITY;
 
-    clk_is_term_init = true;
+    term_initialized = true;
 
     printf("\033[2J\033[H");
     fflush(stdout);
@@ -164,7 +164,7 @@ bool clk_term_init(void) {
 }
 
 void clk_term_close(void) {
-    if (!clk_is_term_init)
+    if (!term_initialized)
         return;
 
     clk_key_io_close();
@@ -175,20 +175,20 @@ void clk_term_close(void) {
     sprite_render_list = NULL;
     free(ansi_output);
     ansi_output = NULL;
-    free(if_rendered_sign);
-    if_rendered_sign = NULL;
+    free(cell_claimed);
+    cell_claimed = NULL;
     free(style_registry);
     style_registry = NULL;
 
-    sprite_list_count = 0;
-    sprite_list_capacity = CLK_SPRITE_LIST_DEFAULT_CAPACITY;
+    sprite_count = 0;
+    sprite_capacity = CLK_SPRITE_LIST_DEFAULT_CAPACITY;
     style_count = 0;
     style_capacity = CLK_STYLE_DEFAULT_CAPACITY;
     ansi_output_length = 0;
     ansi_output_capacity = 0;
-    screen_w = screen_h = screen_size = 0;
+    screen_width = screen_height = cell_count = 0;
 
-    clk_is_term_init = false;
+    term_initialized = false;
 
     printf("\033[2J\033[H\033[0 q");
     fflush(stdout);
@@ -196,7 +196,7 @@ void clk_term_close(void) {
 }
 
 bool clk_term_is_init(void) {
-    return clk_is_term_init;
+    return term_initialized;
 }
 
 /* ================================================================
@@ -265,8 +265,8 @@ int clk_term_utf8_display_width(const char* str, size_t byte_len) {
  *  Style registry
  * ================================================================ */
 
-int clk_term_register_style(Color24 fg, Color24 bg, uint8_t attrs) {
-    if (!clk_is_term_init)
+int clk_term_register_style(clk_color fg, clk_color bg, uint8_t attrs) {
+    if (!term_initialized)
         return 0;
 
     for (int i = 1; i < style_count; ++i) {
@@ -289,24 +289,24 @@ int clk_term_register_style(Color24 fg, Color24 bg, uint8_t attrs) {
 
 uint8_t clk_term_parse_attrs(const char* str) {
     if (!str)
-        return ATTR_NONE;
-    uint8_t attrs = ATTR_NONE;
+        return CLK_ATTR_NONE;
+    uint8_t attrs = CLK_ATTR_NONE;
     if (strstr(str, "bold"))
-        attrs |= ATTR_BOLD;
+        attrs |= CLK_ATTR_BOLD;
     if (strstr(str, "dim"))
-        attrs |= ATTR_DIM;
+        attrs |= CLK_ATTR_DIM;
     if (strstr(str, "italic"))
-        attrs |= ATTR_ITALIC;
+        attrs |= CLK_ATTR_ITALIC;
     if (strstr(str, "underline"))
-        attrs |= ATTR_UNDERLINE;
+        attrs |= CLK_ATTR_UNDERLINE;
     if (strstr(str, "blink"))
-        attrs |= ATTR_BLINK;
+        attrs |= CLK_ATTR_BLINK;
     if (strstr(str, "reverse"))
-        attrs |= ATTR_REVERSE;
+        attrs |= CLK_ATTR_REVERSE;
     if (strstr(str, "hidden"))
-        attrs |= ATTR_HIDDEN;
+        attrs |= CLK_ATTR_HIDDEN;
     if (strstr(str, "strike"))
-        attrs |= ATTR_STRIKE;
+        attrs |= CLK_ATTR_STRIKE;
     return attrs;
 }
 
@@ -316,8 +316,8 @@ int clk_term_register_style_rgb(int fg_r, int fg_g, int fg_b, int bg_r, int bg_g
         bg_r > 255 || bg_g < 0 || bg_g > 255 || bg_b < 0 || bg_b > 255)
         return 0;
 
-    Color24 fg = {.rgb = {(uint8_t)fg_r, (uint8_t)fg_g, (uint8_t)fg_b}};
-    Color24 bg = {.rgb = {(uint8_t)bg_r, (uint8_t)bg_g, (uint8_t)bg_b}};
+    clk_color fg = {.rgb = {(uint8_t)fg_r, (uint8_t)fg_g, (uint8_t)fg_b}};
+    clk_color bg = {.rgb = {(uint8_t)bg_r, (uint8_t)bg_g, (uint8_t)bg_b}};
     return clk_term_register_style(fg, bg, attrs);
 }
 
@@ -347,7 +347,7 @@ bool clk_term_parse_hex_color(const char* hex, int* r, int* g, int* b) {
  *  Sprite / render list
  * ================================================================ */
 
-static int cmp_sprite_zorder(const void* s1, const void* s2) {
+static int cmp_sprite_z_order(const void* s1, const void* s2) {
     const clk_sprite* a = *(const clk_sprite**)s1;
     const clk_sprite* b = *(const clk_sprite**)s2;
     if (a->z_order != b->z_order)
@@ -359,7 +359,7 @@ void clk_sprite_set_z(clk_sprite* s, int z) {
     if (!s)
         return;
     s->z_order = z;
-    clk_is_sprite_list_sorted = false;
+    sprite_list_sorted = false;
 }
 
 clk_sprite* clk_sprite_create(void) {
@@ -401,61 +401,61 @@ void clk_sprite_remove_texture(clk_sprite* s) {
 }
 
 void clk_term_add_sprite(clk_sprite* sprite) {
-    if (!clk_is_term_init || !sprite)
+    if (!term_initialized || !sprite)
         return;
 
     /* dedup — ignore if already registered */
-    for (int i = 0; i < sprite_list_count; ++i) {
+    for (int i = 0; i < sprite_count; ++i) {
         if (sprite_render_list[i] == sprite)
             return;
     }
 
-    int count = sprite_list_count + 1;
-    if (count > sprite_list_capacity) {
-        int new_capacity = sprite_list_capacity * 2;
+    int count = sprite_count + 1;
+    if (count > sprite_capacity) {
+        int new_capacity = sprite_capacity * 2;
         clk_sprite** temp = realloc(sprite_render_list, new_capacity * sizeof(clk_sprite*));
         if (!temp)
             return;
         sprite_render_list = temp;
-        for (int i = sprite_list_capacity; i < new_capacity; ++i)
+        for (int i = sprite_capacity; i < new_capacity; ++i)
             sprite_render_list[i] = NULL;
-        sprite_list_capacity = new_capacity;
+        sprite_capacity = new_capacity;
     }
 
-    sprite_render_list[sprite_list_count] = sprite;
-    sprite_list_count = count;
-    clk_is_sprite_list_sorted = false;
+    sprite_render_list[sprite_count] = sprite;
+    sprite_count = count;
+    sprite_list_sorted = false;
 }
 
 void clk_term_remove_sprite(const clk_sprite* sprite) {
-    if (!sprite || !clk_is_term_init)
+    if (!sprite || !term_initialized)
         return;
 
-    for (int i = 0; i < sprite_list_count; ++i) {
+    for (int i = 0; i < sprite_count; ++i) {
         if (sprite_render_list[i] == sprite) {
-            for (int j = i; j < sprite_list_count - 1; ++j)
+            for (int j = i; j < sprite_count - 1; ++j)
                 sprite_render_list[j] = sprite_render_list[j + 1];
-            sprite_render_list[sprite_list_count - 1] = NULL;
-            sprite_list_count--;
+            sprite_render_list[sprite_count - 1] = NULL;
+            sprite_count--;
             return;
         }
     }
 }
 
 void clk_term_clear_sprites(void) {
-    if (!clk_is_term_init)
+    if (!term_initialized)
         return;
-    for (int i = 0; i < sprite_list_count; ++i)
+    for (int i = 0; i < sprite_count; ++i)
         sprite_render_list[i] = NULL;
-    sprite_list_count = 0;
-    clk_is_sprite_list_sorted = true;
+    sprite_count = 0;
+    sprite_list_sorted = true;
 }
 
 /* ================================================================
  *  Rendering helpers
  * ================================================================ */
 
-static bool if_cell_equal(const clk_cell* c1, const clk_cell* c2) {
+static bool cell_equals(const clk_cell* c1, const clk_cell* c2) {
     if (c1 == c2)
         return true;
     if (!c1 || !c2)
@@ -465,7 +465,7 @@ static bool if_cell_equal(const clk_cell* c1, const clk_cell* c2) {
 }
 
 static void clk_add_cell_to_ansi_output(const clk_cell* cell, int x, int y) {
-    if (!clk_is_term_init)
+    if (!term_initialized)
         return;
     if (!cell || cell->is_empty)
         return;
@@ -477,38 +477,38 @@ static void clk_add_cell_to_ansi_output(const clk_cell* cell, int x, int y) {
     APPENDF(buf, sizeof(buf), len, "\033[%d;%dH", y + 1, x + 1);
 
     if (style) {
-        int params[16], pcount = 0;
-        if (style->attrs & ATTR_BOLD)
-            params[pcount++] = 1;
-        if (style->attrs & ATTR_DIM)
-            params[pcount++] = 2;
-        if (style->attrs & ATTR_ITALIC)
-            params[pcount++] = 3;
-        if (style->attrs & ATTR_UNDERLINE)
-            params[pcount++] = 4;
-        if (style->attrs & ATTR_BLINK)
-            params[pcount++] = 5;
-        if (style->attrs & ATTR_REVERSE)
-            params[pcount++] = 7;
-        if (style->attrs & ATTR_HIDDEN)
-            params[pcount++] = 8;
-        if (style->attrs & ATTR_STRIKE)
-            params[pcount++] = 9;
+        int params[16], param_count = 0;
+        if (style->attrs & CLK_ATTR_BOLD)
+            params[param_count++] = 1;
+        if (style->attrs & CLK_ATTR_DIM)
+            params[param_count++] = 2;
+        if (style->attrs & CLK_ATTR_ITALIC)
+            params[param_count++] = 3;
+        if (style->attrs & CLK_ATTR_UNDERLINE)
+            params[param_count++] = 4;
+        if (style->attrs & CLK_ATTR_BLINK)
+            params[param_count++] = 5;
+        if (style->attrs & CLK_ATTR_REVERSE)
+            params[param_count++] = 7;
+        if (style->attrs & CLK_ATTR_HIDDEN)
+            params[param_count++] = 8;
+        if (style->attrs & CLK_ATTR_STRIKE)
+            params[param_count++] = 9;
 
-        bool has_fg = style->fg_color.raw != 0;
-        bool has_bg = style->bg_color.raw != 0;
+        bool has_foreground = style->fg_color.raw != 0;
+        bool has_background = style->bg_color.raw != 0;
 
-        if (pcount > 0 || has_fg || has_bg) {
+        if (param_count > 0 || has_foreground || has_background) {
             APPENDF(buf, sizeof(buf), len, "\033[");
-            for (int i = 0; i < pcount; i++)
+            for (int i = 0; i < param_count; i++)
                 APPENDF(buf, sizeof(buf), len, "%s%d", i > 0 ? ";" : "", params[i]);
-            if (has_fg) {
-                APPENDF(buf, sizeof(buf), len, "%s38;2;%d;%d;%d", pcount > 0 ? ";" : "",
+            if (has_foreground) {
+                APPENDF(buf, sizeof(buf), len, "%s38;2;%d;%d;%d", param_count > 0 ? ";" : "",
                         style->fg_color.rgb.r, style->fg_color.rgb.g, style->fg_color.rgb.b);
-                pcount++;
+                param_count++;
             }
-            if (has_bg) {
-                APPENDF(buf, sizeof(buf), len, "%s48;2;%d;%d;%d", pcount > 0 ? ";" : "",
+            if (has_background) {
+                APPENDF(buf, sizeof(buf), len, "%s48;2;%d;%d;%d", param_count > 0 ? ";" : "",
                         style->bg_color.rgb.r, style->bg_color.rgb.g, style->bg_color.rgb.b);
             }
             APPENDF(buf, sizeof(buf), len, "m");
@@ -540,18 +540,18 @@ static void clk_add_cell_to_ansi_output(const clk_cell* cell, int x, int y) {
  * ================================================================ */
 
 void clk_term_draw(void) {
-    if (!clk_is_term_init)
+    if (!term_initialized)
         return;
 
-    for (int i = 0; i < screen_size; ++i)
-        if_rendered_sign[i] = 0;
+    for (int i = 0; i < cell_count; ++i)
+        cell_claimed[i] = 0;
 
-    if (!clk_is_sprite_list_sorted) {
-        qsort(sprite_render_list, sprite_list_count, sizeof(clk_sprite*), cmp_sprite_zorder);
-        clk_is_sprite_list_sorted = true;
+    if (!sprite_list_sorted) {
+        qsort(sprite_render_list, sprite_count, sizeof(clk_sprite*), cmp_sprite_z_order);
+        sprite_list_sorted = true;
     }
 
-    for (int i = 0; i < sprite_list_count; ++i) {
+    for (int i = 0; i < sprite_count; ++i) {
         const clk_sprite* s = sprite_render_list[i];
         if (!s || s->is_invalid || s->is_hidden || !s->tex || !s->tex->data)
             continue;
@@ -563,10 +563,10 @@ void clk_term_draw(void) {
             for (int tex_x = 0; tex_x < tex_w; ++tex_x) {
                 int x = tex_x + pos_x;
                 int y = tex_y + pos_y;
-                if (x < 0 || x >= screen_w || y < 0 || y >= screen_h)
+                if (x < 0 || x >= screen_width || y < 0 || y >= screen_height)
                     continue;
 
-                int idx = x + y * screen_w;
+                int idx = x + y * screen_width;
                 const clk_cell* cell = &s->tex->data[tex_x + tex_y * tex_w];
 
                 if (cell->type == CELL_WIDE_TRAIL)
@@ -578,29 +578,29 @@ void clk_term_draw(void) {
                         continue;
                 }
 
-                bool blocked = if_rendered_sign[idx];
-                if (cell->type == CELL_WIDE_LEAD && x + 1 < screen_w)
-                    blocked = blocked || if_rendered_sign[idx + 1];
+                bool blocked = cell_claimed[idx];
+                if (cell->type == CELL_WIDE_LEAD && x + 1 < screen_width)
+                    blocked = blocked || cell_claimed[idx + 1];
                 if (blocked || cell->is_empty)
                     continue;
 
-                if (!if_cell_equal(cell, &screen_buffer[idx])) {
+                if (!cell_equals(cell, &screen_buffer[idx])) {
                     clk_add_cell_to_ansi_output(cell, x, y);
                     screen_buffer[idx] = *cell;
                 }
 
-                if_rendered_sign[idx] = 1;
-                if (cell->type == CELL_WIDE_LEAD && x + 1 < screen_w) {
-                    if_rendered_sign[idx + 1] = 1;
+                cell_claimed[idx] = 1;
+                if (cell->type == CELL_WIDE_LEAD && x + 1 < screen_width) {
+                    cell_claimed[idx + 1] = 1;
                     screen_buffer[idx + 1] = (clk_cell){.type = CELL_WIDE_TRAIL, .is_empty = false};
                 }
             }
         }
     }
 
-    for (int i = 0; i < screen_size; ++i) {
-        if (!if_rendered_sign[i] && !screen_buffer[i].is_empty) {
-            int x = i % screen_w, y = i / screen_w;
+    for (int i = 0; i < cell_count; ++i) {
+        if (!cell_claimed[i] && !screen_buffer[i].is_empty) {
+            int x = i % screen_width, y = i / screen_width;
             clk_cell clear = {.cell_tex = {' ', '\0', 0, 0, 0},
                               .style_id = 0,
                               .type = CELL_NORMAL,
@@ -628,7 +628,7 @@ void clk_term_draw(void) {
  * ================================================================ */
 
 bool clk_resize_term(int new_w, int new_h) {
-    if (!clk_is_term_init)
+    if (!term_initialized)
         return false;
 
     int new_size = new_w * new_h;
@@ -653,14 +653,14 @@ bool clk_resize_term(int new_w, int new_h) {
 
     free(screen_buffer);
     screen_buffer = new_buf;
-    free(if_rendered_sign);
-    if_rendered_sign = new_sign;
+    free(cell_claimed);
+    cell_claimed = new_sign;
     free(ansi_output);
     ansi_output = new_ansi;
 
-    screen_w = new_w;
-    screen_h = new_h;
-    screen_size = new_size;
+    screen_width = new_w;
+    screen_height = new_h;
+    cell_count = new_size;
     ansi_output_capacity = new_cap;
 
     printf("\033[2J\033[H");
@@ -669,7 +669,7 @@ bool clk_resize_term(int new_w, int new_h) {
 }
 
 void clk_term_resize(void) {
-    if (!clk_is_term_init)
+    if (!term_initialized)
         return;
 
     int new_w, new_h;
@@ -678,13 +678,13 @@ void clk_term_resize(void) {
     if (new_w <= 0 || new_h <= 0)
         return;
 
-    if (new_w != screen_w || new_h != screen_h) {
+    if (new_w != screen_width || new_h != screen_height) {
         clk_resize_term(new_w, new_h);
     }
 }
 
 bool clk_term_update(void) {
-    if (!clk_is_term_init)
+    if (!term_initialized)
         return false;
 
     clk_term_resize();
@@ -693,18 +693,18 @@ bool clk_term_update(void) {
 }
 
 void clk_term_compact(void) {
-    if (!clk_is_term_init)
+    if (!term_initialized)
         return;
 
     int write = 0;
-    for (int read = 0; read < sprite_list_count; ++read) {
+    for (int read = 0; read < sprite_count; ++read) {
         clk_sprite* s = sprite_render_list[read];
         if (s && !s->is_invalid)
             sprite_render_list[write++] = s;
     }
-    for (int i = write; i < sprite_list_count; ++i)
+    for (int i = write; i < sprite_count; ++i)
         sprite_render_list[i] = NULL;
-    sprite_list_count = write;
+    sprite_count = write;
 }
 
 bool clk_term_get_size(int* term_w, int* term_h) {
@@ -736,7 +736,7 @@ bool clk_term_size_changed(void) {
     int w, h;
     if (!clk_term_get_size(&w, &h))
         return false;
-    return (w != screen_w || h != screen_h);
+    return (w != screen_width || h != screen_height);
 }
 
 /* ================================================================

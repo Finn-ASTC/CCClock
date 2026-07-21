@@ -14,7 +14,7 @@ int main(void) {
     /* === Create === */
     v = clk_json_create_null();
     TEST("create_null non-null", v != NULL);
-    TEST("create_null type", clk_json_get_type(v) == JSON_NULL);
+    TEST("create_null type", clk_json_get_type(v) == CLK_JSON_NULL);
     TEST("is_null true", clk_json_is_null(v));
     clk_json_free(v);
 

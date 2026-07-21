@@ -53,20 +53,20 @@ static clk_key_event ring_pop(void) {
 typedef enum { MODE_NORMAL, MODE_INPUT } key_mode;
 
 static key_mode current_mode = MODE_NORMAL;
-static char* input_buf;
-static size_t input_buf_max_bytes; /* derived byte ceiling */
+static char* input_buffer;
+static size_t input_buffer_max_bytes; /* derived byte ceiling */
 static size_t *input_len, *input_pos;
 
 #ifndef _WIN32
-static struct termios old_tio;
+static struct termios saved_termios;
 #else
 static HANDLE stdin_handle;
 static DWORD saved_console_mode;
 static bool has_console_mode;
 #endif
 
-static int test_next_byte = -1;             /* test hook — override for raw_getch */
-static size_t readahead_pos, readahead_len; /* readahead cursor + length */
+static int test_next_byte = -1;                     /* test hook — override for raw_read_byte */
+static size_t readahead_position, readahead_length; /* readahead cursor + length */
 
 /* ================================================================
  *  Platform helpers
@@ -77,11 +77,11 @@ static size_t readahead_pos, readahead_len; /* readahead cursor + length */
 #include <conio.h> /* _kbhit / _getch */
 
 /* ---- readahead buffer — one greedy ReadFile per burst, then serve from cache ---- */
-static unsigned char readahead_buf[4096];
+static unsigned char readahead_buffer[4096];
 
 static int fill_readahead(void) {
-    readahead_pos = 0;
-    readahead_len = 0;
+    readahead_position = 0;
+    readahead_length = 0;
 
     DWORD available;
     /* real pipe — read exactly the known count */
@@ -89,10 +89,10 @@ static int fill_readahead(void) {
         if (available == 0)
             return -1;
         DWORD to_read =
-            available < sizeof(readahead_buf) ? available : (DWORD)sizeof(readahead_buf);
+            available < sizeof(readahead_buffer) ? available : (DWORD)sizeof(readahead_buffer);
         DWORD read;
-        if (ReadFile(stdin_handle, readahead_buf, to_read, &read, NULL) && read > 0) {
-            readahead_len = read;
+        if (ReadFile(stdin_handle, readahead_buffer, to_read, &read, NULL) && read > 0) {
+            readahead_length = read;
             return 0;
         }
         return -1;
@@ -103,8 +103,9 @@ static int fill_readahead(void) {
         return -1;
     {
         DWORD read;
-        if (ReadFile(stdin_handle, readahead_buf, sizeof(readahead_buf), &read, NULL) && read > 0) {
-            readahead_len = read;
+        if (ReadFile(stdin_handle, readahead_buffer, sizeof(readahead_buffer), &read, NULL) &&
+            read > 0) {
+            readahead_length = read;
             return 0;
         }
     }
@@ -112,32 +113,32 @@ static int fill_readahead(void) {
     return -1;
 }
 
-static bool raw_kbhit(void) {
+static bool raw_key_available(void) {
     if (test_next_byte >= 0)
         return true;
-    if (readahead_pos < readahead_len)
+    if (readahead_position < readahead_length)
         return true;
     if (fill_readahead() == 0)
         return true;
     return _kbhit() != 0;
 }
 
-static int raw_getch(void) {
+static int raw_read_byte(void) {
     if (test_next_byte >= 0) {
         int ch = test_next_byte;
         test_next_byte = -1;
         return ch;
     }
-    if (readahead_pos < readahead_len)
-        return readahead_buf[readahead_pos++];
+    if (readahead_position < readahead_length)
+        return readahead_buffer[readahead_position++];
     if (fill_readahead() == 0)
-        return readahead_buf[readahead_pos++];
+        return readahead_buffer[readahead_position++];
     return -1;
 }
 
 #else /* POSIX */
 
-static bool raw_kbhit(void) {
+static bool raw_key_available(void) {
     if (test_next_byte >= 0)
         return true;
     struct timeval tv = {0, 0};
@@ -147,7 +148,7 @@ static bool raw_kbhit(void) {
     return select(STDIN_FILENO + 1, &fds, NULL, NULL, &tv) > 0;
 }
 
-static int raw_getch(void) {
+static int raw_read_byte(void) {
     if (test_next_byte >= 0) {
         int ch = test_next_byte;
         test_next_byte = -1;
@@ -604,8 +605,8 @@ static clk_key_event process_byte(int ch) {
 
     /* ---- ESC detection ---- */
     if (ch == 0x1B) {
-        if (raw_kbhit()) {
-            int ch2 = raw_getch();
+        if (raw_key_available()) {
+            int ch2 = raw_read_byte();
             if (ch2 == '[') {
                 csi_init();
                 parse_state = STATE_CSI;
@@ -639,8 +640,8 @@ static clk_key_event process_byte(int ch) {
      * detection because 0xE0 is also a valid 3-byte UTF-8 lead
      * on POSIX. */
     if ((ch == 0xE0 || ch == 0x00) && parse_state == STATE_NORMAL) {
-        if (raw_kbhit()) {
-            int ch2 = raw_getch();
+        if (raw_key_available()) {
+            int ch2 = raw_read_byte();
             switch (ch2) {
                 case 0x47:
                     ev.key_mask = KEY_HOME;
@@ -772,21 +773,21 @@ static void filter_and_push(clk_key_event ev) {
 
 #define CLK_KEY_POLL_MS 10
 
-static pthread_t io_thread;
-static volatile bool io_thread_running;
+static pthread_t input_thread;
+static volatile bool input_thread_running;
 
-static void* io_thread_func(void* arg) {
+static void* input_thread_func(void* arg) {
     (void)arg;
-    while (io_thread_running) {
+    while (input_thread_running) {
         int ch;
         if (pending_byte >= 0) {
             ch = pending_byte;
             pending_byte = -1;
-        } else if (!raw_kbhit()) {
+        } else if (!raw_key_available()) {
             clk_time_sleep_ms(CLK_KEY_POLL_MS);
             continue;
         } else {
-            ch = raw_getch();
+            ch = raw_read_byte();
         }
 
         clk_key_event ev = process_byte(ch);
@@ -800,7 +801,7 @@ static void* io_thread_func(void* arg) {
  * ================================================================ */
 
 void clk_key_io_init(void) {
-    if (io_thread_running)
+    if (input_thread_running)
         return;
 
     pthread_mutex_init(&ring_mutex, NULL);
@@ -809,8 +810,8 @@ void clk_key_io_init(void) {
     memset(ring, 0, sizeof(ring));
 
     current_mode = MODE_NORMAL;
-    input_buf = NULL;
-    input_buf_max_bytes = 0;
+    input_buffer = NULL;
+    input_buffer_max_bytes = 0;
     input_len = NULL;
     input_pos = NULL;
 
@@ -819,14 +820,14 @@ void clk_key_io_init(void) {
     memset(&utf8_state, 0, sizeof(utf8_state));
     memset(csi_params, 0, sizeof(csi_params));
     csi_param_count = 0;
-    readahead_pos = 0;
-    readahead_len = 0;
+    readahead_position = 0;
+    readahead_length = 0;
 
 #ifndef _WIN32
     {
         struct termios new_tio;
-        tcgetattr(STDIN_FILENO, &old_tio);
-        new_tio = old_tio;
+        tcgetattr(STDIN_FILENO, &saved_termios);
+        new_tio = saved_termios;
         new_tio.c_lflag &= ~(ICANON | ECHO | ISIG);
         new_tio.c_iflag &= ~(ICRNL | IXON);
         tcsetattr(STDIN_FILENO, TCSANOW, &new_tio);
@@ -847,11 +848,11 @@ void clk_key_io_init(void) {
     printf("\033[>4;2m");
     fflush(stdout);
 
-    io_thread_running = true;
-    if (pthread_create(&io_thread, NULL, io_thread_func, NULL) != 0) {
-        io_thread_running = false;
+    input_thread_running = true;
+    if (pthread_create(&input_thread, NULL, input_thread_func, NULL) != 0) {
+        input_thread_running = false;
 #ifndef _WIN32
-        tcsetattr(STDIN_FILENO, TCSANOW, &old_tio);
+        tcsetattr(STDIN_FILENO, TCSANOW, &saved_termios);
 #endif
         pthread_mutex_destroy(&ring_mutex);
         return;
@@ -859,16 +860,16 @@ void clk_key_io_init(void) {
 }
 
 void clk_key_io_close(void) {
-    if (!io_thread_running)
+    if (!input_thread_running)
         return;
 
-    io_thread_running = false;
-    pthread_join(io_thread, NULL);
+    input_thread_running = false;
+    pthread_join(input_thread, NULL);
 
     pthread_mutex_destroy(&ring_mutex);
 
 #ifndef _WIN32
-    tcsetattr(STDIN_FILENO, TCSANOW, &old_tio);
+    tcsetattr(STDIN_FILENO, TCSANOW, &saved_termios);
 #else
     if (has_console_mode)
         SetConsoleMode(stdin_handle, saved_console_mode);
@@ -883,8 +884,8 @@ void clk_key_io_close(void) {
 
 void clk_key_io_set_normal(void) {
     current_mode = MODE_NORMAL;
-    input_buf = NULL;
-    input_buf_max_bytes = 0;
+    input_buffer = NULL;
+    input_buffer_max_bytes = 0;
     input_len = NULL;
     input_pos = NULL;
 }
@@ -892,8 +893,8 @@ void clk_key_io_set_normal(void) {
 void clk_key_io_set_input(char* buf, size_t max_chars, size_t* len, size_t* pos) {
     if (!buf || !max_chars || !len || !pos)
         return;
-    input_buf = buf;
-    input_buf_max_bytes = max_chars + 1;
+    input_buffer = buf;
+    input_buffer_max_bytes = max_chars + 1;
     input_len = len;
     input_pos = pos;
     *len = 0;
@@ -926,7 +927,7 @@ clk_key_event clk_input_get_key_event(void) {
  *  UTF-8 helpers
  * ================================================================ */
 
-static int utf8_byte_len(unsigned char first) {
+static int utf8_byte_length(unsigned char first) {
     if (first < 0x80)
         return 1;
     if (first < 0xC0)
@@ -943,7 +944,7 @@ static int utf8_byte_len(unsigned char first) {
 static int char_bytes_at(const char* buf, size_t pos, size_t len) {
     if (pos >= len)
         return 0;
-    int n = utf8_byte_len((unsigned char)buf[pos]);
+    int n = utf8_byte_length((unsigned char)buf[pos]);
     if (n <= 0)
         n = 1; /* treat stray byte as single byte cell */
     return n;
@@ -969,7 +970,7 @@ static size_t next_char_boundary(const char* buf, size_t pos, size_t len) {
  * ================================================================ */
 
 static bool input_active(void) {
-    return current_mode == MODE_INPUT && input_buf != NULL;
+    return current_mode == MODE_INPUT && input_buffer != NULL;
 }
 
 /* ================================================================
@@ -979,12 +980,12 @@ static bool write_at_cursor(const char* text, size_t byte_len) {
     if (!input_active())
         return false;
 
-    size_t space = input_buf_max_bytes - *input_len - 1;
+    size_t space = input_buffer_max_bytes - *input_len - 1;
     size_t to_write = 0;
     size_t text_pos = 0;
 
     while (text_pos < byte_len) {
-        int ch_bytes = utf8_byte_len((unsigned char)text[text_pos]);
+        int ch_bytes = utf8_byte_length((unsigned char)text[text_pos]);
         if (ch_bytes <= 0) {
             text_pos++;
             continue;
@@ -1002,12 +1003,13 @@ static bool write_at_cursor(const char* text, size_t byte_len) {
         return false;
 
     if (*input_pos < *input_len)
-        memmove(input_buf + *input_pos + to_write, input_buf + *input_pos, *input_len - *input_pos);
+        memmove(input_buffer + *input_pos + to_write, input_buffer + *input_pos,
+                *input_len - *input_pos);
 
-    memcpy(input_buf + *input_pos, text, to_write);
+    memcpy(input_buffer + *input_pos, text, to_write);
     *input_len += to_write;
     *input_pos += to_write;
-    input_buf[*input_len] = '\0';
+    input_buffer[*input_len] = '\0';
     return text_pos >= byte_len;
 }
 
@@ -1018,7 +1020,7 @@ static bool overwrite_at_cursor(const char* text, size_t byte_len) {
     bool truncated = false;
     size_t text_pos = 0;
     while (text_pos < byte_len) {
-        int in_bytes = utf8_byte_len((unsigned char)text[text_pos]);
+        int in_bytes = utf8_byte_length((unsigned char)text[text_pos]);
         if (in_bytes <= 0) {
             text_pos++;
             continue;
@@ -1034,8 +1036,8 @@ static bool overwrite_at_cursor(const char* text, size_t byte_len) {
             return !truncated;
         }
 
-        int cur_bytes = char_bytes_at(input_buf, *input_pos, *input_len);
-        if (*input_len - cur_bytes + in_bytes >= input_buf_max_bytes) {
+        int cur_bytes = char_bytes_at(input_buffer, *input_pos, *input_len);
+        if (*input_len - cur_bytes + in_bytes >= input_buffer_max_bytes) {
             truncated = true;
             break;
         }
@@ -1063,10 +1065,10 @@ void clk_input_move_cursor(int offset) {
 
     if (offset > 0) {
         for (int i = 0; i < offset; ++i)
-            *input_pos = next_char_boundary(input_buf, *input_pos, *input_len);
+            *input_pos = next_char_boundary(input_buffer, *input_pos, *input_len);
     } else {
         for (int i = 0; i < -offset; ++i)
-            *input_pos = prev_char_boundary(input_buf, *input_pos);
+            *input_pos = prev_char_boundary(input_buffer, *input_pos);
     }
 }
 
@@ -1074,13 +1076,13 @@ bool clk_input_delete_before(void) {
     if (!input_active() || *input_pos == 0)
         return false;
 
-    size_t prev = prev_char_boundary(input_buf, *input_pos);
+    size_t prev = prev_char_boundary(input_buffer, *input_pos);
     size_t del_bytes = *input_pos - prev;
     if (*input_len > *input_pos)
-        memmove(input_buf + prev, input_buf + *input_pos, *input_len - *input_pos);
+        memmove(input_buffer + prev, input_buffer + *input_pos, *input_len - *input_pos);
     *input_len -= del_bytes;
     *input_pos = prev;
-    input_buf[*input_len] = '\0';
+    input_buffer[*input_len] = '\0';
     return true;
 }
 
@@ -1088,12 +1090,12 @@ bool clk_input_delete_after(void) {
     if (!input_active() || *input_pos >= *input_len)
         return false;
 
-    int del_bytes = char_bytes_at(input_buf, *input_pos, *input_len);
+    int del_bytes = char_bytes_at(input_buffer, *input_pos, *input_len);
     if (*input_len > *input_pos + del_bytes)
-        memmove(input_buf + *input_pos, input_buf + *input_pos + del_bytes,
+        memmove(input_buffer + *input_pos, input_buffer + *input_pos + del_bytes,
                 *input_len - *input_pos - del_bytes);
     *input_len -= del_bytes;
-    input_buf[*input_len] = '\0';
+    input_buffer[*input_len] = '\0';
     return true;
 }
 
@@ -1135,20 +1137,20 @@ void clk_key_io_test_reset(void) {
     csi_param_count = 0;
     pending_byte = -1;
     paste_mode = false;
-    readahead_pos = 0;
-    readahead_len = 0;
+    readahead_position = 0;
+    readahead_length = 0;
 }
 
 void clk_key_io_test_pause(void) {
-    if (!io_thread_running)
+    if (!input_thread_running)
         return;
-    io_thread_running = false;
-    pthread_join(io_thread, NULL);
+    input_thread_running = false;
+    pthread_join(input_thread, NULL);
 }
 
 void clk_key_io_test_resume(void) {
-    if (io_thread_running)
+    if (input_thread_running)
         return;
-    io_thread_running = true;
-    pthread_create(&io_thread, NULL, io_thread_func, NULL);
+    input_thread_running = true;
+    pthread_create(&input_thread, NULL, input_thread_func, NULL);
 }

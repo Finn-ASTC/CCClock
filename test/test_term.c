@@ -270,49 +270,55 @@ int main(void) {
     }
 
     /* ---- style registry ---- */
-    int red_id = clk_term_register_style((Color24){.rgb = {255, 0, 0}}, (Color24){0}, ATTR_BOLD);
-    int green_id = clk_term_register_style((Color24){.rgb = {0, 255, 0}}, (Color24){0}, ATTR_NONE);
-    int blue_id = clk_term_register_style((Color24){.rgb = {0, 0, 255}}, (Color24){0}, ATTR_DIM);
+    int red_id =
+        clk_term_register_style((clk_color){.rgb = {255, 0, 0}}, (clk_color){0}, CLK_ATTR_BOLD);
+    int green_id =
+        clk_term_register_style((clk_color){.rgb = {0, 255, 0}}, (clk_color){0}, CLK_ATTR_NONE);
+    int blue_id =
+        clk_term_register_style((clk_color){.rgb = {0, 0, 255}}, (clk_color){0}, CLK_ATTR_DIM);
 
     TEST("style id > 0", red_id > 0 && green_id > 0 && blue_id > 0);
     TEST("unique style IDs", red_id != green_id && green_id != blue_id);
 
     /* dedup */
-    int dedup = clk_term_register_style((Color24){.rgb = {255, 0, 0}}, (Color24){0}, ATTR_BOLD);
+    int dedup =
+        clk_term_register_style((clk_color){.rgb = {255, 0, 0}}, (clk_color){0}, CLK_ATTR_BOLD);
     TEST("dedup returns same id", dedup == red_id);
 
     /* ---- register_style_rgb convenience API ---- */
-    int rgb_id = clk_term_register_style_rgb(100, 200, 50, 0, 0, 0, ATTR_BOLD | ATTR_ITALIC);
+    int rgb_id =
+        clk_term_register_style_rgb(100, 200, 50, 0, 0, 0, CLK_ATTR_BOLD | CLK_ATTR_ITALIC);
     TEST("register_style_rgb id > 0", rgb_id > 0);
     TEST("register_style_rgb different from red", rgb_id != red_id);
 
     /* dedup via rgb convenience */
-    int rgb_dedup = clk_term_register_style_rgb(100, 200, 50, 0, 0, 0, ATTR_BOLD | ATTR_ITALIC);
+    int rgb_dedup =
+        clk_term_register_style_rgb(100, 200, 50, 0, 0, 0, CLK_ATTR_BOLD | CLK_ATTR_ITALIC);
     TEST("register_style_rgb dedup", rgb_dedup == rgb_id);
 
     /* out-of-range colour values → 0 */
-    int bad = clk_term_register_style_rgb(-1, 0, 0, 0, 0, 0, ATTR_NONE);
+    int bad = clk_term_register_style_rgb(-1, 0, 0, 0, 0, 0, CLK_ATTR_NONE);
     TEST("register_style_rgb negative r fails", bad == 0);
-    bad = clk_term_register_style_rgb(256, 0, 0, 0, 0, 0, ATTR_NONE);
+    bad = clk_term_register_style_rgb(256, 0, 0, 0, 0, 0, CLK_ATTR_NONE);
     TEST("register_style_rgb >255 r fails", bad == 0);
 
     /* ---- register_style_hex convenience API ---- */
-    int hex_id = clk_term_register_style_hex("#FF8800", "#000000", ATTR_BOLD);
+    int hex_id = clk_term_register_style_hex("#FF8800", "#000000", CLK_ATTR_BOLD);
     TEST("register_style_hex id > 0", hex_id > 0);
     TEST("register_style_hex different from red", hex_id != red_id);
 
     /* dedup */
-    int hex_dedup = clk_term_register_style_hex("#FF8800", "#000000", ATTR_BOLD);
+    int hex_dedup = clk_term_register_style_hex("#FF8800", "#000000", CLK_ATTR_BOLD);
     TEST("register_style_hex dedup", hex_dedup == hex_id);
 
     /* same colour different attrs should be different */
-    int hex_diff = clk_term_register_style_hex("#FF8800", "#000000", ATTR_DIM);
+    int hex_diff = clk_term_register_style_hex("#FF8800", "#000000", CLK_ATTR_DIM);
     TEST("register_style_hex different attrs", hex_diff != hex_id && hex_diff > 0);
 
     /* invalid hex */
-    int hex_bad = clk_term_register_style_hex("no-hash", "#000000", ATTR_NONE);
+    int hex_bad = clk_term_register_style_hex("no-hash", "#000000", CLK_ATTR_NONE);
     TEST("register_style_hex bad format fails", hex_bad == 0);
-    hex_bad = clk_term_register_style_hex("#ZZZZZZ", "#000000", ATTR_NONE);
+    hex_bad = clk_term_register_style_hex("#ZZZZZZ", "#000000", CLK_ATTR_NONE);
     TEST("register_style_hex invalid hex chars fails", hex_bad == 0);
 
     /* ================================================================

@@ -65,11 +65,11 @@ int main(void) {
     }
 
     /* 1 pomodoro: 8s Work → 3s Break → 8s Work */
-    clk_clock_pomodoro p;
-    memset(&p, 0, sizeof(p));
-    strcpy(p.name, "Demo");
+    clk_clock_pomodoro pomodoro;
+    memset(&pomodoro, 0, sizeof(pomodoro));
+    strcpy(pomodoro.name, "Demo");
 
-    clk_clock_add_pomodoro(&clock, &p);
+    clk_clock_add_pomodoro(&clock, &pomodoro);
 
     clk_clock_pomodoro_segment seg;
     memset(&seg, 0, sizeof(seg));
@@ -98,8 +98,8 @@ int main(void) {
         clk_clock_update(&clock);
         clk_audio_update();
 
-        clk_key_event ev = clk_normal_get_key_event();
-        switch (ev.key_mask) {
+        clk_key_event event = clk_normal_get_key_event();
+        switch (event.key_mask) {
             case KEY_SPACE:
                 clk_clock_stop_bell(&clock);
                 break;

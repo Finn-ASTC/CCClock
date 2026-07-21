@@ -37,8 +37,8 @@ enum {
 static const char* time_formats[] = {"hh:MM:ss", "yyyy:mm:dd\n  hh:ss", "hh:MM", "ss:MM:hh"};
 static const char* speed_opts[] = {"slow", "normal", "fast", "ultra"};
 
-static clk_menu_input map_input(clk_key_event ev) {
-    switch (ev.key_mask) {
+static clk_menu_input map_input(clk_key_event event) {
+    switch (event.key_mask) {
         case KEY_UP:
             return CLK_MENU_INPUT_PREV_ITEM;
         case KEY_DOWN:
@@ -153,30 +153,32 @@ int main(void) {
 
     bool running = true;
     while (running) {
-        clk_key_event ev = clk_normal_get_key_event();
-        if (ev.key_mask == KEY_q_LOWER || ev.key_mask == KEY_Q_UPPER) {
+        clk_key_event event = clk_normal_get_key_event();
+        if (event.key_mask == KEY_q_LOWER || event.key_mask == KEY_Q_UPPER) {
             running = false;
             continue;
         }
 
-        clk_menu_event mev = clk_menu_instance_handle_input(inst, map_input(ev));
-        if (mev.type == CLK_MENU_EVENT_SUBMIT && mev.item_id == ITEM_QUIT)
+        clk_menu_event menu_event = clk_menu_instance_handle_input(inst, map_input(event));
+        if (menu_event.type == CLK_MENU_EVENT_SUBMIT && menu_event.item_id == ITEM_QUIT)
             running = false;
 
         /* apply layout changes to the instance itself */
-        if (mev.type == CLK_MENU_EVENT_VALUE_CHANGED) {
-            switch (mev.item_id) {
+        if (menu_event.type == CLK_MENU_EVENT_VALUE_CHANGED) {
+            switch (menu_event.item_id) {
                 case ITEM_POS_X:
-                    clk_menu_instance_set_position(inst, (int)mev.value.num, inst->sprite->posy);
+                    clk_menu_instance_set_position(inst, (int)menu_event.value.num,
+                                                   inst->sprite->posy);
                     break;
                 case ITEM_POS_Y:
-                    clk_menu_instance_set_position(inst, inst->sprite->posx, (int)mev.value.num);
+                    clk_menu_instance_set_position(inst, inst->sprite->posx,
+                                                   (int)menu_event.value.num);
                     break;
                 case ITEM_WIDTH:
-                    clk_menu_instance_set_size(inst, (int)mev.value.num, inst->tex.tex_h);
+                    clk_menu_instance_set_size(inst, (int)menu_event.value.num, inst->tex.tex_h);
                     break;
                 case ITEM_HEIGHT:
-                    clk_menu_instance_set_size(inst, inst->tex.tex_w, (int)mev.value.num);
+                    clk_menu_instance_set_size(inst, inst->tex.tex_w, (int)menu_event.value.num);
                     break;
                 case ITEM_THEME: {
                     /* reload theme and recreate instance */
@@ -187,7 +189,7 @@ int main(void) {
                     clk_menu_theme_destroy(&theme);
                     memset(&theme, 0, sizeof(theme));
                     for (int ti = 0; ti < 3; ++ti) {
-                        if (strcmp(mev.value.str, theme_names[ti]) == 0) {
+                        if (strcmp(menu_event.value.str, theme_names[ti]) == 0) {
                             clk_menu_theme_load(theme_list[ti], &theme);
                             break;
                         }

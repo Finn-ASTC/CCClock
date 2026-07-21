@@ -56,7 +56,7 @@ int main() {
     if (!clk_term_init())
         return -1;
 
-    clk_key_io_close(); /* kill old background thread — io2 will own stdin */
+    clk_key_io_close(); /* kill old background thread — key_io will own stdin */
     clk_key_io_init();
 
     clk_texture input_field_tex = clk_texture_create(INPUT_FIELD_WIDTH, INPUT_FIELD_HEIGHT);
@@ -64,7 +64,7 @@ int main() {
 
     set_field_pos(input_field);
 
-    int text_style = clk_term_register_style_rgb(255, 255, 255, 0, 0, 0, ATTR_NONE);
+    int text_style = clk_term_register_style_rgb(255, 255, 255, 0, 0, 0, CLK_ATTR_NONE);
     draw_border(&input_field_tex, text_style);
 
     clk_term_cursor_set_shape(CLK_CURSOR_BAR_BLINK);
@@ -88,8 +88,8 @@ int main() {
 
         switch (mod) {
             case NORMAL: {
-                clk_key_event ev = clk_normal_get_key_event();
-                switch (ev.key_mask) {
+                clk_key_event event = clk_normal_get_key_event();
+                switch (event.key_mask) {
                     case KEY_q_LOWER:
                     case KEY_Q_UPPER:
                         running = false;
@@ -106,8 +106,8 @@ int main() {
                 break;
             }
             case INPUT: {
-                clk_key_event ev2 = clk_input_get_key_event();
-                switch (ev2.key_mask) {
+                clk_key_event input_event = clk_input_get_key_event();
+                switch (input_event.key_mask) {
                     case KEY_LEFT:
                         clk_input_move_cursor(-1);
                         break;
@@ -135,11 +135,13 @@ int main() {
                         mod = NORMAL;
                         break;
                     default:
-                        if (ev2.has_text) {
+                        if (input_event.has_text) {
                             int cur_cols = clk_term_utf8_display_width(buf, len);
-                            int add_cols = clk_term_utf8_display_width(ev2.text, ev2.text_len);
+                            int add_cols =
+                                clk_term_utf8_display_width(input_event.text, input_event.text_len);
                             if (cur_cols + add_cols <= MAX_COLUMNS)
-                                clk_input_write(CLK_WRITE_INSERT, ev2.text, ev2.text_len);
+                                clk_input_write(CLK_WRITE_INSERT, input_event.text,
+                                                input_event.text_len);
                         }
                         break;
                 }

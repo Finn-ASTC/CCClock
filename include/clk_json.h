@@ -14,13 +14,13 @@ extern "C" {
  * ------------------------------------------------------------------ */
 
 typedef enum {
-    JSON_NULL,
-    JSON_TRUE,
-    JSON_FALSE,
-    JSON_NUMBER,
-    JSON_STRING,
-    JSON_ARRAY,
-    JSON_OBJECT
+    CLK_JSON_NULL,
+    CLK_JSON_TRUE,
+    CLK_JSON_FALSE,
+    CLK_JSON_NUMBER,
+    CLK_JSON_STRING,
+    CLK_JSON_ARRAY,
+    CLK_JSON_OBJECT
 } clk_json_type;
 
 typedef struct clk_json_value clk_json_value;

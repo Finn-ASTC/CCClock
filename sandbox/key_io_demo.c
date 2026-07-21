@@ -16,32 +16,32 @@ int main(void) {
 
     while (running) {
         if (mode == MODE_NAVIGATE) {
-            clk_key_event ev = clk_normal_get_key_event();
-            if (ev.key_mask == KEY_q_LOWER)
+            clk_key_event event = clk_normal_get_key_event();
+            if (event.key_mask == KEY_q_LOWER)
                 running = false;
-            else if (ev.key_mask == KEY_s_LOWER) {
+            else if (event.key_mask == KEY_s_LOWER) {
                 clk_key_io_set_input(buf, sizeof(buf) - 1, &len, &pos);
                 mode = MODE_TEXT;
-            } else if (ev.key_mask == KEY_UP)
+            } else if (event.key_mask == KEY_UP)
                 printf("UP\n");
-            else if (ev.key_mask == KEY_DOWN)
+            else if (event.key_mask == KEY_DOWN)
                 printf("DOWN\n");
-            else if (ev.key_mask == KEY_LEFT)
+            else if (event.key_mask == KEY_LEFT)
                 printf("LEFT\n");
-            else if (ev.key_mask == KEY_RIGHT)
+            else if (event.key_mask == KEY_RIGHT)
                 printf("RIGHT\n");
         } else {
-            clk_key_event ev = clk_input_get_key_event();
-            if (ev.key_mask == KEY_ENTER) {
+            clk_key_event event = clk_input_get_key_event();
+            if (event.key_mask == KEY_ENTER) {
                 printf("text: \"%s\"\n", buf);
                 clk_key_io_set_normal();
                 mode = MODE_NAVIGATE;
-            } else if (ev.key_mask == KEY_ESC) {
+            } else if (event.key_mask == KEY_ESC) {
                 printf("cancelled\n");
                 clk_key_io_set_normal();
                 mode = MODE_NAVIGATE;
-            } else if (ev.has_text) {
-                clk_input_write(CLK_WRITE_INSERT, ev.text, ev.text_len);
+            } else if (event.has_text) {
+                clk_input_write(CLK_WRITE_INSERT, event.text, event.text_len);
             }
         }
 

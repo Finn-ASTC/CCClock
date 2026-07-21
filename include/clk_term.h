@@ -12,15 +12,15 @@ extern "C" {
  *  ANSI text attribute flags (bitmask)
  * ------------------------------------------------------------------ */
 
-#define ATTR_NONE 0x00
-#define ATTR_BOLD 0x01      /* ANSI 1  */
-#define ATTR_DIM 0x02       /* ANSI 2  */
-#define ATTR_ITALIC 0x04    /* ANSI 3  */
-#define ATTR_UNDERLINE 0x08 /* ANSI 4  */
-#define ATTR_BLINK 0x10     /* ANSI 5  */
-#define ATTR_REVERSE 0x20   /* ANSI 7  */
-#define ATTR_HIDDEN 0x40    /* ANSI 8  */
-#define ATTR_STRIKE 0x80    /* ANSI 9  */
+#define CLK_ATTR_NONE 0x00
+#define CLK_ATTR_BOLD 0x01      /* ANSI 1  */
+#define CLK_ATTR_DIM 0x02       /* ANSI 2  */
+#define CLK_ATTR_ITALIC 0x04    /* ANSI 3  */
+#define CLK_ATTR_UNDERLINE 0x08 /* ANSI 4  */
+#define CLK_ATTR_BLINK 0x10     /* ANSI 5  */
+#define CLK_ATTR_REVERSE 0x20   /* ANSI 7  */
+#define CLK_ATTR_HIDDEN 0x40    /* ANSI 8  */
+#define CLK_ATTR_STRIKE 0x80    /* ANSI 9  */
 
 #define CLK_ANSI_CELL_BUF_SIZE 256
 
@@ -37,12 +37,12 @@ typedef union {
         uint8_t b;
     } rgb;
     uint32_t raw;
-} Color24;
+} clk_color;
 
 /** A registered style: foreground / background colour + text attrs. */
 typedef struct {
-    Color24 fg_color;
-    Color24 bg_color;
+    clk_color fg_color;
+    clk_color bg_color;
     uint8_t attrs;
 } clk_style;
 
@@ -100,7 +100,7 @@ bool clk_term_is_init(void);
  *  @return Positive style ID on success, or 0 on failure.
  *          If the same style was already registered its existing ID is
  *          returned (dedup). */
-int clk_term_register_style(Color24 fg, Color24 bg, uint8_t attrs);
+int clk_term_register_style(clk_color fg, clk_color bg, uint8_t attrs);
 
 /** Convenience: register a style from raw RGB ints (0–255) and an
  *  ATTR_* bitmask. Returns 0 on invalid colour range or if the term
@@ -118,7 +118,7 @@ int clk_term_register_style_hex(const char* fg_hex, const char* bg_hex, uint8_t 
 bool clk_term_parse_hex_color(const char* hex, int* r, int* g, int* b);
 
 /** Parse an attribute string ("bold", "italic", etc.) into an ATTR_* bitmask.
- *  Returns ATTR_NONE for NULL or unrecognised input. */
+ *  Returns CLK_ATTR_NONE for NULL or unrecognised input. */
 uint8_t clk_term_parse_attrs(const char* str);
 
 /* ------------------------------------------------------------------

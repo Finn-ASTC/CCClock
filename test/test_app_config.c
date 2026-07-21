@@ -30,27 +30,28 @@ int main(void) {
     TEST("fonts.count > 0", cfg.ascii_clock.fonts.count > 0);
     TEST("fonts.paths != NULL", cfg.ascii_clock.fonts.paths != NULL);
     TEST("fonts.names != NULL", cfg.ascii_clock.fonts.names != NULL);
-    TEST("fonts.idx restored", cfg.ascii_clock.fonts.idx >= 0);
-    TEST("fonts[0] = test_clock_config",
-         strcmp(cfg.ascii_clock.fonts.names[cfg.ascii_clock.fonts.idx], "test_clock_config") == 0);
+    TEST("fonts.index restored", cfg.ascii_clock.fonts.index >= 0);
+    TEST(
+        "fonts[0] = test_clock_config",
+        strcmp(cfg.ascii_clock.fonts.names[cfg.ascii_clock.fonts.index], "test_clock_config") == 0);
 
     /* --- themes --- */
     TEST("themes.count > 0", cfg.themes.count > 0);
     TEST("themes.paths != NULL", cfg.themes.paths != NULL);
     TEST("themes.names != NULL", cfg.themes.names != NULL);
-    TEST("themes.idx restored", cfg.themes.idx >= 0);
+    TEST("themes.index restored", cfg.themes.index >= 0);
     TEST("themes[0] = menu_theme_config",
-         strcmp(cfg.themes.names[cfg.themes.idx], "menu_theme_config") == 0);
+         strcmp(cfg.themes.names[cfg.themes.index], "menu_theme_config") == 0);
 
     /* --- time_formats --- */
     TEST("tfmt.count == 2", cfg.ascii_clock.time_formats.count == 2);
     TEST("tfmt.options != NULL", cfg.ascii_clock.time_formats.options != NULL);
     TEST("tfmt.strings != NULL", cfg.ascii_clock.time_formats.strings != NULL);
-    TEST("tfmt.idx == 1 (hh:MM)", cfg.ascii_clock.time_formats.idx == 1);
+    TEST("tfmt.index == 1 (hh:MM)", cfg.ascii_clock.time_formats.index == 1);
     TEST("tfmt.current = hh:MM", strcmp(cfg.ascii_clock.time_formats.current, "hh:MM") == 0);
 
     /* --- time_formats switch --- */
-    cfg.ascii_clock.time_formats.idx = 0;
+    cfg.ascii_clock.time_formats.index = 0;
     clk_cfg_ascii_clock_theme_switch_time(&cfg.ascii_clock);
     TEST("tfmt_switch: current = hh:MM:ss",
          strcmp(cfg.ascii_clock.time_formats.current, "hh:MM:ss") == 0);
@@ -71,11 +72,11 @@ int main(void) {
 
     /* --- reload: non-matching saved name keeps idx --- */
     {
-        int saved_idx = cfg.ascii_clock.fonts.idx;
+        int saved_idx = cfg.ascii_clock.fonts.index;
         clk_json_value* theme_obj = clk_json_object_get(cfg.json, "ascii_clock_theme");
         clk_json_value* fonts_obj = theme_obj ? clk_json_object_get(theme_obj, "fonts") : NULL;
         clk_cfg_ascii_clock_theme_reload(&cfg.ascii_clock, theme_obj, NULL, 0, 0, 0);
-        TEST("fonts reload: idx unchanged", cfg.ascii_clock.fonts.idx == saved_idx);
+        TEST("fonts reload: idx unchanged", cfg.ascii_clock.fonts.index == saved_idx);
     }
 
     /* --- deinit --- */

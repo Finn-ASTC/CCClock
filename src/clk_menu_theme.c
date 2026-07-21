@@ -99,11 +99,11 @@ static bool resolve_composite_members(clk_menu_theme* theme, const clk_json_valu
  *  Outputs the member array and count. Returns true on success, false on failure. */
 static bool resolve_special_members(clk_menu_theme* theme, const clk_json_value* json_defs,
                                     const clk_json_value* layout_json, clk_menu_def*** out_members,
-                                    int* out_cnt) {
+                                    int* out_count) {
     int cnt = (int)clk_json_array_count(layout_json);
     if (cnt == 0) {
         *out_members = NULL;
-        *out_cnt = 0;
+        *out_count = 0;
         return true;
     }
 
@@ -128,7 +128,7 @@ static bool resolve_special_members(clk_menu_theme* theme, const clk_json_value*
     }
 
     *out_members = arr;
-    *out_cnt = (int)cnt;
+    *out_count = (int)cnt;
     return true;
 }
 
@@ -262,60 +262,60 @@ static bool parse_single_row(clk_menu_theme* theme, const clk_json_value* json_d
                              const clk_json_value* json_row, clk_menu_row* row_out) {
     int cnt = (int)clk_json_array_count(json_row);
     if (cnt == 0) {
-        row_out->elems = NULL;
+        row_out->elements = NULL;
         row_out->count = 0;
         return true;
     }
 
-    clk_menu_row_elem* elems = malloc(cnt * sizeof(clk_menu_row_elem));
-    if (!elems)
+    clk_menu_row_elem* elements = malloc(cnt * sizeof(clk_menu_row_elem));
+    if (!elements)
         return false;
 
     for (int i = 0; i < cnt; ++i) {
         const clk_json_value* elem = clk_json_array_get(json_row, i);
-        memset(&elems[i], 0, sizeof(elems[i]));
-        elems[i].fill = -1.0;
+        memset(&elements[i], 0, sizeof(elements[i]));
+        elements[i].fill = -1.0;
 
         if (clk_json_is_string(elem)) {
             /* shorthand: "name" */
             const char* name = NULL;
             if (clk_json_get_string(elem, &name) != 0) {
-                free(elems);
+                free(elements);
                 return false;
             }
             const clk_menu_def* d = clk_menu_theme_find_def(theme, name);
-            elems[i].def = d ? (clk_menu_def*)d : resolve_def(theme, json_defs, name);
+            elements[i].def = d ? (clk_menu_def*)d : resolve_def(theme, json_defs, name);
 
         } else if (clk_json_is_object(elem)) {
             /* { "ref": "name", "fill": 0.30 } — default fill=1.0 when no key */
             const clk_json_value* ref = clk_json_object_get(elem, "ref");
             if (!ref || !clk_json_is_string(ref)) {
-                free(elems);
+                free(elements);
                 return false;
             }
             const char* name = NULL;
             if (clk_json_get_string(ref, &name) != 0) {
-                free(elems);
+                free(elements);
                 return false;
             }
             const clk_menu_def* d = clk_menu_theme_find_def(theme, name);
-            elems[i].def = d ? (clk_menu_def*)d : resolve_def(theme, json_defs, name);
+            elements[i].def = d ? (clk_menu_def*)d : resolve_def(theme, json_defs, name);
 
             const clk_json_value* fill = clk_json_object_get(elem, "fill");
             if (fill && clk_json_is_number(fill))
-                clk_json_get_number(fill, &elems[i].fill);
+                clk_json_get_number(fill, &elements[i].fill);
         } else {
-            free(elems);
+            free(elements);
             return false;
         }
 
-        if (!elems[i].def) {
-            free(elems);
+        if (!elements[i].def) {
+            free(elements);
             return false;
         }
     }
 
-    row_out->elems = elems;
+    row_out->elements = elements;
     row_out->count = cnt;
     return true;
 }
@@ -324,16 +324,16 @@ static bool parse_single_row(clk_menu_theme* theme, const clk_json_value* json_d
  *  Returns true on success; on failure frees any partially built sections and returns false. */
 static bool parse_sections(clk_menu_theme* theme, const clk_json_value* json_defs,
                            const clk_json_value* json_sections, const clk_json_value* json_layout) {
-    int sec_cnt = (int)clk_json_array_count(json_layout);
-    if (sec_cnt <= 0)
+    int section_count = (int)clk_json_array_count(json_layout);
+    if (section_count <= 0)
         return false;
 
-    clk_menu_section* secs = calloc(sec_cnt, sizeof(clk_menu_section));
-    if (!secs)
+    clk_menu_section* sections = calloc(section_count, sizeof(clk_menu_section));
+    if (!sections)
         return false;
 
     int si;
-    for (si = 0; si < sec_cnt; ++si) {
+    for (si = 0; si < section_count; ++si) {
         const clk_json_value* name_elem = clk_json_array_get(json_layout, si);
         const char* name = NULL;
         if (!name_elem || !clk_json_is_string(name_elem) ||
@@ -344,8 +344,8 @@ static bool parse_sections(clk_menu_theme* theme, const clk_json_value* json_def
         if (!json_sec || !clk_json_is_object(json_sec))
             goto fail_sections;
 
-        secs[si].name = strdup(name);
-        if (!secs[si].name)
+        sections[si].name = strdup(name);
+        if (!sections[si].name)
             goto fail_sections;
 
         const char* type_str = NULL;
@@ -354,40 +354,41 @@ static bool parse_sections(clk_menu_theme* theme, const clk_json_value* json_def
             goto fail_sections;
 
         if (strcmp(type_str, "tab_bar") == 0)
-            secs[si].type = CLK_MENU_SEC_TAB_BAR;
+            sections[si].type = CLK_MENU_SEC_TAB_BAR;
         else if (strcmp(type_str, "item_list") == 0)
-            secs[si].type = CLK_MENU_SEC_ITEM_LIST;
+            sections[si].type = CLK_MENU_SEC_ITEM_LIST;
         else
-            secs[si].type = CLK_MENU_SEC_NORMAL;
+            sections[si].type = CLK_MENU_SEC_NORMAL;
 
         const clk_json_value* rows = clk_json_object_get(json_sec, "rows");
         if (!rows || !clk_json_is_array(rows))
             goto fail_sections;
 
-        int row_cnt = (int)clk_json_array_count(rows);
-        clk_menu_row* row_arr = calloc(row_cnt, sizeof(clk_menu_row));
-        if (!row_arr)
+        int row_count = (int)clk_json_array_count(rows);
+        clk_menu_row* row_array = calloc(row_count, sizeof(clk_menu_row));
+        if (!row_array)
             goto fail_sections;
 
         bool ok = true;
-        for (int ri = 0; ri < row_cnt; ++ri) {
+        for (int ri = 0; ri < row_count; ++ri) {
             const clk_json_value* json_row = clk_json_array_get(rows, ri);
 
             if (clk_json_is_string(json_row)) {
                 /* shorthand: single def name → 1-element row */
                 const char* n = NULL;
                 clk_json_get_string(json_row, &n);
-                row_arr[ri].count = 1;
-                row_arr[ri].elems = calloc(1, sizeof(clk_menu_row_elem));
-                row_arr[ri].elems[0].fill = -1.0;
+                row_array[ri].count = 1;
+                row_array[ri].elements = calloc(1, sizeof(clk_menu_row_elem));
+                row_array[ri].elements[0].fill = -1.0;
                 const clk_menu_def* d = clk_menu_theme_find_def(theme, n);
-                row_arr[ri].elems[0].def = d ? (clk_menu_def*)d : resolve_def(theme, json_defs, n);
-                if (!row_arr[ri].elems[0].def) {
+                row_array[ri].elements[0].def =
+                    d ? (clk_menu_def*)d : resolve_def(theme, json_defs, n);
+                if (!row_array[ri].elements[0].def) {
                     ok = false;
                     break;
                 }
             } else if (clk_json_is_array(json_row)) {
-                if (!parse_single_row(theme, json_defs, json_row, &row_arr[ri])) {
+                if (!parse_single_row(theme, json_defs, json_row, &row_array[ri])) {
                     ok = false;
                     break;
                 }
@@ -397,27 +398,27 @@ static bool parse_sections(clk_menu_theme* theme, const clk_json_value* json_def
             }
         }
         if (!ok) {
-            for (int ri = 0; ri < row_cnt; ++ri)
-                free(row_arr[ri].elems);
-            free(row_arr);
+            for (int ri = 0; ri < row_count; ++ri)
+                free(row_array[ri].elements);
+            free(row_array);
             goto fail_sections;
         }
-        secs[si].rows = row_arr;
-        secs[si].row_count = row_cnt;
+        sections[si].rows = row_array;
+        sections[si].row_count = row_count;
     }
 
-    theme->sections = secs;
-    theme->section_count = sec_cnt;
+    theme->sections = sections;
+    theme->section_count = section_count;
     return true;
 
 fail_sections:
     for (int i = 0; i < si; ++i) {
-        free(secs[i].name);
-        for (int j = 0; j < secs[i].row_count; ++j)
-            free(secs[i].rows[j].elems);
-        free(secs[i].rows);
+        free(sections[i].name);
+        for (int j = 0; j < sections[i].row_count; ++j)
+            free(sections[i].rows[j].elements);
+        free(sections[i].rows);
     }
-    free(secs);
+    free(sections);
     return false;
 }
 
@@ -453,16 +454,16 @@ static int leaf_width(const clk_menu_def* def) {
 /** Computes the theme's minimum width and height from its sections and rows, storing both on the
  * theme. */
 static void compute_min_size(clk_menu_theme* theme) {
-    int min_w = 0, min_h = 0;
+    int min_width = 0, min_height = 0;
 
     for (int si = 0; si < theme->section_count; ++si) {
         const clk_menu_section* sec = &theme->sections[si];
-        min_h += sec->row_count;
+        min_height += sec->row_count;
 
         for (int ri = 0; ri < sec->row_count; ++ri) {
             int row_w = 0;
             for (int ei = 0; ei < sec->rows[ri].count; ++ei) {
-                const clk_menu_row_elem* elem = &sec->rows[ri].elems[ei];
+                const clk_menu_row_elem* elem = &sec->rows[ri].elements[ei];
                 if (elem->fill >= 0.0) {
                     clk_menu_def_type t = elem->def->type;
                     if (t == CLK_MENU_DEF_TAB || t == CLK_MENU_DEF_ITEM_LABEL ||
@@ -473,13 +474,13 @@ static void compute_min_size(clk_menu_theme* theme) {
                     row_w += leaf_width(elem->def);
                 }
             }
-            if (row_w > min_w)
-                min_w = row_w;
+            if (row_w > min_width)
+                min_width = row_w;
         }
     }
 
-    theme->min_width = min_w;
-    theme->min_height = min_h;
+    theme->min_width = min_width;
+    theme->min_height = min_height;
 }
 
 /* ================================================================
@@ -502,7 +503,7 @@ static bool composite_contains(const clk_menu_def* def, clk_menu_def_type expect
 /** Validates structural invariants: exactly one of each special composite, per-section type
  *  constraints, required fills, and strictly increasing fill anchors. Returns true if valid. */
 static bool validate_theme(const clk_menu_theme* theme) {
-    int tab_cnt = 0, il_cnt = 0, iv_cnt = 0;
+    int tab_count = 0, label_count = 0, value_count = 0;
 
     /* pass 1: unique special composites + internal structure */
     for (int i = 0; i < theme->def_count; ++i) {
@@ -511,23 +512,23 @@ static bool validate_theme(const clk_menu_theme* theme) {
             case CLK_MENU_DEF_TAB:
                 if (!composite_contains(def, CLK_MENU_DEF_TAB_STR, 1))
                     return false;
-                tab_cnt++;
+                tab_count++;
                 break;
             case CLK_MENU_DEF_ITEM_LABEL:
                 if (!composite_contains(def, CLK_MENU_DEF_ITEM_LABEL_STR, 1))
                     return false;
-                il_cnt++;
+                label_count++;
                 break;
             case CLK_MENU_DEF_ITEM_VALUE:
                 if (!composite_contains(def, CLK_MENU_DEF_ITEM_VALUE_STR, 1))
                     return false;
-                iv_cnt++;
+                value_count++;
                 break;
             default:
                 break;
         }
     }
-    if (tab_cnt != 1 || il_cnt != 1 || iv_cnt != 1)
+    if (tab_count != 1 || label_count != 1 || value_count != 1)
         return false;
 
     /* pass 2: section constraints */
@@ -537,7 +538,7 @@ static bool validate_theme(const clk_menu_theme* theme) {
 
         for (int ri = 0; ri < sec->row_count; ++ri) {
             for (int ei = 0; ei < sec->rows[ri].count; ++ei) {
-                clk_menu_def_type t = sec->rows[ri].elems[ei].def->type;
+                clk_menu_def_type t = sec->rows[ri].elements[ei].def->type;
                 if (t == CLK_MENU_DEF_TAB)
                     has_tab = true;
                 if (t == CLK_MENU_DEF_ITEM_LABEL)
@@ -561,8 +562,8 @@ static bool validate_theme(const clk_menu_theme* theme) {
         /* fill required on special composites */
         for (int ri = 0; ri < sec->row_count; ++ri) {
             for (int ei = 0; ei < sec->rows[ri].count; ++ei) {
-                clk_menu_def_type t = sec->rows[ri].elems[ei].def->type;
-                double f = sec->rows[ri].elems[ei].fill;
+                clk_menu_def_type t = sec->rows[ri].elements[ei].def->type;
+                double f = sec->rows[ri].elements[ei].fill;
                 if (sec->type == CLK_MENU_SEC_TAB_BAR) {
                     if (t == CLK_MENU_DEF_TAB && f < 0.0)
                         return false;
@@ -581,7 +582,7 @@ static bool validate_theme(const clk_menu_theme* theme) {
             const clk_menu_row* row = &theme->sections[si].rows[ri];
             double prev = -1.0;
             for (int ei = 0; ei < row->count; ++ei) {
-                double f = row->elems[ei].fill;
+                double f = row->elements[ei].fill;
                 if (f >= 0.0) {
                     if (f <= prev)
                         return false;
@@ -661,7 +662,7 @@ void clk_menu_theme_destroy(clk_menu_theme* theme) {
     for (int i = 0; i < theme->section_count; ++i) {
         free(theme->sections[i].name);
         for (int j = 0; j < theme->sections[i].row_count; ++j)
-            free(theme->sections[i].rows[j].elems);
+            free(theme->sections[i].rows[j].elements);
         free(theme->sections[i].rows);
     }
     free(theme->sections);

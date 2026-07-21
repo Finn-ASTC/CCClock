@@ -101,13 +101,14 @@ int clk_menu_add_tab(clk_menu* menu, int tab_id, const char* name) {
         return -1;
 
     if (menu->tab_count >= menu->tab_capacity) {
-        size_t new_cap = menu->tab_capacity * 2;
-        clk_menu_tab** tmp = realloc(menu->tabs, new_cap * sizeof(clk_menu_tab*));
+        size_t new_capacity = menu->tab_capacity * 2;
+        clk_menu_tab** tmp = realloc(menu->tabs, new_capacity * sizeof(clk_menu_tab*));
         if (!tmp)
             return -1;
-        memset(tmp + menu->tab_capacity, 0, (new_cap - menu->tab_capacity) * sizeof(clk_menu_tab*));
+        memset(tmp + menu->tab_capacity, 0,
+               (new_capacity - menu->tab_capacity) * sizeof(clk_menu_tab*));
         menu->tabs = tmp;
-        menu->tab_capacity = new_cap;
+        menu->tab_capacity = new_capacity;
     }
 
     clk_menu_tab* tab = malloc(sizeof(clk_menu_tab));
@@ -146,13 +147,14 @@ int clk_menu_add_tab(clk_menu* menu, int tab_id, const char* name) {
 static bool clk_menu_tab_ensure_items_capacity(clk_menu_tab* tab) {
     if (tab->item_count < tab->item_capacity)
         return true;
-    size_t new_cap = tab->item_capacity * 2;
-    clk_menu_item** tmp = realloc(tab->items, new_cap * sizeof(clk_menu_item*));
+    size_t new_capacity = tab->item_capacity * 2;
+    clk_menu_item** tmp = realloc(tab->items, new_capacity * sizeof(clk_menu_item*));
     if (!tmp)
         return false;
-    memset(tmp + tab->item_capacity, 0, (new_cap - tab->item_capacity) * sizeof(clk_menu_item*));
+    memset(tmp + tab->item_capacity, 0,
+           (new_capacity - tab->item_capacity) * sizeof(clk_menu_item*));
     tab->items = tmp;
-    tab->item_capacity = new_cap;
+    tab->item_capacity = new_capacity;
     return true;
 }
 
@@ -455,11 +457,11 @@ void clk_menu_remove_item(clk_menu* menu, int tab_id, int item_id) {
             tab->items[tab->item_count] = NULL;
 
             if (tab->item_count > 0 && tab->item_count <= tab->item_capacity / 2) {
-                size_t new_cap = tab->item_capacity / 2;
-                clk_menu_item** tmp = realloc(tab->items, new_cap * sizeof(clk_menu_item*));
+                size_t new_capacity = tab->item_capacity / 2;
+                clk_menu_item** tmp = realloc(tab->items, new_capacity * sizeof(clk_menu_item*));
                 if (tmp) {
                     tab->items = tmp;
-                    tab->item_capacity = new_cap;
+                    tab->item_capacity = new_capacity;
                 }
             } else if (tab->item_count == 0) {
                 free(tab->items);

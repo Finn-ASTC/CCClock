@@ -134,8 +134,8 @@ static clk_texture* glyph_lookup(const clk_glyph* glyphs, int glyph_count, char 
  *  Iterates the "glyphs" object — each key is a character (or UTF-8
  *  sequence), each value is a 2D array of cell keys.  A separate
  *  "cells" object maps cell keys to styled clk_cell definitions. */
-static bool load_glyph_textures(const clk_json_value* json, clk_ascii_render* render, int glyph_w,
-                                int glyph_h) {
+static bool load_glyph_textures(const clk_json_value* json, clk_ascii_render* render,
+                                int glyph_width, int glyph_height) {
     struct clk_json_value* json_glyphs = clk_json_object_get(json, "glyphs");
     if (!json_glyphs || !clk_json_is_object(json_glyphs))
         return false;
@@ -202,10 +202,10 @@ static bool load_glyph_textures(const clk_json_value* json, clk_ascii_render* re
     while (clk_json_object_iterator_next(&iter, &pair)) {
         memset(glyphs[slot].key, 0, 5);
         strncpy(glyphs[slot].key, pair.key, 4);
-        glyphs[slot].texture = clk_texture_create(glyph_w, glyph_h);
+        glyphs[slot].texture = clk_texture_create(glyph_width, glyph_height);
 
         struct clk_json_value* glyph_value = pair.value;
-        if (clk_json_get_type(glyph_value) != JSON_ARRAY) {
+        if (clk_json_get_type(glyph_value) != CLK_JSON_ARRAY) {
             for (int i = 0; i <= slot; ++i)
                 clk_texture_destroy(&glyphs[i].texture);
             free(glyphs);
@@ -214,7 +214,7 @@ static bool load_glyph_textures(const clk_json_value* json, clk_ascii_render* re
             return false;
         }
 
-        for (int y = 0; y < glyph_h; ++y) {
+        for (int y = 0; y < glyph_height; ++y) {
             struct clk_json_value* row_value = clk_json_array_get(glyph_value, y);
             const char* str = NULL;
             if (clk_json_get_string(row_value, &str) != 0) {
@@ -225,9 +225,9 @@ static bool load_glyph_textures(const clk_json_value* json, clk_ascii_render* re
                 clk_json_free(translator);
                 return false;
             }
-            int byte_pos = 0, cell_x = 0;
-            while (cell_x < glyph_w && str[byte_pos]) {
-                unsigned char first_byte = (unsigned char)str[byte_pos];
+            int byte_position = 0, cell_x = 0;
+            while (cell_x < glyph_width && str[byte_position]) {
+                unsigned char first_byte = (unsigned char)str[byte_position];
                 int byte_count = 1;
                 if ((first_byte & 0x80) == 0)
                     byte_count = 1;
@@ -239,13 +239,13 @@ static bool load_glyph_textures(const clk_json_value* json, clk_ascii_render* re
                     byte_count = 4;
 
                 char ch_buf[5] = {0};
-                memcpy(ch_buf, str + byte_pos, byte_count);
+                memcpy(ch_buf, str + byte_position, byte_count);
                 const clk_cell* cell = cell_lookup(ch_buf, cell_entries, cell_entry_count);
                 if (!cell->is_empty)
                     clk_texture_set_cell(&glyphs[slot].texture, cell_x, y, cell);
                 if (cell->type == CELL_WIDE_LEAD)
                     cell_x++;
-                byte_pos += byte_count;
+                byte_position += byte_count;
                 cell_x++;
             }
         }
@@ -271,18 +271,18 @@ static bool load_font_config(clk_ascii_render* render) {
     if (!json)
         return false;
 
-    double spacing = 0, glyph_w = 0, glyph_h = 0, line_spacing = 0;
+    double spacing = 0, glyph_width = 0, glyph_height = 0, line_spacing = 0;
     struct clk_json_value* field;
     bool ok = true;
 
     field = clk_json_object_get(json, "glyph_spacing");
     ok = ok && field && clk_json_is_number(field) && clk_json_get_number(field, &spacing) == 0;
 
-    field = clk_json_object_get(json, "font_w");
-    ok = ok && field && clk_json_is_number(field) && clk_json_get_number(field, &glyph_w) == 0;
+    field = clk_json_object_get(json, "font_width");
+    ok = ok && field && clk_json_is_number(field) && clk_json_get_number(field, &glyph_width) == 0;
 
-    field = clk_json_object_get(json, "font_h");
-    ok = ok && field && clk_json_is_number(field) && clk_json_get_number(field, &glyph_h) == 0;
+    field = clk_json_object_get(json, "font_height");
+    ok = ok && field && clk_json_is_number(field) && clk_json_get_number(field, &glyph_height) == 0;
 
     field = clk_json_object_get(json, "line_spacing");
     ok = ok && field && clk_json_is_number(field) && clk_json_get_number(field, &line_spacing) == 0;
@@ -295,7 +295,7 @@ static bool load_font_config(clk_ascii_render* render) {
     render->glyph_spacing = (int)spacing;
     render->line_spacing = (int)line_spacing;
 
-    if (!load_glyph_textures(json, render, (int)glyph_w, (int)glyph_h)) {
+    if (!load_glyph_textures(json, render, (int)glyph_width, (int)glyph_height)) {
         clk_json_free(json);
         return false;
     }
@@ -412,8 +412,8 @@ void clk_ascii_render_update(clk_ascii_render* render, const char* string) {
     if (render->glyph_count == 0)
         return;
 
-    int font_w = render->glyphs[0].texture.tex_w;
-    int font_h = render->glyphs[0].texture.tex_h;
+    int font_width = render->glyphs[0].texture.tex_w;
+    int font_height = render->glyphs[0].texture.tex_h;
     int spacing = render->glyph_spacing;
     int line_spacing = render->line_spacing;
 
@@ -434,8 +434,8 @@ void clk_ascii_render_update(clk_ascii_render* render, const char* string) {
         clk_texture* tex = glyph_lookup(render->glyphs, render->glyph_count, character);
         if (tex) {
             sprite->tex = tex;
-            sprite->posx = render->pos_x + col * (font_w + spacing);
-            sprite->posy = render->pos_y + row * (font_h + line_spacing);
+            sprite->posx = render->pos_x + col * (font_width + spacing);
+            sprite->posy = render->pos_y + row * (font_height + line_spacing);
             clk_sprite_set_z(sprite, render->z_order);
             sprite->is_hidden = false;
             sprite->is_invalid = false;
@@ -484,44 +484,44 @@ bool clk_ascii_render_get_glyph_size(const clk_ascii_render* render, int* width,
 
 bool clk_ascii_render_get_size(const clk_ascii_render* render, const char* string, int* width,
                                int* height) {
-    int glyph_w, glyph_h;
-    if (!clk_ascii_render_get_glyph_size(render, &glyph_w, &glyph_h))
+    int glyph_width, glyph_height;
+    if (!clk_ascii_render_get_glyph_size(render, &glyph_width, &glyph_height))
         return false;
 
     int spacing = render->glyph_spacing;
-    int max_cols = 0, cur_cols = 0, rows = 1;
+    int max_columns = 0, cur_columns = 0, rows = 1;
     const char* p = string;
     for (; *p; ++p) {
         if (*p == '\n') {
-            if (cur_cols > max_cols)
-                max_cols = cur_cols;
-            cur_cols = 0;
+            if (cur_columns > max_columns)
+                max_columns = cur_columns;
+            cur_columns = 0;
             rows++;
         } else {
-            cur_cols++;
+            cur_columns++;
         }
     }
-    if (cur_cols > max_cols)
-        max_cols = cur_cols;
+    if (cur_columns > max_columns)
+        max_columns = cur_columns;
 
-    *width = max_cols * glyph_w + (max_cols > 0 ? max_cols - 1 : 0) * spacing;
-    *height = rows * glyph_h + (rows > 1 ? rows - 1 : 0) * render->line_spacing;
+    *width = max_columns * glyph_width + (max_columns > 0 ? max_columns - 1 : 0) * spacing;
+    *height = rows * glyph_height + (rows > 1 ? rows - 1 : 0) * render->line_spacing;
     return true;
 }
 
-bool clk_ascii_render_get_pos(const clk_ascii_render* render, int* px, int* py) {
-    if (!render || !px || !py)
+bool clk_ascii_render_get_pos(const clk_ascii_render* render, int* pos_x, int* pos_y) {
+    if (!render || !pos_x || !pos_y)
         return false;
-    *px = render->pos_x;
-    *py = render->pos_y;
+    *pos_x = render->pos_x;
+    *pos_y = render->pos_y;
     return true;
 }
 
-void clk_ascii_render_set_pos(clk_ascii_render* render, int px, int py) {
+void clk_ascii_render_set_pos(clk_ascii_render* render, int pos_x, int pos_y) {
     if (!render)
         return;
-    render->pos_x = px;
-    render->pos_y = py;
+    render->pos_x = pos_x;
+    render->pos_y = pos_y;
 }
 
 void clk_ascii_render_set_z_order(clk_ascii_render* render, int z) {

@@ -98,12 +98,12 @@ int main(void) {
 
     clk_clock_init(&clock, NULL);
 
-    clk_clock_pomodoro p;
-    memset(&p, 0, sizeof(p));
-    strcpy(p.name, "Work");
+    clk_clock_pomodoro pomodoro;
+    memset(&pomodoro, 0, sizeof(pomodoro));
+    strcpy(pomodoro.name, "Work");
 
     /* --- add pomodoro --- */
-    ok = clk_clock_add_pomodoro(&clock, &p);
+    ok = clk_clock_add_pomodoro(&clock, &pomodoro);
     TEST("add_pomodoro succeeds", ok && clock.pomodoro_count == 1);
     TEST("add_pomodoro copies name", strcmp(clock.pomodoros[0].name, "Work") == 0);
 
@@ -216,11 +216,11 @@ int main(void) {
 
     /* fill pomodoros to max */
     for (int i = 0; i < CLK_POMODORO_MAX; ++i) {
-        snprintf(p.name, sizeof(p.name), "p%d", i);
-        ok = clk_clock_add_pomodoro(&clock, &p);
+        snprintf(pomodoro.name, sizeof(pomodoro.name), "p%d", i);
+        ok = clk_clock_add_pomodoro(&clock, &pomodoro);
     }
     TEST("add_pomodoro fills to max", ok && clock.pomodoro_count == CLK_POMODORO_MAX);
-    ok = clk_clock_add_pomodoro(&clock, &p);
+    ok = clk_clock_add_pomodoro(&clock, &pomodoro);
     TEST("add_pomodoro overflow fails", !ok);
 
     /* ================================================================
