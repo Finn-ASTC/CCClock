@@ -8,8 +8,9 @@
 
 #define INPUT_FIELD_HEIGHT 5
 #define INPUT_FIELD_WIDTH 46
-/** Display columns before hitting right border: "> " at x=2..3, text at
- *  x=4, right margin at WIDTH-4 → usable = (WIDTH-4) - 4 + 1. */
+/** Display columns before hitting right border.  "> " occupies x=2..3,
+ *  text starts at x=4, right border pad at x=WIDTH-4.
+ *  → usable = (WIDTH-4) - 4 + 1 = WIDTH - 7 = 39. */
 #define MAX_COLUMNS (INPUT_FIELD_WIDTH - 7)
 
 /* ------------------------------------------------------------------
@@ -56,7 +57,7 @@ int main() {
     if (!clk_term_init())
         return -1;
 
-    clk_key_io_close(); /* kill old background thread — io2 will own stdin */
+    clk_key_io_close(); /* restart keyboard engine on fresh thread */
     clk_key_io_init();
 
     clk_texture input_field_tex = clk_texture_create(INPUT_FIELD_WIDTH, INPUT_FIELD_HEIGHT);

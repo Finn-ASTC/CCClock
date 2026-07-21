@@ -154,14 +154,12 @@ int main(void) {
 
         switch (focus) {
             case FOCUS_CLOCK:
-                if (key_event.key_mask == KEY_s_LOWER ||
-                    key_event.key_mask == KEY_S_UPPER) {
+                if (key_event.key_mask == KEY_s_LOWER || key_event.key_mask == KEY_S_UPPER) {
                     clk_menu_instance_set_visible(menu_inst, true);
                     focus = FOCUS_MENU;
                     continue;
                 }
-                if (key_event.key_mask == KEY_f_LOWER ||
-                    key_event.key_mask == KEY_F_UPPER) {
+                if (key_event.key_mask == KEY_f_LOWER || key_event.key_mask == KEY_F_UPPER) {
                     cfg.ascii_clock.time_formats.idx =
                         (cfg.ascii_clock.time_formats.idx + 1) % cfg.ascii_clock.time_formats.count;
                     clk_cfg_ascii_clock_theme_switch_time(&cfg.ascii_clock);
@@ -169,8 +167,7 @@ int main(void) {
                         menu, 0, CLK_BASIC_ITEM_TFMT,
                         cfg.ascii_clock.time_formats.strings[cfg.ascii_clock.time_formats.idx]);
                 }
-                if (key_event.key_mask == KEY_r_LOWER ||
-                    key_event.key_mask == KEY_R_UPPER) {
+                if (key_event.key_mask == KEY_r_LOWER || key_event.key_mask == KEY_R_UPPER) {
                     cfg.ascii_clock.fonts.idx =
                         (cfg.ascii_clock.fonts.idx + 1) % cfg.ascii_clock.fonts.count;
                     clk_ascii_render_change_font(
@@ -178,14 +175,12 @@ int main(void) {
                     clk_menu_set_value_str(menu, 0, CLK_BASIC_ITEM_FONT,
                                            cfg.ascii_clock.fonts.names[cfg.ascii_clock.fonts.idx]);
                 }
-                if (key_event.key_mask == KEY_q_LOWER ||
-                    key_event.key_mask == KEY_Q_UPPER)
+                if (key_event.key_mask == KEY_q_LOWER || key_event.key_mask == KEY_Q_UPPER)
                     running = false;
                 break;
 
             case FOCUS_MENU:
-                if (key_event.key_mask == KEY_q_LOWER ||
-                    key_event.key_mask == KEY_Q_UPPER) {
+                if (key_event.key_mask == KEY_q_LOWER || key_event.key_mask == KEY_Q_UPPER) {
                     clk_menu_instance_set_visible(menu_inst, false);
                     focus = FOCUS_CLOCK;
                     continue;
