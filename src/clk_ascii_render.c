@@ -278,10 +278,10 @@ static bool load_font_config(clk_ascii_render* render) {
     field = clk_json_object_get(json, "glyph_spacing");
     ok = ok && field && clk_json_is_number(field) && clk_json_get_number(field, &spacing) == 0;
 
-    field = clk_json_object_get(json, "font_width");
+    field = clk_json_object_get(json, "font_w");
     ok = ok && field && clk_json_is_number(field) && clk_json_get_number(field, &glyph_width) == 0;
 
-    field = clk_json_object_get(json, "font_height");
+    field = clk_json_object_get(json, "font_h");
     ok = ok && field && clk_json_is_number(field) && clk_json_get_number(field, &glyph_height) == 0;
 
     field = clk_json_object_get(json, "line_spacing");
