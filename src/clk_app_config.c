@@ -256,7 +256,7 @@ void clk_cfg_ascii_clock_theme_deinit(clk_cfg_ascii_clock_theme* ascii_clock) {
  *  Alarms
  * ================================================================ */
 
-static clk_repeat_days parse_repeat_days(const char* str) {
+clk_repeat_days clk_repeat_days_from_string(const char* str) {
     if (!str)
         return CLK_REPEAT_TODAY;
     if (strcmp(str, "Everyday") == 0)
@@ -278,6 +278,12 @@ static clk_repeat_days parse_repeat_days(const char* str) {
     if (strcmp(str, "Sunday") == 0)
         return CLK_REPEAT_SUNDAY;
     return CLK_REPEAT_TODAY;
+}
+
+const char* clk_repeat_days_to_string(clk_repeat_days d) {
+    static const char* names[] = {"Today",  "Monday",   "Tuesday", "Wednesday", "Thursday",
+                                  "Friday", "Saturday", "Sunday",  "Everyday"};
+    return names[(int)d];
 }
 
 static void parse_one_alarm(clk_cfg_alarm* alarm, clk_json_value* alarm_json) {
@@ -311,7 +317,7 @@ static void parse_one_alarm(clk_cfg_alarm* alarm, clk_json_value* alarm_json) {
         alarm->sound_file[sizeof(alarm->sound_file) - 1] = '\0';
     }
 
-    alarm->repeat_days = parse_repeat_days(json_get_string(alarm_json, "repeat"));
+    alarm->repeat_days = clk_repeat_days_from_string(json_get_string(alarm_json, "repeat"));
 
     alarm->today_date = (time_t)0;
     str = json_get_string(alarm_json, "today_date");
@@ -372,8 +378,8 @@ static void parse_one_segment(clk_cfg_pomodoro_segment* segment, clk_json_value*
     segment->volume = (int)json_get_number_or_default(seg_obj, "volume", CLK_CONFIG_VOLUME_DEFAULT);
 
     {
-        clk_json_value* v = clk_json_object_get(seg_obj, "loop");
-        segment->loop = v ? clk_json_is_true(v) : false;
+        clk_json_value* json_val = clk_json_object_get(seg_obj, "loop");
+        segment->loop = json_val ? clk_json_is_true(json_val) : false;
     }
 
     str = json_get_string(seg_obj, "sound");
@@ -482,8 +488,8 @@ static void parse_one_bgm(clk_cfg_bgm* bgm_entry, clk_json_value* obj) {
 
     bgm_entry->volume = (int)json_get_number_or_default(obj, "volume", CLK_CONFIG_VOLUME_DEFAULT);
 
-    clk_json_value* v = clk_json_object_get(obj, "enable");
-    bgm_entry->enabled = v ? clk_json_is_true(v) : false;
+    clk_json_value* json_val = clk_json_object_get(obj, "enable");
+    bgm_entry->enabled = json_val ? clk_json_is_true(json_val) : false;
 }
 
 void clk_cfg_bgms_init(clk_cfg_bgms* bgm_list, clk_json_value* json_array) {

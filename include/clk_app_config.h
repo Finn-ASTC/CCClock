@@ -160,6 +160,17 @@ void clk_cfg_bgms_init(clk_cfg_bgms* bgm_list, clk_json_value* json_array);
 void clk_cfg_bgms_deinit(clk_cfg_bgms* bgm_list);
 
 /* ------------------------------------------------------------------
+ *  Repeat-days conversion
+ * ------------------------------------------------------------------ */
+
+/** Convert a repeat-day string to its enum value.
+ *  Unknown strings map to CLK_REPEAT_TODAY. */
+clk_repeat_days clk_repeat_days_from_string(const char* str);
+
+/** Convert a repeat-day enum value back to its canonical string. */
+const char* clk_repeat_days_to_string(clk_repeat_days d);
+
+/* ------------------------------------------------------------------
  *  Aggregate
  * ------------------------------------------------------------------ */
 
