@@ -147,7 +147,8 @@ int clk_menu_add_tab(clk_menu* menu, int tab_id, const char* name) {
 static bool clk_menu_tab_ensure_items_capacity(clk_menu_tab* tab) {
     if (tab->item_count < tab->item_capacity)
         return true;
-    size_t new_capacity = tab->item_capacity * 2;
+    size_t new_capacity =
+        tab->item_capacity > 0 ? tab->item_capacity * 2 : CLK_ITEM_DEFAULT_CAPACITY;
     clk_menu_item** tmp = realloc(tab->items, new_capacity * sizeof(clk_menu_item*));
     if (!tmp)
         return false;
