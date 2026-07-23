@@ -182,20 +182,24 @@ static int measure_def(const clk_menu* menu, const clk_menu_def* def, int tab_in
                 w += measure_def(menu, def->members[i], tab_index, item_idx);
             return w;
         }
-        case CLK_MENU_DEF_TAB_STR:
-            return (tab_index >= 0 && (size_t)tab_index < menu->tab_count)
-                       ? (int)strlen(menu->tabs[tab_index]->name)
+        case CLK_MENU_DEF_TAB_STR: {
+            clk_tab_list* tlist = menu->tab_list;
+            return (tab_index >= 0 && (size_t)tab_index < clk_tab_list_count(tlist))
+                       ? (int)strlen(clk_tab_list_get_at(tlist, tab_index)->name)
                        : 0;
+        }
         case CLK_MENU_DEF_ITEM_LABEL_STR: {
-            if (tab_index < 0 || item_idx < 0 || (size_t)tab_index >= menu->tab_count)
+            const clk_menu_tab* mtab = clk_tab_list_get_at(menu->tab_list, tab_index);
+            if (!mtab || item_idx < 0 || (size_t)item_idx >= clk_item_list_count(mtab->item_list))
                 return 0;
-            const clk_menu_item* it = menu->tabs[tab_index]->items[item_idx];
+            const clk_menu_item* it = clk_item_list_get_at(mtab->item_list, item_idx);
             return it ? (int)strlen(it->label) : 0;
         }
         case CLK_MENU_DEF_ITEM_VALUE_STR: {
-            if (tab_index < 0 || item_idx < 0 || (size_t)tab_index >= menu->tab_count)
+            const clk_menu_tab* mtab = clk_tab_list_get_at(menu->tab_list, tab_index);
+            if (!mtab || item_idx < 0 || (size_t)item_idx >= clk_item_list_count(mtab->item_list))
                 return 0;
-            const clk_menu_item* it = menu->tabs[tab_index]->items[item_idx];
+            const clk_menu_item* it = clk_item_list_get_at(mtab->item_list, item_idx);
             if (!it)
                 return 0;
             switch (it->type) {
@@ -246,7 +250,7 @@ static int render_composite(const clk_menu* menu, clk_texture* tex, const clk_me
 static int render_tab_special(const clk_menu* menu, clk_texture* tex, const clk_menu_def* def,
                               int item_idx, int x, int y, int max_x) {
     int total = 0;
-    for (size_t ti = 0; ti < menu->tab_count; ++ti) {
+    for (size_t ti = 0; ti < clk_tab_list_count(menu->tab_list); ++ti) {
         bool act = ((int)ti == (int)menu->active_tab);
         const clk_menu_def** mbs = act ? (const clk_menu_def**)def->active_members
                                        : (const clk_menu_def**)def->inactive_members;
@@ -272,8 +276,10 @@ static int render_tab_special(const clk_menu* menu, clk_texture* tex, const clk_
 static int render_item_label_value_special(const clk_menu* menu, clk_texture* tex,
                                            const clk_menu_def* def, int tab_index, int item_idx,
                                            int x, int y, int max_x) {
-    bool act = (item_idx >= 0 && (size_t)item_idx < menu->tabs[tab_index]->item_count &&
-                (int)menu->tabs[tab_index]->active_item == item_idx);
+    const clk_menu_tab* mtab = clk_tab_list_get_at(menu->tab_list, tab_index);
+    bool act = (item_idx >= 0 && mtab &&
+                (size_t)item_idx < clk_item_list_count(mtab->item_list) &&
+                (int)mtab->active_item == item_idx);
     const clk_menu_def** mbs = act ? (const clk_menu_def**)def->active_members
                                    : (const clk_menu_def**)def->inactive_members;
     int cnt = act ? def->active_cnt : def->inactive_cnt;
@@ -327,9 +333,10 @@ static int render_item_label_value_special(const clk_menu* menu, clk_texture* te
 static int render_tab_str(const clk_menu* menu, clk_texture* tex, const clk_menu_def* def,
                           int tab_index, int x, int y, int max_x) {
     (void)max_x;
-    if (tab_index < 0 || (size_t)tab_index >= menu->tab_count)
+    const clk_menu_tab* mtab = clk_tab_list_get_at(menu->tab_list, tab_index);
+    if (!mtab)
         return 0;
-    const char* name = menu->tabs[tab_index]->name;
+    const char* name = mtab->name;
     int style_id =
         ((int)tab_index == (int)menu->active_tab) ? def->active_style_id : def->inactive_style_id;
     clk_texture_write_string(tex, x, y, name, style_id);
@@ -341,13 +348,14 @@ static int render_tab_str(const clk_menu* menu, clk_texture* tex, const clk_menu
 static int render_item_label_str(const clk_menu* menu, clk_texture* tex, const clk_menu_def* def,
                                  int tab_index, int item_idx, int x, int y, int max_x) {
     (void)max_x;
-    if (tab_index < 0 || item_idx < 0 || (size_t)tab_index >= menu->tab_count)
+    const clk_menu_tab* mtab = clk_tab_list_get_at(menu->tab_list, tab_index);
+    if (!mtab || item_idx < 0 || (size_t)item_idx >= clk_item_list_count(mtab->item_list))
         return 0;
-    const clk_menu_item* it = menu->tabs[tab_index]->items[item_idx];
+    const clk_menu_item* it = clk_item_list_get_at(mtab->item_list, item_idx);
     if (!it)
         return 0;
-    int style_id = (item_idx == (int)menu->tabs[tab_index]->active_item) ? def->active_style_id
-                                                                         : def->inactive_style_id;
+    int style_id = (item_idx == (int)mtab->active_item) ? def->active_style_id
+                                                        : def->inactive_style_id;
     clk_texture_write_string(tex, x, y, it->label, style_id);
     return (int)strlen(it->label);
 }
@@ -357,13 +365,14 @@ static int render_item_label_str(const clk_menu* menu, clk_texture* tex, const c
 static int render_item_value_str(const clk_menu* menu, clk_texture* tex, const clk_menu_def* def,
                                  int tab_index, int item_idx, int x, int y, int max_x) {
     (void)max_x;
-    if (tab_index < 0 || item_idx < 0 || (size_t)tab_index >= menu->tab_count)
+    const clk_menu_tab* mtab = clk_tab_list_get_at(menu->tab_list, tab_index);
+    if (!mtab || item_idx < 0 || (size_t)item_idx >= clk_item_list_count(mtab->item_list))
         return 0;
-    const clk_menu_item* it = menu->tabs[tab_index]->items[item_idx];
+    const clk_menu_item* it = clk_item_list_get_at(mtab->item_list, item_idx);
     if (!it)
         return 0;
-    int style_id = (item_idx == (int)menu->tabs[tab_index]->active_item) ? def->active_style_id
-                                                                         : def->inactive_style_id;
+    int style_id = (item_idx == (int)mtab->active_item) ? def->active_style_id
+                                                        : def->inactive_style_id;
     char buf[CLK_MENU_ITEM_VAL_BUF_SIZE];
     const char* ptr = NULL;
     switch (it->type) {
@@ -428,24 +437,26 @@ static int render_dyn_str(const clk_menu* menu, clk_texture* tex, const clk_menu
     int style_id = 0;
     switch (def->type) {
         case CLK_MENU_DEF_ITEM_LABEL_STR: {
-            if (tab_index < 0 || item_idx < 0 || (size_t)tab_index >= menu->tab_count)
+            const clk_menu_tab* mtab = clk_tab_list_get_at(menu->tab_list, tab_index);
+            if (!mtab || item_idx < 0 || (size_t)item_idx >= clk_item_list_count(mtab->item_list))
                 return 0;
-            const clk_menu_item* it = menu->tabs[tab_index]->items[item_idx];
+            const clk_menu_item* it = clk_item_list_get_at(mtab->item_list, item_idx);
             if (!it)
                 return 0;
             str = it->label;
-            style_id = (item_idx == (int)menu->tabs[tab_index]->active_item)
+            style_id = (item_idx == (int)mtab->active_item)
                            ? def->active_style_id
                            : def->inactive_style_id;
             break;
         }
         case CLK_MENU_DEF_ITEM_VALUE_STR: {
-            if (tab_index < 0 || item_idx < 0 || (size_t)tab_index >= menu->tab_count)
+            const clk_menu_tab* mtab = clk_tab_list_get_at(menu->tab_list, tab_index);
+            if (!mtab || item_idx < 0 || (size_t)item_idx >= clk_item_list_count(mtab->item_list))
                 return 0;
-            const clk_menu_item* it = menu->tabs[tab_index]->items[item_idx];
+            const clk_menu_item* it = clk_item_list_get_at(mtab->item_list, item_idx);
             if (!it)
                 return 0;
-            style_id = (item_idx == (int)menu->tabs[tab_index]->active_item)
+            style_id = (item_idx == (int)mtab->active_item)
                            ? def->active_style_id
                            : def->inactive_style_id;
             static char buf[CLK_MENU_ITEM_VAL_BUF_SIZE];
@@ -538,7 +549,7 @@ static int clk_render_row(const clk_menu* menu, clk_texture* tex, const clk_menu
                 /* fill remaining gap to target with background of the
                  * last rendered leaf cell */
                 if (t == CLK_MENU_DEF_TAB && x < target) {
-                    bool last_active = ((int)(menu->tab_count - 1) == (int)menu->active_tab);
+                    bool last_active = ((int)(clk_tab_list_count(menu->tab_list) - 1) == (int)menu->active_tab);
                     const clk_menu_def** mbs =
                         last_active ? (const clk_menu_def**)elem->def->active_members
                                     : (const clk_menu_def**)elem->def->inactive_members;
@@ -614,7 +625,8 @@ static int render_item_list_section(clk_menu_instance* instance, const clk_menu*
         instance->align_top = true;
         instance->active_item_pos_idx = 0;
     }
-    if (up && menu->tabs[menu->active_tab]->active_item == 0) {
+    const clk_menu_tab* act_tab = clk_tab_list_get_at(menu->tab_list, menu->active_tab);
+    if (up && act_tab && act_tab->active_item == 0) {
         instance->align_top = true;
         instance->active_item_pos_idx = 0;
     }
@@ -626,7 +638,7 @@ static int render_item_list_section(clk_menu_instance* instance, const clk_menu*
         instance->align_top = false;
         instance->active_item_pos_idx = item_count - 1;
     }
-    int scroll = menu->tabs[menu->active_tab]->active_item - instance->active_item_pos_idx;
+    int scroll = act_tab->active_item - instance->active_item_pos_idx;
     if (scroll < 0)
         scroll = 0;
 
@@ -635,7 +647,7 @@ static int render_item_list_section(clk_menu_instance* instance, const clk_menu*
 
     for (int idx = 0; idx < item_count; ++idx) {
         int item = scroll + idx;
-        if (item >= (int)menu->tabs[tab_index]->item_count)
+        if (item >= (int)clk_item_list_count(act_tab->item_list))
             break;
         if (idx == 0 && !instance->align_top) {
             render_single_item_list_section(menu, tex, sec, y, tab_index, item, remaining_rows,

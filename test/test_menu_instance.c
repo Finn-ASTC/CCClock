@@ -147,13 +147,13 @@ int main(void) {
     /* next item */
     {
         clk_menu_event ev = clk_menu_instance_handle_input(inst, CLK_MENU_INPUT_NEXT_ITEM);
-        TEST("active moves on NEXT", menu->tabs[0]->active_item == 1);
+        TEST("active moves on NEXT", menu->tab_list->tabs[0]->active_item == 1);
         TEST("hnd returns event", ev.type != CLK_MENU_EVENT_NONE);
     }
     /* prev item */
     {
         clk_menu_event ev = clk_menu_instance_handle_input(inst, CLK_MENU_INPUT_PREV_ITEM);
-        TEST("active back to 0", menu->tabs[0]->active_item == 0);
+        TEST("active back to 0", menu->tab_list->tabs[0]->active_item == 0);
     }
     /* tab switch resets P */
     clk_menu_add_tab(menu, 1, "other");

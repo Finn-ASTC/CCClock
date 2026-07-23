@@ -36,18 +36,26 @@ typedef struct {
 } clk_menu_item;
 
 typedef struct {
+    clk_menu_item** items;
+    size_t count;
+    size_t capacity;
+} clk_item_list;
+
+typedef struct clk_menu_tab {
     int id;
     char* name;
-    clk_menu_item** items;
-    size_t item_count;
-    size_t item_capacity;
+    clk_item_list* item_list;
     int active_item;
 } clk_menu_tab;
 
 typedef struct {
     clk_menu_tab** tabs;
-    size_t tab_count;
-    size_t tab_capacity;
+    size_t count;
+    size_t capacity;
+} clk_tab_list;
+
+typedef struct {
+    clk_tab_list* tab_list;
     int active_tab;
 } clk_menu;
 
@@ -87,67 +95,57 @@ typedef struct {
 } clk_menu_event;
 
 /* ------------------------------------------------------------------
- *  Lifecycle
+ *  clk_menu — Lifecycle
  * ------------------------------------------------------------------ */
 
 clk_menu* clk_menu_create(void);
 void clk_menu_destroy(clk_menu* menu);
 
 /* ------------------------------------------------------------------
- *  Tabs
+ *  clk_menu — Tabs
  * ------------------------------------------------------------------ */
 
-/** Add a tab with the given @p tab_id (caller-defined, e.g. enum value).
- *  Returns the tab_id on success, or -1 on failure. */
 int clk_menu_add_tab(clk_menu* menu, int tab_id, const char* name);
 
 /* ------------------------------------------------------------------
- *  Items
+ *  clk_menu — Items (wrappers around clk_item_list_*)
  * ------------------------------------------------------------------ */
 
-/** Append a string item. */
 void clk_menu_add_item_str(clk_menu* menu, int tab_id, int item_id, const char* label,
                            int default_idx, const char** options, int option_count);
 
-/** Insert a string item at @p position (-1 = append). */
 void clk_menu_add_item_str_at(clk_menu* menu, int tab_id, int item_id, const char* label,
                               int default_idx, const char** options, int option_count,
                               int position);
 
-/** Append an int item. */
 void clk_menu_add_item_int(clk_menu* menu, int tab_id, int item_id, const char* label,
                            double default_val, double min_val, double max_val, double step_val);
 
-/** Insert an int item at @p position (-1 = append). */
 void clk_menu_add_item_int_at(clk_menu* menu, int tab_id, int item_id, const char* label,
                               double default_val, double min_val, double max_val, double step_val,
                               int position);
 
-/** Append a bool item. */
 void clk_menu_add_item_bool(clk_menu* menu, int tab_id, int item_id, const char* label,
                             bool default_val);
 
-/** Insert a bool item at @p position (-1 = append). */
 void clk_menu_add_item_bool_at(clk_menu* menu, int tab_id, int item_id, const char* label,
                                bool default_val, int position);
 
-/** Append an action item. */
 void clk_menu_add_item_action(clk_menu* menu, int tab_id, int item_id, const char* label);
 
-/** Insert an action item at @p position (-1 = append). */
 void clk_menu_add_item_action_at(clk_menu* menu, int tab_id, int item_id, const char* label,
                                  int position);
 
 void clk_menu_remove_item(clk_menu* menu, int tab_id, int item_id);
 
 /* ------------------------------------------------------------------
- *  Interaction
+ *  clk_menu — Interaction
  * ------------------------------------------------------------------ */
 
 clk_menu_event clk_menu_handle_input(clk_menu* menu, clk_menu_input input);
 
 /* ------------------------------------------------------------------
- *  External sync
+ *  clk_menu — External sync
  * ------------------------------------------------------------------ */
 
 bool clk_menu_set_value_str(clk_menu* menu, int tab_id, int item_id, const char* val);
@@ -155,7 +153,7 @@ bool clk_menu_set_value_int(clk_menu* menu, int tab_id, int item_id, double val)
 bool clk_menu_set_value_bool(clk_menu* menu, int tab_id, int item_id, bool val);
 
 /* ------------------------------------------------------------------
- *  Dynamic options
+ *  clk_menu — Dynamic options
  * ------------------------------------------------------------------ */
 
 void clk_menu_add_option(clk_menu* menu, int tab_id, int item_id, const char* opt);
@@ -163,32 +161,92 @@ void clk_menu_remove_option(clk_menu* menu, int tab_id, int item_id, int idx);
 void clk_menu_clear_options(clk_menu* menu, int tab_id, int item_id);
 
 /* ------------------------------------------------------------------
- *  INT range
+ *  clk_menu — INT range
  * ------------------------------------------------------------------ */
 
 void clk_menu_set_item_range(clk_menu* menu, int tab_id, int item_id, double min_val,
                              double max_val, double step_val);
 
 /* ------------------------------------------------------------------
- *  Path-list helpers
+ *  clk_menu — Path-list helpers
  * ------------------------------------------------------------------ */
 
-/** Build display names from file paths (strip directory + extension).
- *  Each returned string is malloc'd; caller must free each string and the
- *  array (e.g. via clk_fs_free_list if the paths came from clk_fs_scan_dir). */
 char** clk_menu_build_names(char** paths, int count);
-
-/** Wrap a char** as a const char** view (strings are not copied).
- *  The returned array is calloc'd; caller must free() it (but not the
- *  pointed-to strings). */
 const char** clk_menu_wrap_strings(char** strings, int count);
-
-/** Find the index of a string in an array.  Returns @p fallback when not found. */
 int clk_menu_find_index(const char* needle, const char** haystack, int count, int fallback);
-
-/** Rebuild the options of a string-type item: clear → add → set current value. */
 void clk_menu_rebuild_item(clk_menu* menu, int tab_id, int item_id, const char** options, int count,
                            int new_index);
+
+/* ================================================================
+ *  clk_item_list — item list container
+ * ================================================================ */
+
+clk_item_list* clk_item_list_create(void);
+void clk_item_list_destroy(clk_item_list* list);
+
+clk_menu_item* clk_item_list_find(const clk_item_list* list, int item_id);
+clk_menu_item* clk_item_list_get_at(const clk_item_list* list, size_t position);
+size_t clk_item_list_count(const clk_item_list* list);
+
+void clk_item_list_add_str(clk_item_list* list, int tab_id, int item_id, const char* label,
+                           int default_idx, const char** options, int option_count);
+
+void clk_item_list_add_str_at(clk_item_list* list, int tab_id, int item_id, const char* label,
+                              int default_idx, const char** options, int option_count,
+                              int position);
+
+void clk_item_list_add_int(clk_item_list* list, int tab_id, int item_id, const char* label,
+                           double default_val, double min_val, double max_val, double step_val);
+
+void clk_item_list_add_int_at(clk_item_list* list, int tab_id, int item_id, const char* label,
+                              double default_val, double min_val, double max_val, double step_val,
+                              int position);
+
+void clk_item_list_add_bool(clk_item_list* list, int tab_id, int item_id, const char* label,
+                            bool default_val);
+
+void clk_item_list_add_bool_at(clk_item_list* list, int tab_id, int item_id, const char* label,
+                               bool default_val, int position);
+
+void clk_item_list_add_action(clk_item_list* list, int tab_id, int item_id, const char* label);
+
+void clk_item_list_add_action_at(clk_item_list* list, int tab_id, int item_id, const char* label,
+                                 int position);
+
+void clk_item_list_remove(clk_item_list* list, int item_id);
+void clk_item_list_remove_at(clk_item_list* list, size_t position);
+void clk_item_list_clear(clk_item_list* list);
+
+bool clk_item_list_set_value_str(clk_item_list* list, int item_id, const char* val);
+bool clk_item_list_set_value_int(clk_item_list* list, int item_id, double val);
+bool clk_item_list_set_value_bool(clk_item_list* list, int item_id, bool val);
+
+void clk_item_list_add_option(clk_item_list* list, int item_id, const char* opt);
+void clk_item_list_remove_option(clk_item_list* list, int item_id, int idx);
+void clk_item_list_clear_options(clk_item_list* list, int item_id);
+
+void clk_item_list_set_range(clk_item_list* list, int item_id, double min_val, double max_val,
+                             double step_val);
+
+void clk_item_list_rebuild_item(clk_item_list* list, int item_id, const char** options, int count,
+                                int new_index);
+
+/* ================================================================
+ *  clk_tab_list — tab list container
+ * ================================================================ */
+
+clk_tab_list* clk_tab_list_create(void);
+void clk_tab_list_destroy(clk_tab_list* list);
+
+clk_menu_tab* clk_tab_list_find(const clk_tab_list* list, int tab_id);
+clk_menu_tab* clk_tab_list_get_at(const clk_tab_list* list, size_t position);
+size_t clk_tab_list_count(const clk_tab_list* list);
+
+int clk_tab_list_add(clk_tab_list* list, int tab_id, const char* name);
+void clk_tab_list_remove(clk_tab_list* list, int tab_id);
+
+void clk_tab_list_set_item_list(clk_tab_list* list, int tab_id, clk_item_list* new_item_list);
+const clk_item_list* clk_tab_list_get_item_list(const clk_tab_list* list, int tab_id);
 
 #ifdef __cplusplus
 }
