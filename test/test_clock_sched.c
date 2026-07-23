@@ -271,6 +271,203 @@ int main(void) {
     ok = clk_clock_format_now("%H:%M:%S", time_str, sizeof(time_str));
     TEST("format_now succeeds", ok && strlen(time_str) == 8);
 
+    /* ================================================================
+     *  New APIs: alarm id lookup
+     * ================================================================ */
+
+    clk_clock_init(&clock, NULL);
+
+    clk_clock_alarm ra;
+    memset(&ra, 0, sizeof(ra));
+    ra.id = 42;
+    strcpy(ra.name, "find_me");
+
+    clk_clock_add_alarm(&clock, &ra);
+    ra.id = 15;
+    strcpy(ra.name, "second_one");
+    clk_clock_add_alarm(&clock, &ra);
+
+    /* --- find_alarm_by_id --- */
+    TEST("find_alarm_by_id found", clk_clock_find_alarm_by_id(&clock, 42) != NULL);
+    TEST("find_alarm_by_id second", clk_clock_find_alarm_by_id(&clock, 15) == &clock.alarms[1]);
+    TEST("find_alarm_by_id absent", clk_clock_find_alarm_by_id(&clock, 7) == NULL);
+    TEST("find_alarm_by_id NULL clock", clk_clock_find_alarm_by_id(NULL, 42) == NULL);
+
+    /* --- find_alarm_index_by_id --- */
+    TEST("find_alarm_index_by_id found", clk_clock_find_alarm_index_by_id(&clock, 42) == 0);
+    TEST("find_alarm_index_by_id second", clk_clock_find_alarm_index_by_id(&clock, 15) == 1);
+    TEST("find_alarm_index_by_id absent", clk_clock_find_alarm_index_by_id(&clock, 99) == -1);
+    TEST("find_alarm_index_by_id NULL", clk_clock_find_alarm_index_by_id(NULL, 42) == -1);
+
+    /* --- find_alarm_by_name --- */
+    TEST("find_alarm_by_name found", clk_clock_find_alarm_by_name(&clock, "find_me")->id == 42);
+    TEST("find_alarm_by_name second", clk_clock_find_alarm_by_name(&clock, "second_one")->id == 15);
+    TEST("find_alarm_by_name absent", clk_clock_find_alarm_by_name(&clock, "nobody") == NULL);
+    TEST("find_alarm_by_name NULL name", clk_clock_find_alarm_by_name(&clock, NULL) == NULL);
+    TEST("find_alarm_by_name NULL clock", clk_clock_find_alarm_by_name(NULL, "x") == NULL);
+
+    /* ================================================================
+     *  New APIs: alarm position insert
+     * ================================================================ */
+
+    memset(&ra, 0, sizeof(ra));
+    ra.id = 1;
+    strcpy(ra.name, "head");
+    ok = clk_clock_add_alarm_at(&clock, &ra, 0);
+    TEST("add_alarm_at head succeeds", ok);
+    TEST("add_alarm_at head id==1",
+         clock.alarms[0].id == 1 && strcmp(clock.alarms[0].name, "head") == 0);
+    TEST("add_alarm_at shifts old[0]",
+         clock.alarms[1].id == 42 && strcmp(clock.alarms[1].name, "find_me") == 0);
+    TEST("add_alarm_at count++", clock.alarm_count == 3);
+
+    ra.id = 50;
+    strcpy(ra.name, "middle");
+    ok = clk_clock_add_alarm_at(&clock, &ra, 1);
+    TEST("add_alarm_at middle id==50", clock.alarms[1].id == 50);
+    TEST("add_alarm_at middle count==4", clock.alarm_count == 4);
+
+    ra.id = 99;
+    strcpy(ra.name, "end");
+    ok = clk_clock_add_alarm_at(&clock, &ra, clock.alarm_count);
+    TEST("add_alarm_at end succeeds", ok);
+    TEST("add_alarm_at end id==99", clock.alarms[4].id == 99);
+
+    ok = clk_clock_add_alarm_at(&clock, &ra, -1);
+    TEST("add_alarm_at OOB neg", !ok);
+
+    ok = clk_clock_add_alarm_at(&clock, &ra, 999);
+    TEST("add_alarm_at OOB hi", !ok);
+
+    ok = clk_clock_add_alarm_at(NULL, &ra, 0);
+    TEST("add_alarm_at NULL clock", !ok);
+
+    /* ================================================================
+     *  New APIs: alarm remove_by_id
+     * ================================================================ */
+
+    ok = clk_clock_remove_alarm_by_id(&clock, 50);
+    TEST("remove_alarm_by_id found", ok && clock.alarm_count == 4);
+    TEST("remove_alarm_by_id gone", clk_clock_find_alarm_by_id(&clock, 50) == NULL);
+
+    ok = clk_clock_remove_alarm_by_id(&clock, 999);
+    TEST("remove_alarm_by_id absent", !ok);
+
+    ok = clk_clock_remove_alarm_by_id(NULL, 1);
+    TEST("remove_alarm_by_id NULL clock", !ok);
+
+    /* ================================================================
+     *  New APIs: pomodoro id lookup
+     * ================================================================ */
+
+    clk_clock_init(&clock, NULL);
+
+    clk_clock_pomodoro pomo;
+    memset(&pomo, 0, sizeof(pomo));
+    pomo.id = 10;
+    strcpy(pomo.name, "pomo_alpha");
+    clk_clock_add_pomodoro(&clock, &pomo);
+
+    pomo.id = 20;
+    strcpy(pomo.name, "pomo_beta");
+    clk_clock_add_pomodoro(&clock, &pomo);
+
+    TEST("find_pomodoro_by_id found", clk_clock_find_pomodoro_by_id(&clock, 10) != NULL);
+    TEST("find_pomodoro_by_id second",
+         clk_clock_find_pomodoro_by_id(&clock, 20) == &clock.pomodoros[1]);
+    TEST("find_pomodoro_by_id absent", clk_clock_find_pomodoro_by_id(&clock, 5) == NULL);
+    TEST("find_pomodoro_by_id NULL", clk_clock_find_pomodoro_by_id(NULL, 10) == NULL);
+
+    TEST("find_pomodoro_index_by_id first", clk_clock_find_pomodoro_index_by_id(&clock, 10) == 0);
+    TEST("find_pomodoro_index_by_id second", clk_clock_find_pomodoro_index_by_id(&clock, 20) == 1);
+    TEST("find_pomodoro_index_by_id absent", clk_clock_find_pomodoro_index_by_id(&clock, 99) == -1);
+
+    TEST("find_pomodoro_by_name found",
+         clk_clock_find_pomodoro_by_name(&clock, "pomo_alpha")->id == 10);
+    TEST("find_pomodoro_by_name absent", clk_clock_find_pomodoro_by_name(&clock, "nobody") == NULL);
+    TEST("find_pomodoro_by_name NULL name", clk_clock_find_pomodoro_by_name(&clock, NULL) == NULL);
+
+    /* ================================================================
+     *  New APIs: pomodoro position insert + remove_by_id
+     * ================================================================ */
+
+    memset(&pomo, 0, sizeof(pomo));
+    pomo.id = 5;
+    strcpy(pomo.name, "head_pomo");
+    ok = clk_clock_add_pomodoro_at(&clock, &pomo, 0);
+    TEST("add_pomodoro_at head", ok && clock.pomodoros[0].id == 5);
+
+    pomo.id = 25;
+    strcpy(pomo.name, "tail_pomo");
+    ok = clk_clock_add_pomodoro_at(&clock, &pomo, clock.pomodoro_count);
+    TEST("add_pomodoro_at tail", ok && clock.pomodoros[3].id == 25 && clock.pomodoro_count == 4);
+
+    ok = clk_clock_add_pomodoro_at(&clock, &pomo, -1);
+    TEST("add_pomodoro_at OOB neg", !ok);
+
+    ok = clk_clock_remove_pomodoro_by_id(&clock, 5);
+    TEST("remove_pomodoro_by_id found", ok && clock.pomodoro_count == 3);
+    ok = clk_clock_remove_pomodoro_by_id(&clock, 99);
+    TEST("remove_pomodoro_by_id absent", !ok);
+    ok = clk_clock_remove_pomodoro_by_id(NULL, 1);
+    TEST("remove_pomodoro_by_id NULL", !ok);
+
+    /* ================================================================
+     *  New APIs: segment
+     * ================================================================ */
+
+    /* add segments to pomodoro id=10 (pomo_alpha, now at index 1) */
+    int alpha_pomo_index = clk_clock_find_pomodoro_index_by_id(&clock, 10);
+    if (alpha_pomo_index < 0)
+        goto test_cleanup_new;
+
+    clk_clock_pomodoro* alpha = clk_clock_find_pomodoro_by_id(&clock, 10);
+
+    clk_clock_pomodoro_segment nseg;
+    memset(&nseg, 0, sizeof(nseg));
+    nseg.id = 100;
+    strcpy(nseg.name, "work");
+    nseg.duration_seconds = 1500;
+    clk_clock_pomodoro_add_segment(&clock, alpha_pomo_index, &nseg);
+
+    nseg.id = 200;
+    strcpy(nseg.name, "break");
+    nseg.duration_seconds = 300;
+    clk_clock_pomodoro_add_segment(&clock, alpha_pomo_index, &nseg);
+
+    /* find_segment_by_id */
+    TEST("find_segment_by_id found pomodoro+segment",
+         clk_clock_pomodoro_find_segment_by_id(&clock, 10, 100) == &alpha->segments[0]);
+    TEST("find_segment_by_id second",
+         clk_clock_pomodoro_find_segment_by_id(&clock, 10, 200) == &alpha->segments[1]);
+    TEST("find_segment_by_id bad segment",
+         clk_clock_pomodoro_find_segment_by_id(&clock, 10, 999) == NULL);
+    TEST("find_segment_by_id bad pomodoro",
+         clk_clock_pomodoro_find_segment_by_id(&clock, 99, 100) == NULL);
+    TEST("find_segment_by_id NULL", clk_clock_pomodoro_find_segment_by_id(NULL, 10, 100) == NULL);
+
+    /* clear_segments */
+    alpha->enabled = true;
+    alpha->paused = true;
+    alpha->current_segment = 1;
+    alpha->timer.running = true;
+    alpha->timer.paused = true;
+
+    clk_clock_pomodoro_clear_segments(&clock, alpha_pomo_index);
+    TEST("clear_segments count zero", alpha->segment_count == 0);
+    TEST("clear_segments current -1", alpha->current_segment == -1);
+    TEST("clear_segments disabled", !alpha->enabled);
+    TEST("clear_segments not paused", !alpha->paused);
+    TEST("clear_segments timer stopped", !alpha->timer.running && !alpha->timer.paused);
+
+    clk_clock_pomodoro_clear_segments(&clock, -1);
+    TEST("clear_segments OOB neg safe", 1);
+    clk_clock_pomodoro_clear_segments(&clock, 99);
+    TEST("clear_segments OOB hi safe", 1);
+    clk_clock_pomodoro_clear_segments(NULL, 0);
+    TEST("clear_segments NULL safe", 1);
+
+test_cleanup_new:
     printf("\n%d/%d passed\n", test_total - test_failed, test_total);
     return test_failed > 0 ? 1 : 0;
 }

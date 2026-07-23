@@ -34,6 +34,18 @@ bool clk_clock_add_alarm(clk_clock* clock, const clk_clock_alarm* alarm) {
     return true;
 }
 
+bool clk_clock_add_alarm_at(clk_clock* clock, const clk_clock_alarm* alarm, int index) {
+    if (!clock || !alarm || clock->alarm_count >= CLK_ALARM_MAX)
+        return false;
+    if (index < 0 || index > clock->alarm_count)
+        return false;
+    for (int i = clock->alarm_count; i > index; --i)
+        clock->alarms[i] = clock->alarms[i - 1];
+    clock->alarms[index] = *alarm;
+    clock->alarm_count++;
+    return true;
+}
+
 bool clk_clock_remove_alarm(clk_clock* clock, int index) {
     if (!clock || index < 0 || index >= clock->alarm_count)
         return false;
@@ -41,6 +53,11 @@ bool clk_clock_remove_alarm(clk_clock* clock, int index) {
         clock->alarms[i] = clock->alarms[i + 1];
     clock->alarm_count--;
     return true;
+}
+
+bool clk_clock_remove_alarm_by_id(clk_clock* clock, int id) {
+    int index = clk_clock_find_alarm_index_by_id(clock, id);
+    return clk_clock_remove_alarm(clock, index);
 }
 
 void clk_clock_alarm_set_enabled(clk_clock* clock, int index, bool enabled) {
@@ -51,6 +68,33 @@ void clk_clock_alarm_set_enabled(clk_clock* clock, int index, bool enabled) {
 
 int clk_clock_alarm_count(const clk_clock* clock) {
     return clock ? clock->alarm_count : 0;
+}
+
+clk_clock_alarm* clk_clock_find_alarm_by_id(clk_clock* clock, int id) {
+    if (!clock)
+        return NULL;
+    for (int i = 0; i < clock->alarm_count; ++i)
+        if (clock->alarms[i].id == id)
+            return &clock->alarms[i];
+    return NULL;
+}
+
+int clk_clock_find_alarm_index_by_id(const clk_clock* clock, int id) {
+    if (!clock)
+        return -1;
+    for (int i = 0; i < clock->alarm_count; ++i)
+        if (clock->alarms[i].id == id)
+            return i;
+    return -1;
+}
+
+clk_clock_alarm* clk_clock_find_alarm_by_name(clk_clock* clock, const char* name) {
+    if (!clock || !name)
+        return NULL;
+    for (int i = 0; i < clock->alarm_count; ++i)
+        if (strcmp(clock->alarms[i].name, name) == 0)
+            return &clock->alarms[i];
+    return NULL;
 }
 
 /* ================================================================
@@ -65,6 +109,18 @@ bool clk_clock_add_pomodoro(clk_clock* clock, const clk_clock_pomodoro* pomodoro
     return true;
 }
 
+bool clk_clock_add_pomodoro_at(clk_clock* clock, const clk_clock_pomodoro* pomodoro, int index) {
+    if (!clock || !pomodoro || clock->pomodoro_count >= CLK_POMODORO_MAX)
+        return false;
+    if (index < 0 || index > clock->pomodoro_count)
+        return false;
+    for (int i = clock->pomodoro_count; i > index; --i)
+        clock->pomodoros[i] = clock->pomodoros[i - 1];
+    clock->pomodoros[index] = *pomodoro;
+    clock->pomodoro_count++;
+    return true;
+}
+
 bool clk_clock_remove_pomodoro(clk_clock* clock, int index) {
     if (!clock || index < 0 || index >= clock->pomodoro_count)
         return false;
@@ -74,8 +130,40 @@ bool clk_clock_remove_pomodoro(clk_clock* clock, int index) {
     return true;
 }
 
+bool clk_clock_remove_pomodoro_by_id(clk_clock* clock, int id) {
+    int index = clk_clock_find_pomodoro_index_by_id(clock, id);
+    return clk_clock_remove_pomodoro(clock, index);
+}
+
 int clk_clock_pomodoro_count(const clk_clock* clock) {
     return clock ? clock->pomodoro_count : 0;
+}
+
+clk_clock_pomodoro* clk_clock_find_pomodoro_by_id(clk_clock* clock, int id) {
+    if (!clock)
+        return NULL;
+    for (int i = 0; i < clock->pomodoro_count; ++i)
+        if (clock->pomodoros[i].id == id)
+            return &clock->pomodoros[i];
+    return NULL;
+}
+
+int clk_clock_find_pomodoro_index_by_id(const clk_clock* clock, int id) {
+    if (!clock)
+        return -1;
+    for (int i = 0; i < clock->pomodoro_count; ++i)
+        if (clock->pomodoros[i].id == id)
+            return i;
+    return -1;
+}
+
+clk_clock_pomodoro* clk_clock_find_pomodoro_by_name(clk_clock* clock, const char* name) {
+    if (!clock || !name)
+        return NULL;
+    for (int i = 0; i < clock->pomodoro_count; ++i)
+        if (strcmp(clock->pomodoros[i].name, name) == 0)
+            return &clock->pomodoros[i];
+    return NULL;
 }
 
 bool clk_clock_pomodoro_add_segment(clk_clock* clock, int pomodoro_index,
@@ -116,6 +204,32 @@ bool clk_clock_pomodoro_remove_segment(clk_clock* clock, int pomodoro_index, int
         pomodoro->segments[i] = pomodoro->segments[i + 1];
     pomodoro->segment_count--;
     return true;
+}
+
+void clk_clock_pomodoro_clear_segments(clk_clock* clock, int pomodoro_index) {
+    if (!clock || pomodoro_index < 0 || pomodoro_index >= clock->pomodoro_count)
+        return;
+    clk_clock_pomodoro* pomodoro = &clock->pomodoros[pomodoro_index];
+    pomodoro->segment_count = 0;
+    pomodoro->current_segment = -1;
+    pomodoro->enabled = false;
+    pomodoro->paused = false;
+    pomodoro->timer.running = false;
+    pomodoro->timer.paused = false;
+}
+
+clk_clock_pomodoro_segment* clk_clock_pomodoro_find_segment_by_id(clk_clock* clock, int pomodoro_id,
+                                                                  int segment_id) {
+    if (!clock)
+        return NULL;
+    for (int i = 0; i < clock->pomodoro_count; ++i) {
+        if (clock->pomodoros[i].id != pomodoro_id)
+            continue;
+        for (int j = 0; j < clock->pomodoros[i].segment_count; ++j)
+            if (clock->pomodoros[i].segments[j].id == segment_id)
+                return &clock->pomodoros[i].segments[j];
+    }
+    return NULL;
 }
 
 void clk_clock_pomodoro_start(clk_clock* clock, int index) {

@@ -102,21 +102,50 @@ void clk_clock_deinit(clk_clock* clock);
 /** Append a copy of @p alarm.  Returns false if the array is full. */
 bool clk_clock_add_alarm(clk_clock* clock, const clk_clock_alarm* alarm);
 
+/** Insert a copy of @p alarm at @p index (0..alarm_count).
+ *  Existing alarms from that position onward are shifted right.
+ *  Returns false on out-of-range or array full. */
+bool clk_clock_add_alarm_at(clk_clock* clock, const clk_clock_alarm* alarm, int index);
+
 /** Remove the alarm at @p index.  Returns false on out-of-range. */
 bool clk_clock_remove_alarm(clk_clock* clock, int index);
+
+/** Remove the alarm whose id matches @p id.  Returns false if not found. */
+bool clk_clock_remove_alarm_by_id(clk_clock* clock, int id);
 
 /** Enable or disable without deleting. */
 void clk_clock_alarm_set_enabled(clk_clock* clock, int index, bool enabled);
 
 int clk_clock_alarm_count(const clk_clock* clock);
 
+/** Find the first alarm whose id field equals @p id.  Returns NULL if not found. */
+clk_clock_alarm* clk_clock_find_alarm_by_id(clk_clock* clock, int id);
+
+/** Find the array index of the alarm whose id field equals @p id.  Returns -1 if not found. */
+int clk_clock_find_alarm_index_by_id(const clk_clock* clock, int id);
+
+/** Find the first alarm whose name field equals @p name.  Returns NULL if not found. */
+clk_clock_alarm* clk_clock_find_alarm_by_name(clk_clock* clock, const char* name);
+
 /* ================================================================
  *  Pomodoro groups
  * ================================================================ */
 
 bool clk_clock_add_pomodoro(clk_clock* clock, const clk_clock_pomodoro* pomodoro);
+
+bool clk_clock_add_pomodoro_at(clk_clock* clock, const clk_clock_pomodoro* pomodoro, int index);
+
 bool clk_clock_remove_pomodoro(clk_clock* clock, int index);
+
+bool clk_clock_remove_pomodoro_by_id(clk_clock* clock, int id);
+
 int clk_clock_pomodoro_count(const clk_clock* clock);
+
+clk_clock_pomodoro* clk_clock_find_pomodoro_by_id(clk_clock* clock, int id);
+
+int clk_clock_find_pomodoro_index_by_id(const clk_clock* clock, int id);
+
+clk_clock_pomodoro* clk_clock_find_pomodoro_by_name(clk_clock* clock, const char* name);
 
 /** Append a segment to an existing pomodoro group. */
 bool clk_clock_pomodoro_add_segment(clk_clock* clock, int pomodoro_index,
@@ -131,6 +160,15 @@ bool clk_clock_pomodoro_add_segment_at(clk_clock* clock, int pomodoro_index,
 
 /** Remove a segment by index. */
 bool clk_clock_pomodoro_remove_segment(clk_clock* clock, int pomodoro_index, int segment_index);
+
+/** Remove all segments from a pomodoro group.  Safer than looping remove_segment
+ *  when you plan to rebuild the segment list entirely. */
+void clk_clock_pomodoro_clear_segments(clk_clock* clock, int pomodoro_index);
+
+/** Find the first segment whose id equals @p segment_id within the pomodoro
+ *  identified by @p pomodoro_id.  Returns NULL if either id is not found. */
+clk_clock_pomodoro_segment* clk_clock_pomodoro_find_segment_by_id(clk_clock* clock, int pomodoro_id,
+                                                                  int segment_id);
 
 /** Start cycling from segment 0. */
 void clk_clock_pomodoro_start(clk_clock* clock, int index);
