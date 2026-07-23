@@ -5,6 +5,8 @@
 
 #include "clk_app_config.h"
 #include "clk_ascii_render.h"
+#include "clk_audio.h"
+#include "clk_clock.h"
 #include "clk_menu.h"
 #include "clk_menu_theme.h"
 
@@ -36,6 +38,11 @@ bool clk_app_setup_render(clk_ascii_render* render, const clk_cfg_ascii_clock_th
 /** Load the theme file selected in @p themes (zero-initialises @p theme
  *  then calls clk_menu_theme_load).  Returns false if loading failed. */
 bool clk_app_setup_theme(clk_menu_theme* theme, const clk_cfg_themes* themes);
+
+bool clk_app_setup_clock(clk_clock* clock, clk_audio_engine** out_engine,
+                         const clk_app_config* cfg);
+
+void clk_app_setup_clock_deinit(clk_clock* clock, clk_audio_engine* engine);
 
 #ifdef __cplusplus
 }

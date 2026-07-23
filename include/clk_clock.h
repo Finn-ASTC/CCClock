@@ -43,31 +43,34 @@ typedef enum {
  * ------------------------------------------------------------------ */
 
 typedef struct {
+    int id;
     char name[CLK_CLOCK_NAME_MAX];
     clk_alarm alarm;
     clk_audio_sound* sound;
-    int repeat_count;            /* times to repeat the sound (when !loop) */
-    clk_repeat_days repeat_days; /* one of CLK_REPEAT_* */
-    time_t today_date;           /* used only when repeat_days == CLK_REPEAT_TODAY */
-    float volume;                /* 0.0 — 1.0 */
-    bool loop;                   /* true = infinite repeat */
+    int repeat_count;
+    clk_repeat_days repeat_days;
+    time_t today_date;
+    float volume;
+    bool loop;
 } clk_clock_alarm;
 
 typedef struct {
+    int id;
     char name[CLK_CLOCK_NAME_MAX];
     int duration_seconds;
     clk_audio_sound* sound;
     int repeat_count;
-    float volume; /* 0.0 — 1.0 */
-    bool loop;    /* true = infinite repeat */
+    float volume;
+    bool loop;
 } clk_clock_pomodoro_segment;
 
 typedef struct {
+    int id;
     char name[CLK_CLOCK_NAME_MAX];
     clk_clock_pomodoro_segment segments[CLK_POMODORO_MAX_SEGMENTS];
     int segment_count;
-    clk_timer timer;     /* current segment countdown */
-    int current_segment; /* -1 = not running */
+    clk_timer timer;
+    int current_segment;
     bool enabled;
     bool paused;
 } clk_clock_pomodoro;
