@@ -102,6 +102,10 @@
         {
             "name": "wsl-release",
             "configurePreset": "wsl-release"
+        },
+        {
+            "name": "wsl-valgrind",
+            "configurePreset": "wsl-valgrind"
         }
     ],
     "testPresets": [
@@ -120,6 +124,10 @@
         {
             "name": "wsl-relwithdebinfo",
             "configurePreset": "wsl-relwithdebinfo"
+        },
+        {
+            "name": "wsl-valgrind",
+            "configurePreset": "wsl-valgrind"
         }
     ]
 }

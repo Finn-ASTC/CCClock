@@ -137,4 +137,6 @@ jobs:
         run: cmake --build build
 
       - name: Run memcheck
-        run: ctest --test-dir build -T memcheck --output-on-failure
+        run: |
+          export MEMORYCHECK_COMMAND_OPTIONS="--leak-check=full --error-exitcode=1 --show-leak-kinds=all --track-origins=yes"
+          ctest --test-dir build -T memcheck --output-on-failure

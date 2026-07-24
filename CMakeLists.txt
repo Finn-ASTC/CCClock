@@ -132,8 +132,8 @@ add_clk_exec(json_benchmark sandbox/json_benchmark.c)
 add_clk_exec(menu_demo sandbox/menu_demo.c)
 add_clk_exec(write_demo sandbox/write_demo.c)
 
-enable_testing()
 include(CTest)
+enable_testing()
 add_clk_test(key_io)
 add_clk_test(json)
 add_clk_test(term)
@@ -150,7 +150,5 @@ add_clk_test(audio)
 # ---- Valgrind memcheck ----
 find_program(VALGRIND_EXECUTABLE valgrind)
 if(VALGRIND_EXECUTABLE)
-    set(CTEST_MEMORYCHECK_COMMAND "${VALGRIND_EXECUTABLE}")
-    set(CTEST_MEMORYCHECK_COMMAND_OPTIONS
-        "--leak-check=full --error-exitcode=1 --show-leak-kinds=all --track-origins=yes")
+    set(MEMORYCHECK_COMMAND "${VALGRIND_EXECUTABLE}")
 endif()
