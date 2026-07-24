@@ -75,6 +75,15 @@
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "RelWithDebInfo"
             }
+        },
+        {
+            "name": "wsl-valgrind",
+            "displayName": "WSL Valgrind (Debug, no ASan)",
+            "inherits": "base-wsl",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "DISABLE_SANITIZERS": "ON"
+            }
         }
     ],
     "buildPresets": [

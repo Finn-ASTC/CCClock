@@ -31,7 +31,8 @@ if(CMAKE_EXPORT_COMPILE_COMMANDS)
 endif()
 
 # ---- sanitizers (Linux only, skip MinGW) ----
-if(CMAKE_BUILD_TYPE MATCHES "Debug" AND NOT WIN32 AND NOT MINGW)
+option(DISABLE_SANITIZERS "Disable ASan/UBSan (for Valgrind)" OFF)
+if(CMAKE_BUILD_TYPE MATCHES "Debug" AND NOT WIN32 AND NOT MINGW AND NOT DISABLE_SANITIZERS)
     add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
     add_link_options(-fsanitize=address,undefined)
 endif()
@@ -132,6 +133,7 @@ add_clk_exec(menu_demo sandbox/menu_demo.c)
 add_clk_exec(write_demo sandbox/write_demo.c)
 
 enable_testing()
+include(CTest)
 add_clk_test(key_io)
 add_clk_test(json)
 add_clk_test(term)
@@ -144,3 +146,11 @@ add_clk_test(item_list)
 add_clk_test(menu_theme)
 add_clk_test(menu_instance)
 add_clk_test(audio)
+
+# ---- Valgrind memcheck ----
+find_program(VALGRIND_EXECUTABLE valgrind)
+if(VALGRIND_EXECUTABLE)
+    set(CTEST_MEMORYCHECK_COMMAND "${VALGRIND_EXECUTABLE}")
+    set(CTEST_MEMORYCHECK_COMMAND_OPTIONS
+        "--leak-check=full --error-exitcode=1 --show-leak-kinds=all --track-origins=yes")
+endif()
