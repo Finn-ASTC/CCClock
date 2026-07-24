@@ -250,7 +250,7 @@ int main(void) {
     /* --- get_size with multi-line --- */
     int sw2, sh2;
     TEST("get_size multi-line succeeds", clk_ascii_render_get_size(&render, "12\n34", &sw2, &sh2));
-    TEST("get_size multi-line: height > glyph_h", sh2 > gw);
+    TEST("get_size multi-line: height > glyph_h", sh2 > gh);
 
     /* --- reload --- */
     TEST("reload succeeds", clk_ascii_render_reload(&render));

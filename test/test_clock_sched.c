@@ -256,6 +256,30 @@ int main(void) {
     TEST("stop_all clears", clk_clock_bell_count(&clock) == 0);
 
     /* ================================================================
+     *  New APIs: next_alarm_id / next_pomodoro_id
+     * ================================================================ */
+
+    clk_clock_init(&clock, NULL);
+
+    TEST("next_alarm_id empty", clk_clock_next_alarm_id(&clock) == 0);
+
+    clk_clock_alarm na;
+    memset(&na, 0, sizeof(na));
+    na.id = 5;
+    clk_clock_add_alarm(&clock, &na);
+    na.id = 3;
+    clk_clock_add_alarm(&clock, &na);
+    TEST("next_alarm_id returns max+1", clk_clock_next_alarm_id(&clock) == 6);
+
+    TEST("next_pomodoro_id empty", clk_clock_next_pomodoro_id(&clock) == 0);
+
+    clk_clock_pomodoro np;
+    memset(&np, 0, sizeof(np));
+    np.id = 10;
+    clk_clock_add_pomodoro(&clock, &np);
+    TEST("next_pomodoro_id returns max+1", clk_clock_next_pomodoro_id(&clock) == 11);
+
+    /* ================================================================
      *  translate_format (regression)
      * ================================================================ */
 
@@ -445,6 +469,15 @@ int main(void) {
     TEST("find_segment_by_id bad pomodoro",
          clk_clock_pomodoro_find_segment_by_id(&clock, 99, 100) == NULL);
     TEST("find_segment_by_id NULL", clk_clock_pomodoro_find_segment_by_id(NULL, 10, 100) == NULL);
+
+    TEST("find_segment_index_by_id first",
+         clk_clock_pomodoro_find_segment_index_by_id(&clock, 10, 100) == 0);
+    TEST("find_segment_index_by_id second",
+         clk_clock_pomodoro_find_segment_index_by_id(&clock, 10, 200) == 1);
+    TEST("find_segment_index_by_id absent",
+         clk_clock_pomodoro_find_segment_index_by_id(&clock, 10, 999) == -1);
+    TEST("find_segment_index_by_id NULL",
+         clk_clock_pomodoro_find_segment_index_by_id(NULL, 10, 100) == -1);
 
     /* clear_segments */
     alpha->enabled = true;

@@ -134,22 +134,30 @@ int clk_clock_next_alarm_id(const clk_clock* clock);
  *  Pomodoro groups
  * ================================================================ */
 
+/** Append a copy of @p pomodoro.  Returns false if the array is full. */
 bool clk_clock_add_pomodoro(clk_clock* clock, const clk_clock_pomodoro* pomodoro);
 
+/** Insert a copy at @p index (0..pomodoro_count). */
 bool clk_clock_add_pomodoro_at(clk_clock* clock, const clk_clock_pomodoro* pomodoro, int index);
 
+/** Remove the pomodoro at @p index. */
 bool clk_clock_remove_pomodoro(clk_clock* clock, int index);
 
+/** Remove the pomodoro whose id matches @p id. */
 bool clk_clock_remove_pomodoro_by_id(clk_clock* clock, int id);
 
 int clk_clock_pomodoro_count(const clk_clock* clock);
 
+/** Find the first pomodoro whose id matches @p id.  Returns NULL if not found. */
 clk_clock_pomodoro* clk_clock_find_pomodoro_by_id(clk_clock* clock, int id);
 
+/** Find the array index of the pomodoro whose id matches.  Returns -1 if not found. */
 int clk_clock_find_pomodoro_index_by_id(const clk_clock* clock, int id);
 
+/** Find the first pomodoro whose name matches @p name. */
 clk_clock_pomodoro* clk_clock_find_pomodoro_by_name(clk_clock* clock, const char* name);
 
+/** Return the smallest non-negative id not used by any existing pomodoro. */
 int clk_clock_next_pomodoro_id(const clk_clock* clock);
 
 /** Append a segment to an existing pomodoro group. */
@@ -175,13 +183,19 @@ void clk_clock_pomodoro_clear_segments(clk_clock* clock, int pomodoro_index);
 clk_clock_pomodoro_segment* clk_clock_pomodoro_find_segment_by_id(clk_clock* clock, int pomodoro_id,
                                                                   int segment_id);
 
+/** Find the array index of the segment matching both ids.  Returns -1 if not found. */
 int clk_clock_pomodoro_find_segment_index_by_id(const clk_clock* clock, int pomodoro_id,
                                                 int segment_id);
 
 /** Start cycling from segment 0. */
 void clk_clock_pomodoro_start(clk_clock* clock, int index);
+
+/** Freeze the timer at current remaining time. */
 void clk_clock_pomodoro_pause(clk_clock* clock, int index);
+
+/** Resume from a paused state. */
 void clk_clock_pomodoro_resume(clk_clock* clock, int index);
+
 /** Stop and reset to segment 0 (not running). */
 void clk_clock_pomodoro_stop(clk_clock* clock, int index);
 

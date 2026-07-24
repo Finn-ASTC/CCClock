@@ -44,8 +44,9 @@ int main(void) {
     TEST("create has sprite", inst->sprite != NULL);
     TEST("create sprite default z", inst->sprite->z_order == 0);
     TEST("create sprite pos=0,0", inst->sprite->posx == 0 && inst->sprite->posy == 0);
-    TEST("create defaults", inst->active_item_pos_idx == 1 && inst->last_active_item_pos_idx == 1 &&
-                                inst->align_top == true);
+    TEST("create active_item_pos_idx == 1", inst->active_item_pos_idx == 1);
+    TEST("create last_active_item_pos_idx == 1", inst->last_active_item_pos_idx == 1);
+    TEST("create align_top == true", inst->align_top == true);
 
     /* ================================================================
      *  set_position
@@ -182,6 +183,7 @@ int main(void) {
 
     clk_menu_destroy(menu);
     clk_menu_theme_destroy(&theme);
+    clk_term_close();
 
 test_cleanup:
     printf("\n%d/%d passed\n", test_total - test_failed, test_total);

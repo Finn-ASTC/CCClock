@@ -40,8 +40,8 @@ extern "C" {
 #define CLK_ALARM_ADD_OFFSET 9
 #define CLK_ALARM_DELETE_OFFSET 10
 
-#define CLK_ALARM_DECODE(item_id, al_id, off) \
-    ((al_id) = (item_id) / CLK_ALARM_ITEM_STRIDE, (off) = (item_id) % CLK_ALARM_ITEM_STRIDE)
+#define CLK_ALARM_DECODE(item_id, alarm_id, offset) \
+    ((alarm_id) = (item_id) / CLK_ALARM_ITEM_STRIDE, (offset) = (item_id) % CLK_ALARM_ITEM_STRIDE)
 
 /* ── Pomodoro tab item ID encoding ── */
 #define CLK_POMO_STRIDE 256
@@ -61,12 +61,12 @@ extern "C" {
 #define CLK_POMO_SEG_ADD_OFFSET 5
 #define CLK_POMO_SEG_DELETE_OFFSET 6
 
-#define CLK_POMO_DECODE(item_id, po_id, off) \
-    ((po_id) = (item_id) / CLK_POMO_STRIDE, (off) = (item_id) % CLK_POMO_STRIDE)
+#define CLK_POMO_DECODE(item_id, pomodoro_id, offset) \
+    ((pomodoro_id) = (item_id) / CLK_POMO_STRIDE, (offset) = (item_id) % CLK_POMO_STRIDE)
 
-#define CLK_POMO_SEG_DECODE(pomo_offset, seg_id, field)                        \
-    ((seg_id) = ((pomo_offset) - CLK_POMO_SEGMENT_BASE) / CLK_POMO_SEG_STRIDE, \
-     (field) = ((pomo_offset) - CLK_POMO_SEGMENT_BASE) % CLK_POMO_SEG_STRIDE)
+#define CLK_POMO_SEG_DECODE(pomodoro_offset, segment_id, field)                        \
+    ((segment_id) = ((pomodoro_offset) - CLK_POMO_SEGMENT_BASE) / CLK_POMO_SEG_STRIDE, \
+     (field) = ((pomodoro_offset) - CLK_POMO_SEGMENT_BASE) % CLK_POMO_SEG_STRIDE)
 
 #define CLK_REPEAT_DAY_OPTION_COUNT 9
 extern const char* clk_repeat_day_options[];
@@ -85,14 +85,19 @@ bool clk_app_setup_render(clk_ascii_render* render, const clk_cfg_ascii_clock_th
  *  then calls clk_menu_theme_load).  Returns false if loading failed. */
 bool clk_app_setup_theme(clk_menu_theme* theme, const clk_cfg_themes* themes);
 
+/** Create audio engine and populate clock from config.  Returns false on engine failure. */
 bool clk_app_setup_clock(clk_clock* clock, clk_audio_engine** out_engine,
                          const clk_app_config* cfg);
 
+/** Stop bells, destroy sound templates, shutdown audio engine. */
 void clk_app_setup_clock_deinit(clk_clock* clock, clk_audio_engine* engine);
 
+/** Diff-update runtime clock state from a reloaded config (hot-reload).
+ *  Matches alarms/pomodoros by name, preserves triggered flag and timer state. */
 void clk_app_clock_diff_update(clk_clock* clock, clk_audio_engine* engine,
                                const clk_app_config* cfg);
 
+/** Rebuild alarm and pomodoro menu tabs from clock state.  Used after add/delete/reload. */
 void clk_app_menu_rebuild(clk_menu* menu, clk_clock* clock, const clk_app_config* cfg);
 
 #ifdef __cplusplus

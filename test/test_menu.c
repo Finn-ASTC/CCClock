@@ -384,6 +384,38 @@ int main(void) {
     }
 
     /* ================================================================
+     *  Path-list helpers
+     * ================================================================ */
+
+    {
+        char* paths[] = {(char*)"/foo/bar.json", (char*)"/baz/qux.json"};
+        char** names = clk_menu_build_names(paths, 2);
+        TEST_REQUIRE("build_names succeeds", names != NULL);
+        TEST("build_names strips dir+ext",
+             strcmp(names[0], "bar") == 0 && strcmp(names[1], "qux") == 0);
+        for (int i = 0; i < 2; ++i)
+            free(names[i]);
+        free(names);
+    }
+
+    {
+        char s1[] = "aaa";
+        char s2[] = "bbb";
+        char* strings[] = {s1, s2};
+        const char** wrapped = clk_menu_wrap_strings(strings, 2);
+        TEST_REQUIRE("wrap_strings succeeds", wrapped != NULL);
+        TEST("wrap_strings pointers match", wrapped[0] == strings[0] && wrapped[1] == strings[1]);
+        free(wrapped);
+    }
+
+    {
+        const char* hay[] = {"a", "b", "c"};
+        TEST("find_index found", clk_menu_find_index("b", hay, 3, -1) == 1);
+        TEST("find_index absent", clk_menu_find_index("x", hay, 3, -1) == -1);
+        TEST("find_index fallback", clk_menu_find_index("x", hay, 3, 5) == 5);
+    }
+
+    /* ================================================================
      *  destroy
      * ================================================================ */
     clk_menu_destroy(NULL);

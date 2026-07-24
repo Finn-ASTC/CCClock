@@ -332,6 +332,13 @@ int main(void) {
     clk_item_list_clear_options(NULL, 3);
     TEST("clear_opt NULL list no crash", 1);
 
+    /* double clear on same item */
+    {
+        clk_item_list_clear_options(list, 3);
+        clk_item_list_clear_options(list, 3);
+        TEST("clear_opt double no crash", 1);
+    }
+
     /* ================================================================
      *  set_range
      * ================================================================ */
@@ -378,6 +385,22 @@ int main(void) {
     }
     clk_item_list_rebuild_item(NULL, 3, str_opts, 3, 0);
     TEST("rebuild NULL list no crash", 1);
+
+    /* rebuild with count==0 clears all options */
+    {
+        clk_item_list_rebuild_item(list, 3, NULL, 0, 0);
+        clk_menu_item* it = clk_item_list_find(list, 3);
+        TEST("rebuild empty count==0", it->option_count == 0);
+        TEST("rebuild empty idx==0", it->option_idx == 0);
+    }
+
+    /* rebuild on non-STR item (no crash) */
+    {
+        clk_menu_item* it = clk_item_list_find(list, 10);
+        if (it)
+            clk_item_list_rebuild_item(list, 10, str_opts, 3, 0);
+        TEST("rebuild wrong type no crash", 1);
+    }
 
     clk_item_list_destroy(list);
 

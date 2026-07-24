@@ -18,6 +18,7 @@ extern "C" {
  * ------------------------------------------------------------------ */
 
 #define CLK_CONFIG_ALARM_SOUND_MAX 256
+#define CLK_SOUND_PATH_MAX (CLK_CONFIG_ALARM_SOUND_MAX + 512)
 
 #define CLK_CONFIG_VOLUME_DEFAULT 50
 #define CLK_CONFIG_SOUND_REPEAT_DEFAULT 1
@@ -197,10 +198,13 @@ void clk_app_config_reload(clk_app_config* cfg, clk_menu* menu, int tab_id, int 
 /** Release all resources held by all modules. */
 void clk_app_config_deinit(clk_app_config* cfg);
 
+/** Serialize and write cfg->json to @p path. */
 void clk_app_config_save(const clk_app_config* cfg, const char* path);
 
+/** Write basic-tab state (font, theme, time_format) back to cfg->json tree. */
 void clk_app_config_sync_basic(const clk_app_config* cfg);
 
+/** Write alarm and pomodoro runtime state back to cfg->json tree. */
 void clk_app_config_sync_clock(const clk_app_config* cfg, const clk_clock* clock);
 
 #ifdef __cplusplus

@@ -559,8 +559,7 @@ bool clk_app_config_load(clk_app_config* cfg, const char* path) {
 
     if (!cfg->ascii_clock.fonts.count || !cfg->ascii_clock.time_formats.strings ||
         !cfg->themes.count) {
-        clk_json_free(cfg->json);
-        cfg->json = NULL;
+        clk_app_config_deinit(cfg);
         return false;
     }
 

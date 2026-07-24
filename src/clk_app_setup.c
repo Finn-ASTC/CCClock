@@ -27,6 +27,12 @@ static void register_alarm_tab(clk_menu* menu, clk_clock* clock, const char** so
 static void register_pomodoro_tab(clk_menu* menu, clk_clock* clock, const char** sound_opts,
                                   int sound_count);
 
+static void clk_setup_load_sound(clk_audio_sound** sound, const char* audio_dir,
+                                 const char* sound_file, clk_audio_engine* engine);
+
+static void clk_setup_scan_and_register_tabs(clk_menu* menu, clk_clock* clock,
+                                             const clk_app_config* cfg);
+
 /** Register the "basic" tab items (time format, font, theme, quit). */
 static void register_basic_tab(const clk_app_config* cfg, clk_menu* menu) {
     clk_menu_add_tab(menu, CLK_TAB_BASIC, "basic");
@@ -60,35 +66,7 @@ clk_menu* clk_app_setup_menu(const clk_app_config* cfg, clk_clock* clock) {
         return NULL;
 
     register_basic_tab(cfg, menu);
-
-    char** sound_paths = NULL;
-    int sound_count = 0;
-    char** sound_names = NULL;
-    const char** sound_opts = NULL;
-
-    scan_sound_options(cfg, &sound_paths, &sound_count, &sound_names, &sound_opts);
-
-    const char** use_opts = sound_opts;
-    int use_count = sound_count;
-    const char* fallback[] = {"(none)"};
-    if (use_count == 0) {
-        use_opts = fallback;
-        use_count = 1;
-    }
-
-    register_alarm_tab(menu, clock, use_opts, use_count);
-    register_pomodoro_tab(menu, clock, use_opts, use_count);
-
-    if (sound_count > 0) {
-        free(sound_opts);
-        for (int i = 0; i < sound_count; ++i)
-            free(sound_names[i]);
-        free(sound_names);
-        for (int i = 0; i < sound_count; ++i)
-            free(sound_paths[i]);
-        free(sound_paths);
-    }
-
+    clk_setup_scan_and_register_tabs(menu, clock, cfg);
     return menu;
 }
 
@@ -99,34 +77,7 @@ clk_menu* clk_app_setup_menu(const clk_app_config* cfg, clk_clock* clock) {
 void clk_app_menu_rebuild(clk_menu* menu, clk_clock* clock, const clk_app_config* cfg) {
     if (!menu || !clock || !cfg)
         return;
-
-    char** sound_paths = NULL;
-    int sound_count = 0;
-    char** sound_names = NULL;
-    const char** sound_opts = NULL;
-
-    scan_sound_options(cfg, &sound_paths, &sound_count, &sound_names, &sound_opts);
-
-    const char** use_opts = sound_opts;
-    int use_count = sound_count;
-    const char* fallback[] = {"(none)"};
-    if (use_count == 0) {
-        use_opts = fallback;
-        use_count = 1;
-    }
-
-    register_alarm_tab(menu, clock, use_opts, use_count);
-    register_pomodoro_tab(menu, clock, use_opts, use_count);
-
-    if (sound_count > 0) {
-        free(sound_opts);
-        for (int i = 0; i < sound_count; ++i)
-            free(sound_names[i]);
-        free(sound_names);
-        for (int i = 0; i < sound_count; ++i)
-            free(sound_paths[i]);
-        free(sound_paths);
-    }
+    clk_setup_scan_and_register_tabs(menu, clock, cfg);
 }
 
 /* ================================================================
@@ -161,7 +112,45 @@ bool clk_app_setup_theme(clk_menu_theme* theme, const clk_cfg_themes* themes) {
  *  Clock
  * ================================================================ */
 
-#define CLK_SOUND_PATH_MAX (CLK_CONFIG_ALARM_SOUND_MAX + 512)
+static void clk_setup_load_sound(clk_audio_sound** sound, const char* audio_dir,
+                                 const char* sound_file, clk_audio_engine* engine) {
+    if (audio_dir && sound_file && sound_file[0] != '\0') {
+        char sound_path[CLK_SOUND_PATH_MAX];
+        snprintf(sound_path, sizeof(sound_path), "%s/%s.mp3", audio_dir, sound_file);
+        *sound = clk_audio_load(engine, sound_path);
+    }
+}
+
+static void clk_setup_scan_and_register_tabs(clk_menu* menu, clk_clock* clock,
+                                             const clk_app_config* cfg) {
+    char** sound_paths = NULL;
+    int sound_count = 0;
+    char** sound_names = NULL;
+    const char** sound_opts = NULL;
+
+    scan_sound_options(cfg, &sound_paths, &sound_count, &sound_names, &sound_opts);
+
+    const char** use_opts = sound_opts;
+    int use_count = sound_count;
+    const char* fallback[] = {"(none)"};
+    if (use_count == 0) {
+        use_opts = fallback;
+        use_count = 1;
+    }
+
+    register_alarm_tab(menu, clock, use_opts, use_count);
+    register_pomodoro_tab(menu, clock, use_opts, use_count);
+
+    if (sound_count > 0) {
+        free(sound_opts);
+        for (int i = 0; i < sound_count; ++i)
+            free(sound_names[i]);
+        free(sound_names);
+        for (int i = 0; i < sound_count; ++i)
+            free(sound_paths[i]);
+        free(sound_paths);
+    }
+}
 
 bool clk_app_setup_clock(clk_clock* clock, clk_audio_engine** out_engine,
                          const clk_app_config* cfg) {
@@ -193,11 +182,7 @@ bool clk_app_setup_clock(clk_clock* clock, clk_audio_engine** out_engine,
         alarm.volume = src->volume / 100.0f;
         alarm.loop = src->loop;
 
-        if (audio_dir && src->sound_file[0] != '\0') {
-            char sound_path[CLK_SOUND_PATH_MAX];
-            snprintf(sound_path, sizeof(sound_path), "%s/%s.mp3", audio_dir, src->sound_file);
-            alarm.sound = clk_audio_load(*out_engine, sound_path);
-        }
+        clk_setup_load_sound(&alarm.sound, audio_dir, src->sound_file, *out_engine);
 
         clk_clock_add_alarm(clock, &alarm);
     }
@@ -226,12 +211,7 @@ bool clk_app_setup_clock(clk_clock* clock, clk_audio_engine** out_engine,
             seg.volume = src_seg->volume / 100.0f;
             seg.loop = src_seg->loop;
 
-            if (audio_dir && src_seg->sound_file[0] != '\0') {
-                char sound_path[CLK_SOUND_PATH_MAX];
-                snprintf(sound_path, sizeof(sound_path), "%s/%s.mp3", audio_dir,
-                         src_seg->sound_file);
-                seg.sound = clk_audio_load(*out_engine, sound_path);
-            }
+            clk_setup_load_sound(&seg.sound, audio_dir, src_seg->sound_file, *out_engine);
 
             clk_clock_pomodoro_add_segment(clock, pomo_index, &seg);
         }

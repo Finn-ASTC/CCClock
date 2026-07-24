@@ -116,45 +116,7 @@ size_t clk_item_list_count(const clk_item_list* list) {
 
 void clk_item_list_add_str(clk_item_list* list, int tab_id, int item_id, const char* label,
                            int default_idx, const char** options, int option_count) {
-    if (!list || !label || !options || option_count <= 0)
-        return;
-
-    clk_menu_item* item = clk_item_list_insert(list, tab_id, item_id, -1);
-    if (!item)
-        return;
-
-    item->type = CLK_MENU_TYPE_STR;
-    item->label = strdup(label);
-    if (!item->label) {
-        free(item);
-        return;
-    }
-
-    item->options = malloc(option_count * sizeof(char*));
-    if (!item->options) {
-        free(item->label);
-        free(item);
-        return;
-    }
-    for (int i = 0; i < option_count; ++i) {
-        item->options[i] = strdup(options[i]);
-        if (!item->options[i]) {
-            for (int j = 0; j < i; ++j)
-                free(item->options[j]);
-            free(item->options);
-            free(item->label);
-            free(item);
-            return;
-        }
-    }
-    item->option_count = option_count;
-
-    if (default_idx < 0)
-        default_idx = 0;
-    if (default_idx >= option_count)
-        default_idx = option_count - 1;
-    item->option_idx = default_idx;
-    item->value.str = item->options[default_idx];
+    clk_item_list_add_str_at(list, tab_id, item_id, label, default_idx, options, option_count, -1);
 }
 
 void clk_item_list_add_str_at(clk_item_list* list, int tab_id, int item_id, const char* label,
@@ -203,27 +165,8 @@ void clk_item_list_add_str_at(clk_item_list* list, int tab_id, int item_id, cons
 
 void clk_item_list_add_int(clk_item_list* list, int tab_id, int item_id, const char* label,
                            double default_val, double min_val, double max_val, double step_val) {
-    if (!list || !label)
-        return;
-    clk_menu_item* item = clk_item_list_insert(list, tab_id, item_id, -1);
-    if (!item)
-        return;
-
-    item->type = CLK_MENU_TYPE_INT;
-    item->label = strdup(label);
-    if (!item->label) {
-        free(item);
-        return;
-    }
-    item->min_val = min_val;
-    item->max_val = max_val;
-    item->step_val = step_val;
-
-    if (default_val < min_val)
-        default_val = min_val;
-    if (default_val > max_val)
-        default_val = max_val;
-    item->value.num = default_val;
+    clk_item_list_add_int_at(list, tab_id, item_id, label, default_val, min_val, max_val, step_val,
+                             -1);
 }
 
 void clk_item_list_add_int_at(clk_item_list* list, int tab_id, int item_id, const char* label,
@@ -255,19 +198,7 @@ void clk_item_list_add_int_at(clk_item_list* list, int tab_id, int item_id, cons
 
 void clk_item_list_add_bool(clk_item_list* list, int tab_id, int item_id, const char* label,
                             bool default_val) {
-    if (!list || !label)
-        return;
-    clk_menu_item* item = clk_item_list_insert(list, tab_id, item_id, -1);
-    if (!item)
-        return;
-
-    item->type = CLK_MENU_TYPE_BOOL;
-    item->label = strdup(label);
-    if (!item->label) {
-        free(item);
-        return;
-    }
-    item->value.b = default_val;
+    clk_item_list_add_bool_at(list, tab_id, item_id, label, default_val, -1);
 }
 
 void clk_item_list_add_bool_at(clk_item_list* list, int tab_id, int item_id, const char* label,
@@ -290,18 +221,7 @@ void clk_item_list_add_bool_at(clk_item_list* list, int tab_id, int item_id, con
 /* ── add_action ── */
 
 void clk_item_list_add_action(clk_item_list* list, int tab_id, int item_id, const char* label) {
-    if (!list || !label)
-        return;
-    clk_menu_item* item = clk_item_list_insert(list, tab_id, item_id, -1);
-    if (!item)
-        return;
-
-    item->type = CLK_MENU_TYPE_ACTION;
-    item->label = strdup(label);
-    if (!item->label) {
-        free(item);
-        return;
-    }
+    clk_item_list_add_action_at(list, tab_id, item_id, label, -1);
 }
 
 void clk_item_list_add_action_at(clk_item_list* list, int tab_id, int item_id, const char* label,
