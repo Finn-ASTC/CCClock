@@ -1,9 +1,3 @@
-# CCClock — clang-tidy configuration
-#
-# Focused on bug-finding, not style enforcement.
-# Zero readability, performance, or stylistic checks.
-# ================================================================
-
 Checks: >
   bugprone-*,
   -bugprone-easily-swappable-parameters,
