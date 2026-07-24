@@ -501,6 +501,8 @@ int main(void) {
                         cfg.json = new_json;
                         clk_app_config_reload(&cfg, menu, 0, CLK_BASIC_ITEM_TIME_FORMAT,
                                               CLK_BASIC_ITEM_FONT, CLK_BASIC_ITEM_THEME);
+                        clk_app_clock_diff_update(&clock, audio_engine, &cfg);
+                        clk_app_menu_rebuild(menu, &clock, &cfg);
                     }
                 }
             }

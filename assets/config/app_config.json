@@ -1,76 +1,71 @@
 {
-    "ascii_clock_theme": {
-        "fonts": {
-            "fonts_dir": "assets/config/ascii_fonts",
-            "font": "ascii_num1"
-        },
-        "time_format": {
-            "time_formats": [
-                "hh:MM:ss",
-                "yyyy:mm:dd\n hh:MM:ss",
-                "hh:MM",
-                "dd:hh:MM"
-            ],
-            "selected_time_format": "hh:MM:ss"
-        }
+  "ascii_clock_theme": {
+    "fonts": {
+      "fonts_dir": "assets/config/ascii_fonts",
+      "font": "ascii_num1"
     },
-    "menu": {
-        "themes_dir": "assets/config/menu_config",
-        "theme": "menu_theme_pinkblue"
-    },
-    "audio_dir": "assets/audio",
-    "clock": {
-        "alarms": [
-            {
-                "name": "alarm1",
-                "hour": 14,
-                "minute": 40,
-                "enable": true,
-                "loop": false,
-                "sound_repeat": 3,
-                "volume": 50,
-                "repeat": "Everyday",
-                "sound": "u_inx5oo5fv3-alarm-327234"
-            },
-            {
-                "name": "alarm2",
-                "hour": 21,
-                "minute": 30,
-                "enable": true,
-                "loop": false,
-                "sound_repeat": 3,
-                "volume": 50,
-                "repeat": "Everyday",
-                "sound": "u_inx5oo5fv3-alarm-327234"
-            }
-        ],
-        "pomodoro": [
-            {
-                "name": "1",
-                "segments": [
-                    {
-                        "name": "Work",
-                        "minutes": 1,
-                        "sound_repeat": 3,
-                        "volume": 50,
-                        "sound": "u_inx5oo5fv3-alarm-327234"
-                    },
-                    {
-                        "name": "relax",
-                        "minutes": 1,
-                        "sound_repeat": 3,
-                        "volume": 50,
-                        "sound": "u_inx5oo5fv3-alarm-327234"
-                    }
-                ]
-            }
+    "time_format": {
+      "time_formats": ["hh:MM:ss","yyyy:mm:dd\n hh:MM:ss","hh:MM","dd:hh:MM"],
+      "selected_time_format": "hh:MM:ss"
+    }
+  },
+  "menu": {
+    "themes_dir": "assets/config/menu_config",
+    "theme": "menu_theme_pinkblue"
+  },
+  "audio_dir": "assets/audio",
+  "clock": {
+    "alarms": [
+      {
+        "name": "alarm1",
+        "hour": 14,
+        "minute": 40,
+        "enable": true,
+        "loop": false,
+        "sound_repeat": 3,
+        "volume": 50,
+        "repeat": "Everyday",
+        "sound": "u_inx5oo5fv3-alarm-327234"
+      },
+      {
+        "name": "alarm2",
+        "hour": 21,
+        "minute": 30,
+        "enable": true,
+        "loop": false,
+        "sound_repeat": 3,
+        "volume": 50,
+        "repeat": "Everyday",
+        "sound": "u_inx5oo5fv3-alarm-327234"
+      }
+    ],
+    "pomodoro": [
+      {
+        "name": "1",
+        "segments": [
+          {
+            "name": "Work",
+            "minutes": 1,
+            "sound_repeat": 3,
+            "volume": 50,
+            "sound": "u_inx5oo5fv3-alarm-327234"
+          },
+          {
+            "name": "relax",
+            "minutes": 1,
+            "sound_repeat": 3,
+            "volume": 50,
+            "sound": "u_inx5oo5fv3-alarm-327234"
+          }
         ]
-    },
-    "BGM": [
-        {
-            "sound": "u_inx5oo5fv3-alarm-327234",
-            "volume": 100,
-            "enable": false
-        }
+      }
     ]
+  },
+  "BGM": [
+    {
+      "sound": "u_inx5oo5fv3-alarm-327234",
+      "volume": 100,
+      "enable": false
+    }
+  ]
 }

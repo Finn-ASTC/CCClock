@@ -259,6 +259,221 @@ void clk_app_setup_clock_deinit(clk_clock* clock, clk_audio_engine* engine) {
 }
 
 /* ================================================================
+ *  Clock diff update (hot-reload)
+ * ================================================================ */
+
+static void diff_update_alarms(clk_clock* clock, clk_audio_engine* engine,
+                               const clk_app_config* cfg, const char* audio_dir) {
+    for (int i = clock->alarm_count - 1; i >= 0; --i) {
+        const clk_clock_alarm* a = &clock->alarms[i];
+        bool found = false;
+        for (int j = 0; j < cfg->clock.alarms.count; ++j) {
+            if (strcmp(a->name, cfg->clock.alarms.items[j].name) == 0) {
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            clk_audio_destroy(clock->alarms[i].sound);
+            clk_clock_remove_alarm(clock, i);
+        }
+    }
+
+    for (int j = 0; j < cfg->clock.alarms.count; ++j) {
+        const clk_cfg_alarm* src = &cfg->clock.alarms.items[j];
+        clk_clock_alarm* a = clk_clock_find_alarm_by_name(clock, src->name);
+
+        if (a) {
+            bool saved_triggered = a->alarm.triggered;
+            if (a->alarm.hour != src->hour || a->alarm.minute != src->minute)
+                saved_triggered = false;
+
+            clk_alarm_set(&a->alarm, src->hour, src->minute, 0);
+            a->alarm.enabled = src->enabled;
+            a->alarm.triggered = saved_triggered;
+            a->repeat_count = src->sound_repeat;
+            a->repeat_days = src->repeat_days;
+            a->today_date = src->today_date;
+            a->volume = src->volume / 100.0f;
+            a->loop = src->loop;
+
+            char new_path[CLK_SOUND_PATH_MAX];
+            new_path[0] = '\0';
+            if (audio_dir && src->sound_file[0] != '\0')
+                snprintf(new_path, sizeof(new_path), "%s/%s.mp3", audio_dir, src->sound_file);
+
+            const char* old_path = clk_audio_sound_get_path(a->sound);
+            if (!old_path)
+                old_path = "";
+
+            if (strcmp(old_path, new_path) != 0) {
+                clk_audio_destroy(a->sound);
+                a->sound = new_path[0] ? clk_audio_load(engine, new_path) : NULL;
+            }
+        } else {
+            clk_clock_alarm alarm;
+            memset(&alarm, 0, sizeof(alarm));
+
+            alarm.id = clk_clock_next_alarm_id(clock);
+            strncpy(alarm.name, src->name, CLK_CLOCK_NAME_MAX - 1);
+            clk_alarm_set(&alarm.alarm, src->hour, src->minute, 0);
+            alarm.alarm.enabled = src->enabled;
+            alarm.repeat_count = src->sound_repeat;
+            alarm.repeat_days = src->repeat_days;
+            alarm.today_date = src->today_date;
+            alarm.volume = src->volume / 100.0f;
+            alarm.loop = src->loop;
+
+            if (audio_dir && src->sound_file[0] != '\0') {
+                char full_path[CLK_SOUND_PATH_MAX];
+                snprintf(full_path, sizeof(full_path), "%s/%s.mp3", audio_dir, src->sound_file);
+                alarm.sound = clk_audio_load(engine, full_path);
+            }
+
+            clk_clock_add_alarm(clock, &alarm);
+        }
+    }
+}
+
+static void diff_update_pomodoros(clk_clock* clock, clk_audio_engine* engine,
+                                  const clk_app_config* cfg, const char* audio_dir) {
+    for (int i = clock->pomodoro_count - 1; i >= 0; --i) {
+        const clk_clock_pomodoro* po = &clock->pomodoros[i];
+        bool found = false;
+        for (int j = 0; j < cfg->clock.pomodoros.count; ++j) {
+            if (strcmp(po->name, cfg->clock.pomodoros.items[j].name) == 0) {
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            for (int j = 0; j < clock->pomodoros[i].segment_count; ++j)
+                clk_audio_destroy(clock->pomodoros[i].segments[j].sound);
+            clk_clock_remove_pomodoro(clock, i);
+        }
+    }
+
+    for (int j = 0; j < cfg->clock.pomodoros.count; ++j) {
+        const clk_cfg_pomodoro* src = &cfg->clock.pomodoros.items[j];
+        clk_clock_pomodoro* po = clk_clock_find_pomodoro_by_name(clock, src->name);
+
+        if (po) {
+            int po_idx = clk_clock_find_pomodoro_index_by_id(clock, po->id);
+
+            strncpy(po->name, src->name, CLK_CLOCK_NAME_MAX - 1);
+
+            bool segs_same = (po->segment_count == src->segment_count);
+            if (segs_same) {
+                for (int k = 0; k < src->segment_count; ++k) {
+                    if (strcmp(po->segments[k].name, src->segments[k].name) != 0 ||
+                        po->segments[k].duration_seconds != src->segments[k].duration_seconds) {
+                        segs_same = false;
+                        break;
+                    }
+                }
+            }
+
+            if (segs_same) {
+                for (int k = 0; k < po->segment_count; ++k) {
+                    clk_clock_pomodoro_segment* seg = &po->segments[k];
+                    const clk_cfg_pomodoro_segment* src_seg = &src->segments[k];
+
+                    seg->repeat_count = src_seg->sound_repeat;
+                    seg->volume = src_seg->volume / 100.0f;
+                    seg->loop = src_seg->loop;
+
+                    char new_path[CLK_SOUND_PATH_MAX];
+                    new_path[0] = '\0';
+                    if (audio_dir && src_seg->sound_file[0] != '\0')
+                        snprintf(new_path, sizeof(new_path), "%s/%s.mp3", audio_dir,
+                                 src_seg->sound_file);
+
+                    const char* old_path = clk_audio_sound_get_path(seg->sound);
+                    if (!old_path)
+                        old_path = "";
+
+                    if (strcmp(old_path, new_path) != 0) {
+                        clk_audio_destroy(seg->sound);
+                        seg->sound = new_path[0] ? clk_audio_load(engine, new_path) : NULL;
+                    }
+                }
+            } else {
+                clk_clock_pomodoro_clear_segments(clock, po_idx);
+                for (int k = 0; k < src->segment_count; ++k) {
+                    const clk_cfg_pomodoro_segment* src_seg = &src->segments[k];
+                    clk_clock_pomodoro_segment seg;
+                    memset(&seg, 0, sizeof(seg));
+
+                    seg.id = k;
+                    strncpy(seg.name, src_seg->name, CLK_CLOCK_NAME_MAX - 1);
+                    seg.duration_seconds = src_seg->duration_seconds;
+                    seg.repeat_count = src_seg->sound_repeat;
+                    seg.volume = src_seg->volume / 100.0f;
+                    seg.loop = src_seg->loop;
+
+                    if (audio_dir && src_seg->sound_file[0] != '\0') {
+                        char full_path[CLK_SOUND_PATH_MAX];
+                        snprintf(full_path, sizeof(full_path), "%s/%s.mp3", audio_dir,
+                                 src_seg->sound_file);
+                        seg.sound = clk_audio_load(engine, full_path);
+                    }
+
+                    clk_clock_pomodoro_add_segment(clock, po_idx, &seg);
+                }
+            }
+        } else {
+            clk_clock_pomodoro pomodoro;
+            memset(&pomodoro, 0, sizeof(pomodoro));
+
+            pomodoro.id = clk_clock_next_pomodoro_id(clock);
+            pomodoro.current_segment = -1;
+            strncpy(pomodoro.name, src->name, CLK_CLOCK_NAME_MAX - 1);
+
+            int pomo_idx = clock->pomodoro_count;
+            clk_clock_add_pomodoro(clock, &pomodoro);
+
+            for (int k = 0; k < src->segment_count; ++k) {
+                const clk_cfg_pomodoro_segment* src_seg = &src->segments[k];
+                clk_clock_pomodoro_segment seg;
+                memset(&seg, 0, sizeof(seg));
+
+                seg.id = k;
+                strncpy(seg.name, src_seg->name, CLK_CLOCK_NAME_MAX - 1);
+                seg.duration_seconds = src_seg->duration_seconds;
+                seg.repeat_count = src_seg->sound_repeat;
+                seg.volume = src_seg->volume / 100.0f;
+                seg.loop = src_seg->loop;
+
+                if (audio_dir && src_seg->sound_file[0] != '\0') {
+                    char full_path[CLK_SOUND_PATH_MAX];
+                    snprintf(full_path, sizeof(full_path), "%s/%s.mp3", audio_dir,
+                             src_seg->sound_file);
+                    seg.sound = clk_audio_load(engine, full_path);
+                }
+
+                clk_clock_pomodoro_add_segment(clock, pomo_idx, &seg);
+            }
+        }
+    }
+}
+
+void clk_app_clock_diff_update(clk_clock* clock, clk_audio_engine* engine,
+                               const clk_app_config* cfg) {
+    if (!clock || !engine || !cfg)
+        return;
+
+    clk_clock_stop_all_bells(clock);
+
+    const char* audio_dir = NULL;
+    clk_json_value* audio_dir_val = clk_json_object_get(cfg->json, "audio_dir");
+    if (audio_dir_val && clk_json_is_string(audio_dir_val))
+        clk_json_get_string(audio_dir_val, &audio_dir);
+
+    diff_update_alarms(clock, engine, cfg, audio_dir);
+    diff_update_pomodoros(clock, engine, cfg, audio_dir);
+}
+
+/* ================================================================
  *  Internal helpers — sound path utilities
  * ================================================================ */
 

@@ -90,6 +90,9 @@ bool clk_app_setup_clock(clk_clock* clock, clk_audio_engine** out_engine,
 
 void clk_app_setup_clock_deinit(clk_clock* clock, clk_audio_engine* engine);
 
+void clk_app_clock_diff_update(clk_clock* clock, clk_audio_engine* engine,
+                               const clk_app_config* cfg);
+
 void clk_app_menu_rebuild(clk_menu* menu, clk_clock* clock, const clk_app_config* cfg);
 
 #ifdef __cplusplus
