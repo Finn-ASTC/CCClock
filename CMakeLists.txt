@@ -45,6 +45,9 @@ if(MINGW AND NOT CMAKE_BUILD_TYPE MATCHES "Debug")
     add_compile_options(-O3)
 endif()
 
+# ---- code coverage (gcc only) ----
+option(ENABLE_COVERAGE "Enable code coverage (gcc only)" OFF)
+
 # ---- static library ----
 function(add_clk_test name)
     add_executable(test_${name} test/test_${name}.c)
@@ -105,6 +108,11 @@ if(WIN32)
     target_link_libraries(libclock PRIVATE winmm ole32 pthread)
 else()
     target_link_libraries(libclock PRIVATE pthread dl m)
+endif()
+
+if(ENABLE_COVERAGE)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --coverage -fkeep-static-functions")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage")
 endif()
 
 # ---- executables ----
