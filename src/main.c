@@ -180,6 +180,10 @@ int main(void) {
 
         switch (focus) {
             case CLK_FOCUS_CLOCK:
+                if (key_event.key_mask == KEY_SPACE) {
+                    clk_clock_stop_bell(&clock);
+                    continue;
+                }
                 if (key_event.key_mask == KEY_s_LOWER || key_event.key_mask == KEY_S_UPPER) {
                     clk_menu_instance_set_visible(menu_inst, true);
                     focus = CLK_FOCUS_MENU;
