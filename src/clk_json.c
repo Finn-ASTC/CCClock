@@ -488,6 +488,7 @@ static clk_json_value* clk_parse_object(clk_json_lexer* lexer) {
     while (1) {
         if (token.type != TOKEN_STRING) {
             SET_ERROR("Expected string key in object at line %d, col %d", token.line, token.col);
+            free(token.str_value);
             clk_json_free(obj);
             return NULL;
         }
@@ -496,6 +497,7 @@ static clk_json_value* clk_parse_object(clk_json_lexer* lexer) {
         clk_json_lexer_next(lexer, &token);
         if (token.type != TOKEN_COLON) {
             SET_ERROR("Expected ':' after object key at line %d, col %d", token.line, token.col);
+            free(token.str_value);
             free(key);
             clk_json_free(obj);
             return NULL;
@@ -504,6 +506,7 @@ static clk_json_value* clk_parse_object(clk_json_lexer* lexer) {
         clk_json_value* val = clk_parse_value(lexer);
         if (!val) {
             SET_ERROR("Invalid value in object at line %d, col %d", token.line, token.col);
+            free(token.str_value);
             free(key);
             clk_json_free(obj);
             return NULL;
@@ -516,6 +519,7 @@ static clk_json_value* clk_parse_object(clk_json_lexer* lexer) {
             return obj;
         if (token.type != TOKEN_COMMA) {
             SET_ERROR("Expected ',' or '}' after value at line %d, col %d", token.line, token.col);
+            free(token.str_value);
             clk_json_free(obj);
             return NULL;
         }
@@ -541,6 +545,7 @@ static clk_json_value* clk_parse_array(clk_json_lexer* lexer) {
         clk_json_value* val = clk_parse_value_from_token(lexer, &token);
         if (!val) {
             SET_ERROR("Invalid value in array at line %d, col %d", token.line, token.col);
+            free(token.str_value);
             clk_json_free(arr);
             return NULL;
         }
@@ -552,6 +557,7 @@ static clk_json_value* clk_parse_array(clk_json_lexer* lexer) {
         if (token.type != TOKEN_COMMA) {
             SET_ERROR("Expected ',' or ']' after array value at line %d, col %d", token.line,
                       token.col);
+            free(token.str_value);
             clk_json_free(arr);
             return NULL;
         }
@@ -560,6 +566,7 @@ static clk_json_value* clk_parse_array(clk_json_lexer* lexer) {
 
         if (token.type == TOKEN_RIGHT_BRACKET) {
             SET_ERROR("Trailing comma in array at line %d, col %d", token.line, token.col);
+            free(token.str_value);
             clk_json_free(arr);
             return NULL;
         }
