@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <time.h>
 
+#include "clk_bgm.h"
 #include "clk_clock.h"
 #include "clk_json.h"
 #include "clk_menu.h"
@@ -206,6 +207,8 @@ void clk_app_config_sync_basic(const clk_app_config* cfg);
 
 /** Write alarm and pomodoro runtime state back to cfg->json tree. */
 void clk_app_config_sync_clock(const clk_app_config* cfg, const clk_clock* clock);
+
+void clk_app_config_sync_bgm(const clk_app_config* cfg, const clk_bgm* bgm);
 
 #ifdef __cplusplus
 }

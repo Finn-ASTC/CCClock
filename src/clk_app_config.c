@@ -733,3 +733,16 @@ void clk_app_config_sync_clock(const clk_app_config* cfg, const clk_clock* clock
     }
     clk_json_object_set(clock_obj, "pomodoro", pomo_arr);
 }
+
+void clk_app_config_sync_bgm(const clk_app_config* cfg, const clk_bgm* bgm) {
+    if (!cfg || !bgm)
+        return;
+    clk_json_value* bgm_arr = clk_json_create_array();
+    clk_json_value* obj = clk_json_create_object();
+    clk_json_object_set_string(obj, "sound", bgm->sound_file);
+    clk_json_object_set_number(obj, "volume", bgm->volume);
+    bgm->enabled ? clk_json_object_set_true(obj, "enable")
+                 : clk_json_object_set_false(obj, "enable");
+    clk_json_array_append(bgm_arr, obj);
+    clk_json_object_set(cfg->json, "BGM", bgm_arr);
+}

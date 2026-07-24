@@ -54,6 +54,7 @@ add_library(libclock STATIC
     src/clk_clock.c
     src/clk_app_config.c
     src/clk_ascii_render.c
+    src/clk_bgm.c
     src/clk_menu.c
     src/clk_app_setup.c
     src/clk_menu_theme.c

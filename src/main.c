@@ -142,6 +142,10 @@ int main(void) {
         return 1;
     }
 
+    /* ---- BGM ---- */
+    clk_bgm bgm;
+    clk_app_setup_bgm(&bgm, audio_engine, &cfg);
+
     /* ================================================================
      *  Renderer
      * ================================================================ */
@@ -331,6 +335,37 @@ int main(void) {
                                 clk_app_config_sync_basic(&cfg);
                                 main_save_config(&cfg, &last_app_mtime);
                                 break;
+                            case CLK_BASIC_ITEM_BGM_ENABLED:
+                                clk_bgm_set_enabled(&bgm, menu_event.value.b);
+                                clk_app_config_sync_bgm(&cfg, &bgm);
+                                main_save_config(&cfg, &last_app_mtime);
+                                break;
+                            case CLK_BASIC_ITEM_BGM_VOLUME:
+                                clk_bgm_set_volume(&bgm, (int)menu_event.value.num);
+                                clk_app_config_sync_bgm(&cfg, &bgm);
+                                main_save_config(&cfg, &last_app_mtime);
+                                break;
+                            case CLK_BASIC_ITEM_BGM_SOUND: {
+                                const char* audio_dir = NULL;
+                                clk_json_value* v = clk_json_object_get(cfg.json, "audio_dir");
+                                if (v && clk_json_is_string(v))
+                                    clk_json_get_string(v, &audio_dir);
+                                if (audio_dir && menu_event.value.str &&
+                                    strcmp(menu_event.value.str, "(none)") != 0) {
+                                    char path[CLK_SOUND_PATH_MAX];
+                                    snprintf(path, sizeof(path), "%s/%s.mp3", audio_dir,
+                                             menu_event.value.str);
+                                    if (clk_bgm_load_sound(&bgm, path)) {
+                                        strncpy(bgm.sound_file, menu_event.value.str,
+                                                CLK_BGM_SOUND_MAX - 1);
+                                        if (bgm.enabled)
+                                            clk_bgm_set_enabled(&bgm, true);
+                                    }
+                                }
+                                clk_app_config_sync_bgm(&cfg, &bgm);
+                                main_save_config(&cfg, &last_app_mtime);
+                                break;
+                            }
                         }
                     }
 
@@ -660,6 +695,7 @@ int main(void) {
     clk_menu_destroy(menu);
     clk_menu_theme_destroy(&theme);
     clk_ascii_render_destroy(&render);
+    clk_bgm_deinit(&bgm);
     clk_app_setup_clock_deinit(&clock, audio_engine);
     clk_app_config_deinit(&cfg);
     clk_term_close();

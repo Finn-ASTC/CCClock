@@ -52,6 +52,47 @@ static void register_basic_tab(const clk_app_config* cfg, clk_menu* menu) {
     clk_menu_add_item_str(menu, CLK_TAB_BASIC, CLK_BASIC_ITEM_THEME, "menu theme",
                           cfg->themes.index, (const char**)cfg->themes.names, cfg->themes.count);
 
+    /* ---- BGM ---- */
+    clk_menu_add_item_bool(menu, CLK_TAB_BASIC, CLK_BASIC_ITEM_BGM_ENABLED, "BGM enabled",
+                           cfg->bgm.count > 0 ? cfg->bgm.items[0].enabled : false);
+    clk_menu_add_item_int(menu, CLK_TAB_BASIC, CLK_BASIC_ITEM_BGM_VOLUME, "BGM volume",
+                          cfg->bgm.count > 0 ? cfg->bgm.items[0].volume : 50, 0, 100, 5);
+
+    {
+        char** paths = NULL;
+        int sound_cnt = 0;
+        char** names = NULL;
+        const char** opts = NULL;
+
+        const char* audio_dir = NULL;
+        clk_json_value* v = clk_json_object_get(cfg->json, "audio_dir");
+        if (v && clk_json_is_string(v))
+            clk_json_get_string(v, &audio_dir);
+        if (audio_dir) {
+            paths = clk_fs_scan_dir(audio_dir, ".mp3", &sound_cnt);
+            if (paths) {
+                names = clk_menu_build_names(paths, sound_cnt);
+                opts = clk_menu_wrap_strings(names, sound_cnt);
+            }
+        }
+
+        int sound_idx = 0;
+        if (sound_cnt > 0 && cfg->bgm.count > 0)
+            sound_idx = clk_menu_find_index(cfg->bgm.items[0].sound_file, opts, sound_cnt, 0);
+
+        clk_menu_add_item_str(menu, CLK_TAB_BASIC, CLK_BASIC_ITEM_BGM_SOUND, "BGM sound", sound_idx,
+                              sound_cnt > 0 ? opts : (const char*[]){"(none)"},
+                              sound_cnt > 0 ? sound_cnt : 1);
+
+        free(opts);
+        for (int i = 0; i < sound_cnt; ++i)
+            free(names[i]);
+        free(names);
+        for (int i = 0; i < sound_cnt; ++i)
+            free(paths[i]);
+        free(paths);
+    }
+
     /* ---- quit ---- */
     clk_menu_add_item_action(menu, CLK_TAB_BASIC, CLK_BASIC_ITEM_QUIT, "quit");
 }
@@ -236,6 +277,27 @@ void clk_app_setup_clock_deinit(clk_clock* clock, clk_audio_engine* engine) {
     }
 
     clk_audio_shutdown(engine);
+}
+
+void clk_app_setup_bgm(clk_bgm* bgm, clk_audio_engine* engine, const clk_app_config* cfg) {
+    clk_bgm_init(bgm, engine);
+    if (cfg->bgm.count > 0) {
+        const clk_cfg_bgm* src = &cfg->bgm.items[0];
+        bgm->enabled = src->enabled;
+        bgm->volume = src->volume;
+        strncpy(bgm->sound_file, src->sound_file, sizeof(bgm->sound_file) - 1);
+
+        const char* audio_dir = NULL;
+        clk_json_value* v = clk_json_object_get(cfg->json, "audio_dir");
+        if (v && clk_json_is_string(v))
+            clk_json_get_string(v, &audio_dir);
+        if (audio_dir && src->sound_file[0]) {
+            char path[CLK_SOUND_PATH_MAX];
+            snprintf(path, sizeof(path), "%s/%s.mp3", audio_dir, src->sound_file);
+            if (clk_bgm_load_sound(bgm, path) && src->enabled)
+                clk_bgm_set_enabled(bgm, true);
+        }
+    }
 }
 
 /* ================================================================

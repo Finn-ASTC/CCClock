@@ -6,6 +6,7 @@
 #include "clk_app_config.h"
 #include "clk_ascii_render.h"
 #include "clk_audio.h"
+#include "clk_bgm.h"
 #include "clk_clock.h"
 #include "clk_menu.h"
 #include "clk_menu_theme.h"
@@ -24,6 +25,9 @@ extern "C" {
 #define CLK_BASIC_ITEM_FONT 2
 #define CLK_BASIC_ITEM_THEME 3
 #define CLK_BASIC_ITEM_QUIT 4
+#define CLK_BASIC_ITEM_BGM_ENABLED 5
+#define CLK_BASIC_ITEM_BGM_VOLUME 6
+#define CLK_BASIC_ITEM_BGM_SOUND 7
 
 /* ── Alarm tab item ID encoding ── */
 #define CLK_ALARM_ITEM_STRIDE 16
@@ -84,6 +88,8 @@ bool clk_app_setup_render(clk_ascii_render* render, const clk_cfg_ascii_clock_th
 /** Load the theme file selected in @p themes (zero-initialises @p theme
  *  then calls clk_menu_theme_load).  Returns false if loading failed. */
 bool clk_app_setup_theme(clk_menu_theme* theme, const clk_cfg_themes* themes);
+
+void clk_app_setup_bgm(clk_bgm* bgm, clk_audio_engine* engine, const clk_app_config* cfg);
 
 /** Create audio engine and populate clock from config.  Returns false on engine failure. */
 bool clk_app_setup_clock(clk_clock* clock, clk_audio_engine** out_engine,
