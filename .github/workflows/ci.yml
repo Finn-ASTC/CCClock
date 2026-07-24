@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        compiler: [gcc, clang]
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tools
+        run: sudo apt install -y ninja-build
+
+      - name: Get miniaudio
+        run: |
+          mkdir -p $HOME/miniaudio
+          curl -sL https://raw.githubusercontent.com/mackron/miniaudio/master/miniaudio.h \
+            -o $HOME/miniaudio/miniaudio.h
+
+      - name: Configure (gcc)
+        if: matrix.compiler == 'gcc'
+        run: >
+          cmake -B build -G Ninja
+          -DCMAKE_BUILD_TYPE=Debug
+          -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+          -DMINIAUDIO_INCLUDE_DIR=$HOME/miniaudio
+
+      - name: Configure (clang)
+        if: matrix.compiler == 'clang'
+        run: >
+          CC=clang cmake -B build -G Ninja
+          -DCMAKE_BUILD_TYPE=Debug
+          -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+          -DMINIAUDIO_INCLUDE_DIR=$HOME/miniaudio
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Test
+        run: cd build && ctest --output-on-failure
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tools
+        run: sudo apt install -y ninja-build clang-tidy clang-format
+
+      - name: Get miniaudio
+        run: |
+          mkdir -p $HOME/miniaudio
+          curl -sL https://raw.githubusercontent.com/mackron/miniaudio/master/miniaudio.h \
+            -o $HOME/miniaudio/miniaudio.h
+
+      - name: Configure
+        run: >
+          CC=clang cmake -B build -G Ninja
+          -DCMAKE_BUILD_TYPE=Debug
+          -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+          -DMINIAUDIO_INCLUDE_DIR=$HOME/miniaudio
+
+      - name: clang-tidy
+        run: find src -name '*.c' | xargs clang-tidy -p build --quiet --warnings-as-errors='bugprone-*'
+
+      - name: clang-format check
+        run: find src include test -name '*.[ch]' | xargs clang-format --dry-run -Werror

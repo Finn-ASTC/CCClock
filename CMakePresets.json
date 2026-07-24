@@ -67,6 +67,14 @@
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release"
             }
+        },
+        {
+            "name": "wsl-relwithdebinfo",
+            "displayName": "WSL Release + Debug Info",
+            "inherits": "base-wsl",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+            }
         }
     ],
     "buildPresets": [
@@ -95,6 +103,14 @@
         {
             "name": "wsl-debug",
             "configurePreset": "wsl-debug"
+        },
+        {
+            "name": "wsl-release",
+            "configurePreset": "wsl-release"
+        },
+        {
+            "name": "wsl-relwithdebinfo",
+            "configurePreset": "wsl-relwithdebinfo"
         }
     ]
 }

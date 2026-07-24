@@ -36,6 +36,15 @@ if(CMAKE_BUILD_TYPE MATCHES "Debug" AND NOT WIN32 AND NOT MINGW)
     add_link_options(-fsanitize=address,undefined)
 endif()
 
+# ---- Release optimization ----
+if(NOT WIN32 AND NOT MINGW AND NOT CMAKE_BUILD_TYPE MATCHES "Debug")
+    add_compile_options(-O3 -flto)
+    add_link_options(-flto)
+endif()
+if(MINGW AND NOT CMAKE_BUILD_TYPE MATCHES "Debug")
+    add_compile_options(-O3)
+endif()
+
 # ---- static library ----
 function(add_clk_test name)
     add_executable(test_${name} test/test_${name}.c)

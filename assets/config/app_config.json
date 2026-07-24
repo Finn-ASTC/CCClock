@@ -19,7 +19,7 @@
       {
         "name": "⏰1",
         "hour": 2,
-        "minute": 29,
+        "minute": 55,
         "enable": true,
         "loop": false,
         "sound_repeat": 3,
