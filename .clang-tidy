@@ -1,0 +1,41 @@
+# CCClock — clang-tidy configuration
+#
+# Focused on bug-finding, not style enforcement.
+# Zero readability, performance, or stylistic checks.
+# ================================================================
+
+Checks: >
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-macro-parentheses,
+  -bugprone-narrowing-conversions,
+  -bugprone-reserved-identifier,
+  -bugprone-bitwise-pointer-cast,
+  -bugprone-multi-level-implicit-pointer-conversion,
+  -bugprone-suspicious-enum-usage,
+  -bugprone-implicit-widening-of-multiplication-result,
+  -bugprone-unsafe-functions,
+  -bugprone-unchecked-string-to-number-conversion,
+  clang-analyzer-*,
+  -clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling,
+  -clang-analyzer-optin.performance.Padding,
+  -clang-analyzer-optin.portability.UnixAPI,
+  -clang-diagnostic-gnu-zero-variadic-macro-arguments,
+  -clang-analyzer-unix.Errno,
+  -clang-analyzer-security.ArrayBound,
+  -clang-analyzer-core.CallAndMessage,
+  concurrency-*,
+  -concurrency-mt-unsafe,
+  misc-static-assert,
+  misc-unused-parameters,
+  -misc-include-cleaner,
+
+WarningsAsErrors: ''
+
+CheckOptions:
+  - key: bugprone-argument-comment.StrictMode
+    value: true
+
+HeaderFilterRegex: '.*'
+
+FormatStyle: file

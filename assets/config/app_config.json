@@ -17,9 +17,9 @@
   "clock": {
     "alarms": [
       {
-        "name": "闹钟1",
-        "hour": 16,
-        "minute": 52,
+        "name": "⏰1",
+        "hour": 2,
+        "minute": 29,
         "enable": true,
         "loop": false,
         "sound_repeat": 3,
@@ -41,7 +41,7 @@
     ],
     "pomodoro": [
       {
-        "name": "1",
+        "name": "🍅钟1",
         "segments": [
           {
             "name": "Work",

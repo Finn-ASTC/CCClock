@@ -152,6 +152,7 @@ int main(void) {
 
     clk_ascii_render render;
     if (!clk_app_setup_render(&render, &cfg.ascii_clock)) {
+        clk_bgm_deinit(&bgm);
         clk_app_setup_clock_deinit(&clock, audio_engine);
         clk_app_config_deinit(&cfg);
         clk_term_close();
@@ -166,6 +167,7 @@ int main(void) {
     clk_menu* menu = clk_app_setup_menu(&cfg, &clock);
     if (!menu) {
         clk_ascii_render_destroy(&render);
+        clk_bgm_deinit(&bgm);
         clk_app_setup_clock_deinit(&clock, audio_engine);
         clk_app_config_deinit(&cfg);
         clk_term_close();
@@ -182,6 +184,7 @@ int main(void) {
         clk_menu_theme_destroy(&theme);
         clk_menu_destroy(menu);
         clk_ascii_render_destroy(&render);
+        clk_bgm_deinit(&bgm);
         clk_app_setup_clock_deinit(&clock, audio_engine);
         clk_app_config_deinit(&cfg);
         clk_term_close();
@@ -366,6 +369,8 @@ int main(void) {
                                 main_save_config(&cfg, &last_app_mtime);
                                 break;
                             }
+                            default:
+                                break;
                         }
                     }
 
@@ -416,6 +421,8 @@ int main(void) {
                                     a->sound = clk_audio_load(audio_engine, path);
                                 }
                                 break;
+                                default:
+                                    break;
                             }
                         }
                         clk_app_config_sync_clock(&cfg, &clock);
@@ -479,6 +486,8 @@ int main(void) {
                                         clk_clock_pomodoro_stop(&clock, idx);
                                     break;
                                 }
+                                default:
+                                    break;
                             }
                         } else {
                             int segment_id, field;
@@ -513,6 +522,8 @@ int main(void) {
                                     }
                                     break;
                                 }
+                                default:
+                                    break;
                             }
                         }
                         clk_app_config_sync_clock(&cfg, &clock);

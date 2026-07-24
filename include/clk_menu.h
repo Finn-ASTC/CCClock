@@ -117,11 +117,11 @@ int clk_menu_add_tab(clk_menu* menu, int tab_id, const char* name);
 
 /** Append a STR item to the given tab.  Each option string is duplicated. */
 void clk_menu_add_item_str(clk_menu* menu, int tab_id, int item_id, const char* label,
-                           int default_idx, const char** options, int option_count);
+                           int default_idx, const char* const* options, int option_count);
 
 /** Insert a STR item at @p position (-1 = append). */
 void clk_menu_add_item_str_at(clk_menu* menu, int tab_id, int item_id, const char* label,
-                              int default_idx, const char** options, int option_count,
+                              int default_idx, const char* const* options, int option_count,
                               int position);
 
 /** Append an INT item.  @p default_value is clamped to [min, max]. */
@@ -188,9 +188,9 @@ void clk_menu_set_item_range(clk_menu* menu, int tab_id, int item_id, double min
 
 char** clk_menu_build_names(char** paths, int count);
 const char** clk_menu_wrap_strings(char** strings, int count);
-int clk_menu_find_index(const char* needle, const char** haystack, int count, int fallback);
-void clk_menu_rebuild_item(clk_menu* menu, int tab_id, int item_id, const char** options, int count,
-                           int new_index);
+int clk_menu_find_index(const char* needle, const char* const* haystack, int count, int fallback);
+void clk_menu_rebuild_item(clk_menu* menu, int tab_id, int item_id, const char* const* options,
+                           int count, int new_index);
 
 /* ================================================================
  *  clk_item_list — item list container
@@ -213,11 +213,11 @@ size_t clk_item_list_count(const clk_item_list* list);
 
 /** Append a STR item.  Each option string is duplicated. */
 void clk_item_list_add_str(clk_item_list* list, int tab_id, int item_id, const char* label,
-                           int default_idx, const char** options, int option_count);
+                           int default_idx, const char* const* options, int option_count);
 
 /** Insert a STR item at @p position (-1 = append). */
 void clk_item_list_add_str_at(clk_item_list* list, int tab_id, int item_id, const char* label,
-                              int default_idx, const char** options, int option_count,
+                              int default_idx, const char* const* options, int option_count,
                               int position);
 
 /** Append an INT item.  @p default_value is clamped to [min, max]. */
@@ -264,8 +264,8 @@ void clk_item_list_clear_options(clk_item_list* list, int item_id);
 void clk_item_list_set_range(clk_item_list* list, int item_id, double min_val, double max_val,
                              double step_val);
 
-void clk_item_list_rebuild_item(clk_item_list* list, int item_id, const char** options, int count,
-                                int new_index);
+void clk_item_list_rebuild_item(clk_item_list* list, int item_id, const char* const* options,
+                                int count, int new_index);
 
 /* ================================================================
  *  clk_tab_list — tab list container

@@ -17,7 +17,7 @@ extern "C" {
 
 typedef struct {
     clk_menu* menu;
-    const clk_menu_theme* theme;
+    clk_menu_theme* theme;
 
     clk_texture tex;
     clk_sprite* sprite;
@@ -31,7 +31,7 @@ typedef struct {
  *  Lifecycle
  * ------------------------------------------------------------------ */
 
-clk_menu_instance* clk_menu_instance_create(clk_menu* menu, const clk_menu_theme* theme);
+clk_menu_instance* clk_menu_instance_create(clk_menu* menu, clk_menu_theme* theme);
 void clk_menu_instance_destroy(clk_menu_instance* instance);
 
 /* ------------------------------------------------------------------

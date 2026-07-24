@@ -28,13 +28,13 @@ char* clk_file_read_all(const char* path, size_t* out_size) {
 
     rewind(file);
 
-    char* content = malloc(file_size + 1);
+    char* content = malloc((size_t)file_size + 1);
     if (!content) {
         fclose(file);
         return NULL;
     }
 
-    size_t read_size = fread(content, 1, file_size, file);
+    size_t read_size = fread(content, 1, (size_t)file_size, file);
     fclose(file);
 
     if (read_size != (size_t)file_size) {

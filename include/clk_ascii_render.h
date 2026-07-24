@@ -21,7 +21,7 @@ typedef struct {
 
 typedef struct {
     clk_glyph* glyphs;
-    int glyph_count;
+    size_t glyph_count;
 
     clk_sprite** sprites;
     size_t sprite_count;

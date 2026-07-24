@@ -2,6 +2,7 @@
 #define CLK_MENU_THEME_H
 
 #include <stdbool.h>
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -36,13 +37,13 @@ typedef struct clk_menu_def {
 
     /* COMPOSITE */
     struct clk_menu_def** members;
-    int member_cnt;
+    size_t member_cnt;
 
     /* special composite */
     struct clk_menu_def** active_members;
-    int active_cnt;
+    size_t active_cnt;
     struct clk_menu_def** inactive_members;
-    int inactive_cnt;
+    size_t inactive_cnt;
 } clk_menu_def;
 
 /* ================================================================
@@ -56,7 +57,7 @@ typedef struct {
 
 typedef struct {
     clk_menu_row_elem* elements;
-    int count;
+    size_t count;
 } clk_menu_row;
 
 /* ================================================================
@@ -73,7 +74,7 @@ typedef struct {
     char* name;
     clk_menu_section_type type;
     clk_menu_row* rows;
-    int row_count;
+    size_t row_count;
 } clk_menu_section;
 
 /* ================================================================
@@ -82,9 +83,9 @@ typedef struct {
 
 typedef struct clk_menu_theme {
     clk_menu_def** defs;
-    int def_count;
+    size_t def_count;
     clk_menu_section* sections;
-    int section_count;
+    size_t section_count;
     int min_width;
     int min_height;
 } clk_menu_theme;
@@ -104,7 +105,7 @@ bool clk_menu_theme_reload(const char* json_path, clk_menu_theme* theme);
 void clk_menu_theme_destroy(clk_menu_theme* theme);
 
 /** Look up a def by name. Returns NULL if not found. */
-const clk_menu_def* clk_menu_theme_find_def(const clk_menu_theme* theme, const char* name);
+clk_menu_def* clk_menu_theme_find_def(const clk_menu_theme* theme, const char* name);
 
 /** Look up a section by name. Returns NULL if not found. */
 const clk_menu_section* clk_menu_theme_find_section(const clk_menu_theme* theme, const char* name);

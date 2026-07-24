@@ -481,7 +481,7 @@ int main(void) {
     TEST_REQUIRE("path parse root", v != NULL);
 
     /* Simple key name */
-    clk_json_value* r = clk_json_get_by_path(v, "count");
+    const clk_json_value* r = clk_json_get_by_path(v, "count");
     TEST("path simple key", r != NULL && clk_json_is_number(r));
     clk_json_get_number(r, &num_val);
     TEST("path simple key value", num_val == 2.0);

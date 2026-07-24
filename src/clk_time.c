@@ -1,5 +1,6 @@
 #include "clk_time.h"
 
+#include <math.h>
 #include <time.h>
 
 #if defined(_WIN32) || defined(_WIN64)
@@ -46,7 +47,7 @@ void clk_timer_pause(clk_timer* timer) {
         return;
     timer->paused = true;
     timer->paused_at = time(NULL);
-    timer->consumed += (int64_t)difftime(timer->paused_at, timer->started_at);
+    timer->consumed += (int64_t)llround(difftime(timer->paused_at, timer->started_at));
 }
 
 void clk_timer_resume(clk_timer* timer) {
@@ -64,7 +65,7 @@ int64_t clk_timer_remaining(const clk_timer* timer) {
     if (timer->paused)
         elapsed = timer->consumed;
     else
-        elapsed = timer->consumed + (int64_t)difftime(time(NULL), timer->started_at);
+        elapsed = timer->consumed + (int64_t)llround(difftime(time(NULL), timer->started_at));
 
     int64_t remaining = timer->total_seconds - elapsed;
     return remaining > 0 ? remaining : 0;
@@ -81,7 +82,7 @@ int64_t clk_timer_elapsed(const clk_timer* timer) {
         return 0;
     if (timer->paused)
         return timer->consumed;
-    return timer->consumed + (int64_t)difftime(time(NULL), timer->started_at);
+    return timer->consumed + (int64_t)llround(difftime(time(NULL), timer->started_at));
 }
 
 /* ================================================================
@@ -137,7 +138,7 @@ void clk_time_sleep_ms(int ms) {
 #if defined(_WIN32) || defined(_WIN64)
     Sleep(ms);
 #else
-    usleep(ms * 1000);
+    usleep((unsigned int)(ms * 1000));
 #endif
 }
 

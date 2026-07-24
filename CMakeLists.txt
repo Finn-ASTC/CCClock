@@ -73,13 +73,24 @@ target_compile_options(libclock PRIVATE
     -Wimplicit-fallthrough
     -Wstrict-prototypes
     -Werror=implicit-function-declaration
+    -Wconversion
+    -Wsign-conversion
+    -Wnull-dereference
+    -Wdouble-promotion
+    -Wduplicated-branches
+    -Wduplicated-cond
+    -Wlogical-op
+    -Wjump-misses-init
+    -Wcast-qual
+    -Wswitch-default
+    -Wuninitialized
 )
 
 find_path(MINIAUDIO_INCLUDE_DIR
     NAMES miniaudio.h
     REQUIRED
 )
-target_include_directories(libclock PRIVATE "${MINIAUDIO_INCLUDE_DIR}")
+target_include_directories(libclock SYSTEM PRIVATE "${MINIAUDIO_INCLUDE_DIR}")
 
 if(WIN32)
     target_link_libraries(libclock PRIVATE winmm ole32 pthread)

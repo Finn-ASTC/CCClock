@@ -32,7 +32,7 @@ char** clk_fs_scan_dir(const char* dir_path, const char* extension, int* out_cou
         return NULL;
 
     char** list = NULL;
-    int count = 0, capacity = 0;
+    size_t count = 0, capacity = 0;
     size_t ext_len = strlen(extension);
     do {
         if (find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
@@ -56,7 +56,7 @@ char** clk_fs_scan_dir(const char* dir_path, const char* extension, int* out_cou
         size_t path_len = strlen(dir_path) + 1 + name_len + 1;
         list[count] = malloc(path_len);
         if (!list[count]) {
-            for (int k = 0; k < count; ++k)
+            for (size_t k = 0; k < count; ++k)
                 free(list[k]);
             free(list);
             FindClose(find_handle);
@@ -67,7 +67,7 @@ char** clk_fs_scan_dir(const char* dir_path, const char* extension, int* out_cou
     } while (FindNextFile(find_handle, &find_data));
     FindClose(find_handle);
 
-    *out_count = count;
+    *out_count = (int)count;
     return list;
 }
 #else
@@ -81,7 +81,7 @@ char** clk_fs_scan_dir(const char* dir_path, const char* extension, int* out_cou
         return NULL;
 
     char** list = NULL;
-    int count = 0, capacity = 0;
+    size_t count = 0, capacity = 0;
     size_t ext_len = strlen(extension);
     struct dirent* entry;
 
@@ -104,7 +104,7 @@ char** clk_fs_scan_dir(const char* dir_path, const char* extension, int* out_cou
         size_t path_len = strlen(dir_path) + 1 + name_len + 1;
         list[count] = malloc(path_len);
         if (!list[count]) {
-            for (int k = 0; k < count; ++k)
+            for (size_t k = 0; k < count; ++k)
                 free(list[k]);
             free(list);
             closedir(dir);
@@ -115,7 +115,7 @@ char** clk_fs_scan_dir(const char* dir_path, const char* extension, int* out_cou
     }
     closedir(dir);
 
-    *out_count = count;
+    *out_count = (int)count;
     return list;
 }
 #endif
@@ -184,5 +184,6 @@ void clk_fs_sync_dir(const char* dir_path, char*** paths, int* count, char*** di
     *display_names = clk_menu_build_names(new_paths, new_count);
     if (*index >= new_count)
         *index = 0;
-    clk_menu_rebuild_item(menu, tab_id, item_id, (const char**)(*display_names), new_count, *index);
+    clk_menu_rebuild_item(menu, tab_id, item_id, (const char* const*)(*display_names), new_count,
+                          *index);
 }

@@ -1,5 +1,6 @@
 #include "clk_app_setup.h"
 
+#include <math.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -44,13 +45,14 @@ static void register_basic_tab(const clk_app_config* cfg, clk_menu* menu) {
                           cfg->ascii_clock.time_formats.count);
 
     /* ---- font ---- */
-    clk_menu_add_item_str(menu, CLK_TAB_BASIC, CLK_BASIC_ITEM_FONT, "font",
-                          cfg->ascii_clock.fonts.index, (const char**)cfg->ascii_clock.fonts.names,
-                          cfg->ascii_clock.fonts.count);
+    clk_menu_add_item_str(
+        menu, CLK_TAB_BASIC, CLK_BASIC_ITEM_FONT, "font", cfg->ascii_clock.fonts.index,
+        (const char* const*)cfg->ascii_clock.fonts.names, cfg->ascii_clock.fonts.count);
 
     /* ---- menu theme ---- */
     clk_menu_add_item_str(menu, CLK_TAB_BASIC, CLK_BASIC_ITEM_THEME, "menu theme",
-                          cfg->themes.index, (const char**)cfg->themes.names, cfg->themes.count);
+                          cfg->themes.index, (const char* const*)cfg->themes.names,
+                          cfg->themes.count);
 
     /* ---- BGM ---- */
     clk_menu_add_item_bool(menu, CLK_TAB_BASIC, CLK_BASIC_ITEM_BGM_ENABLED, "BGM enabled",
@@ -85,12 +87,16 @@ static void register_basic_tab(const clk_app_config* cfg, clk_menu* menu) {
                               sound_cnt > 0 ? sound_cnt : 1);
 
         free(opts);
-        for (int i = 0; i < sound_cnt; ++i)
-            free(names[i]);
-        free(names);
-        for (int i = 0; i < sound_cnt; ++i)
-            free(paths[i]);
-        free(paths);
+        if (names) {
+            for (int i = 0; i < sound_cnt; ++i)
+                free(names[i]);
+            free(names);
+        }
+        if (paths) {
+            for (int i = 0; i < sound_cnt; ++i)
+                free(paths[i]);
+            free(paths);
+        }
     }
 
     /* ---- quit ---- */
@@ -220,7 +226,7 @@ bool clk_app_setup_clock(clk_clock* clock, clk_audio_engine** out_engine,
         alarm.repeat_count = src->sound_repeat;
         alarm.repeat_days = src->repeat_days;
         alarm.today_date = src->today_date;
-        alarm.volume = src->volume / 100.0f;
+        alarm.volume = (float)src->volume / 100.0f;
         alarm.loop = src->loop;
 
         clk_setup_load_sound(&alarm.sound, audio_dir, src->sound_file, *out_engine);
@@ -249,7 +255,7 @@ bool clk_app_setup_clock(clk_clock* clock, clk_audio_engine** out_engine,
             strncpy(seg.name, src_seg->name, CLK_CLOCK_NAME_MAX - 1);
             seg.duration_seconds = src_seg->duration_seconds;
             seg.repeat_count = src_seg->sound_repeat;
-            seg.volume = src_seg->volume / 100.0f;
+            seg.volume = (float)src_seg->volume / 100.0f;
             seg.loop = src_seg->loop;
 
             clk_setup_load_sound(&seg.sound, audio_dir, src_seg->sound_file, *out_engine);
@@ -336,7 +342,7 @@ static void diff_update_alarms(clk_clock* clock, clk_audio_engine* engine,
             a->repeat_count = src->sound_repeat;
             a->repeat_days = src->repeat_days;
             a->today_date = src->today_date;
-            a->volume = src->volume / 100.0f;
+            a->volume = (float)src->volume / 100.0f;
             a->loop = src->loop;
 
             char new_path[CLK_SOUND_PATH_MAX];
@@ -363,7 +369,7 @@ static void diff_update_alarms(clk_clock* clock, clk_audio_engine* engine,
             alarm.repeat_count = src->sound_repeat;
             alarm.repeat_days = src->repeat_days;
             alarm.today_date = src->today_date;
-            alarm.volume = src->volume / 100.0f;
+            alarm.volume = (float)src->volume / 100.0f;
             alarm.loop = src->loop;
 
             if (audio_dir && src->sound_file[0] != '\0') {
@@ -421,7 +427,7 @@ static void diff_update_pomodoros(clk_clock* clock, clk_audio_engine* engine,
                     const clk_cfg_pomodoro_segment* src_seg = &src->segments[k];
 
                     seg->repeat_count = src_seg->sound_repeat;
-                    seg->volume = src_seg->volume / 100.0f;
+                    seg->volume = (float)src_seg->volume / 100.0f;
                     seg->loop = src_seg->loop;
 
                     char new_path[CLK_SOUND_PATH_MAX];
@@ -450,7 +456,7 @@ static void diff_update_pomodoros(clk_clock* clock, clk_audio_engine* engine,
                     strncpy(seg.name, src_seg->name, CLK_CLOCK_NAME_MAX - 1);
                     seg.duration_seconds = src_seg->duration_seconds;
                     seg.repeat_count = src_seg->sound_repeat;
-                    seg.volume = src_seg->volume / 100.0f;
+                    seg.volume = (float)src_seg->volume / 100.0f;
                     seg.loop = src_seg->loop;
 
                     if (audio_dir && src_seg->sound_file[0] != '\0') {
@@ -483,7 +489,7 @@ static void diff_update_pomodoros(clk_clock* clock, clk_audio_engine* engine,
                 strncpy(seg.name, src_seg->name, CLK_CLOCK_NAME_MAX - 1);
                 seg.duration_seconds = src_seg->duration_seconds;
                 seg.repeat_count = src_seg->sound_repeat;
-                seg.volume = src_seg->volume / 100.0f;
+                seg.volume = (float)src_seg->volume / 100.0f;
                 seg.loop = src_seg->loop;
 
                 if (audio_dir && src_seg->sound_file[0] != '\0') {
@@ -583,7 +589,7 @@ static void register_alarm_tab(clk_menu* menu, clk_clock* clock, const char** so
         clk_item_list_add_int(list, CLK_TAB_ALARM, base + CLK_ALARM_REPEAT_COUNT, "repeat count",
                               a->repeat_count, 1, 99, 1);
         clk_item_list_add_int(list, CLK_TAB_ALARM, base + CLK_ALARM_VOLUME_OFFSET, "volume",
-                              (int)(a->volume * 100.0f + 0.5f), 0, 100, 5);
+                              (int)lroundf(a->volume * 100.0f), 0, 100, 5);
         clk_item_list_add_str(list, CLK_TAB_ALARM, base + CLK_ALARM_SOUND_OFFSET, "sound",
                               sound_idx, sound_opts, sound_count);
         clk_item_list_add_action(list, CLK_TAB_ALARM, base + CLK_ALARM_ADD_OFFSET, "add alarm");
@@ -638,7 +644,7 @@ static void register_pomodoro_tab(clk_menu* menu, clk_clock* clock, const char**
             clk_item_list_add_int(list, CLK_TAB_POMODORO, seg_base + CLK_POMO_SEG_REPEAT_OFFSET,
                                   "repeat", seg->repeat_count, 1, 99, 1);
             clk_item_list_add_int(list, CLK_TAB_POMODORO, seg_base + CLK_POMO_SEG_VOLUME_OFFSET,
-                                  "volume", (int)(seg->volume * 100.0f + 0.5f), 0, 100, 5);
+                                  "volume", (int)lroundf(seg->volume * 100.0f), 0, 100, 5);
             clk_item_list_add_str(list, CLK_TAB_POMODORO, seg_base + CLK_POMO_SEG_SOUND_OFFSET,
                                   "sound", sound_idx, sound_opts, sound_count);
             clk_item_list_add_action(list, CLK_TAB_POMODORO, seg_base + CLK_POMO_SEG_ADD_OFFSET,

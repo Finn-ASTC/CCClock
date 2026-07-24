@@ -35,7 +35,7 @@ void clk_bgm_set_enabled(clk_bgm* bgm, bool enabled) {
         if (bgm->instance)
             clk_audio_resume(bgm->instance);
         else if (bgm->sound)
-            bgm->instance = clk_audio_play(bgm->sound, bgm->volume / 100.0f, true, 0);
+            bgm->instance = clk_audio_play(bgm->sound, (float)bgm->volume / 100.0f, true, 0);
     } else {
         clk_audio_pause(bgm->instance);
     }
@@ -45,5 +45,5 @@ void clk_bgm_set_volume(clk_bgm* bgm, int volume) {
     if (!bgm)
         return;
     bgm->volume = volume;
-    clk_audio_inst_set_volume(bgm->instance, volume / 100.0f);
+    clk_audio_inst_set_volume(bgm->instance, (float)volume / 100.0f);
 }

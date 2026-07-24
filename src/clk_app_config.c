@@ -1,5 +1,6 @@
 #include "clk_app_config.h"
 
+#include <math.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -41,14 +42,17 @@ static char** parse_time_formats_array(clk_json_value* time_obj, int* out_count)
     int count = (int)clk_json_array_count(array);
     if (count <= 0)
         return NULL;
-    char** formats = calloc(count, sizeof(char*));
+    char** formats = calloc((size_t)count, sizeof(char*));
     if (!formats)
         return NULL;
     for (int i = 0; i < count; ++i) {
-        clk_json_value* element = clk_json_array_get(array, i);
+        clk_json_value* element = clk_json_array_get(array, (size_t)i);
         const char* str = NULL;
         if (element && clk_json_is_string(element) && clk_json_get_string(element, &str) == 0)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-qual"
             formats[i] = (char*)str;
+#pragma GCC diagnostic pop
     }
     *out_count = count;
     return formats;
@@ -85,7 +89,8 @@ static void clk_cfg_fonts_init(clk_cfg_fonts* fonts, clk_json_value* fonts_obj) 
 
     const char* saved = json_get_string(fonts_obj, "font");
     if (saved)
-        fonts->index = clk_menu_find_index(saved, (const char**)fonts->names, fonts->count, 0);
+        fonts->index =
+            clk_menu_find_index(saved, (const char* const*)fonts->names, fonts->count, 0);
 }
 
 static void clk_cfg_fonts_reload(clk_cfg_fonts* fonts, clk_json_value* fonts_obj, clk_menu* menu,
@@ -93,9 +98,9 @@ static void clk_cfg_fonts_reload(clk_cfg_fonts* fonts, clk_json_value* fonts_obj
     fonts->dir = json_get_string(fonts_obj, "fonts_dir");
     const char* saved = json_get_string(fonts_obj, "font");
     if (saved)
-        fonts->index =
-            clk_menu_find_index(saved, (const char**)fonts->names, fonts->count, fonts->index);
-    clk_menu_rebuild_item(menu, tab_id, item_id, (const char**)fonts->names, fonts->count,
+        fonts->index = clk_menu_find_index(saved, (const char* const*)fonts->names, fonts->count,
+                                           fonts->index);
+    clk_menu_rebuild_item(menu, tab_id, item_id, (const char* const*)fonts->names, fonts->count,
                           fonts->index);
 }
 
@@ -135,7 +140,8 @@ void clk_cfg_themes_init(clk_cfg_themes* themes, clk_json_value* menu_obj) {
 
     const char* saved = json_get_string(menu_obj, "theme");
     if (saved)
-        themes->index = clk_menu_find_index(saved, (const char**)themes->names, themes->count, 0);
+        themes->index =
+            clk_menu_find_index(saved, (const char* const*)themes->names, (int)themes->count, 0);
 }
 
 void clk_cfg_themes_reload(clk_cfg_themes* themes, clk_json_value* menu_obj, clk_menu* menu,
@@ -143,10 +149,10 @@ void clk_cfg_themes_reload(clk_cfg_themes* themes, clk_json_value* menu_obj, clk
     themes->dir = json_get_string(menu_obj, "themes_dir");
     const char* saved = json_get_string(menu_obj, "theme");
     if (saved)
-        themes->index =
-            clk_menu_find_index(saved, (const char**)themes->names, themes->count, themes->index);
-    clk_menu_rebuild_item(menu, tab_id, item_id, (const char**)themes->names, themes->count,
-                          themes->index);
+        themes->index = clk_menu_find_index(saved, (const char* const*)themes->names,
+                                            (int)themes->count, themes->index);
+    clk_menu_rebuild_item(menu, tab_id, item_id, (const char* const*)themes->names,
+                          (int)themes->count, themes->index);
 }
 
 void clk_cfg_themes_sync(clk_cfg_themes* themes, clk_menu* menu, int tab_id, int item_id) {
@@ -339,14 +345,14 @@ static void clk_cfg_alarms_init(clk_cfg_alarms* alarms, clk_json_value* json_arr
         return;
 
     alarms->count = json_count < CLK_ALARM_MAX ? json_count : CLK_ALARM_MAX;
-    alarms->items = calloc(alarms->count, sizeof(clk_cfg_alarm));
+    alarms->items = calloc((size_t)alarms->count, sizeof(clk_cfg_alarm));
     if (!alarms->items) {
         alarms->count = 0;
         return;
     }
 
     for (int i = 0; i < alarms->count; ++i) {
-        clk_json_value* obj = clk_json_array_get(json_array, i);
+        clk_json_value* obj = clk_json_array_get(json_array, (size_t)i);
         if (!obj || !clk_json_is_object(obj))
             continue;
         parse_one_alarm(&alarms->items[i], obj);
@@ -408,14 +414,14 @@ static void parse_one_pomodoro(clk_cfg_pomodoro* pomodoro, clk_json_value* obj) 
 
     pomodoro->segment_count =
         seg_count < CLK_POMODORO_MAX_SEGMENTS ? seg_count : CLK_POMODORO_MAX_SEGMENTS;
-    pomodoro->segments = calloc(pomodoro->segment_count, sizeof(clk_cfg_pomodoro_segment));
+    pomodoro->segments = calloc((size_t)pomodoro->segment_count, sizeof(clk_cfg_pomodoro_segment));
     if (!pomodoro->segments) {
         pomodoro->segment_count = 0;
         return;
     }
 
     for (int j = 0; j < pomodoro->segment_count; ++j) {
-        clk_json_value* seg_obj = clk_json_array_get(segs_json, j);
+        clk_json_value* seg_obj = clk_json_array_get(segs_json, (size_t)j);
         if (!seg_obj || !clk_json_is_object(seg_obj))
             continue;
         parse_one_segment(&pomodoro->segments[j], seg_obj);
@@ -430,14 +436,14 @@ static void clk_cfg_pomodoros_init(clk_cfg_pomodoros* pomodoros, clk_json_value*
         return;
 
     pomodoros->count = json_count < CLK_POMODORO_MAX ? json_count : CLK_POMODORO_MAX;
-    pomodoros->items = calloc(pomodoros->count, sizeof(clk_cfg_pomodoro));
+    pomodoros->items = calloc((size_t)pomodoros->count, sizeof(clk_cfg_pomodoro));
     if (!pomodoros->items) {
         pomodoros->count = 0;
         return;
     }
 
     for (int i = 0; i < pomodoros->count; ++i) {
-        clk_json_value* obj = clk_json_array_get(json_array, i);
+        clk_json_value* obj = clk_json_array_get(json_array, (size_t)i);
         if (!obj || !clk_json_is_object(obj))
             continue;
         parse_one_pomodoro(&pomodoros->items[i], obj);
@@ -500,13 +506,13 @@ void clk_cfg_bgms_init(clk_cfg_bgms* bgm_list, clk_json_value* json_array) {
         return;
 
     bgm_list->count = json_count < 99 ? json_count : 99;
-    bgm_list->items = calloc(bgm_list->count, sizeof(clk_cfg_bgm));
+    bgm_list->items = calloc((size_t)bgm_list->count, sizeof(clk_cfg_bgm));
     if (!bgm_list->items) {
         bgm_list->count = 0;
         return;
     }
     for (int i = 0; i < bgm_list->count; ++i) {
-        clk_json_value* obj = clk_json_array_get(json_array, i);
+        clk_json_value* obj = clk_json_array_get(json_array, (size_t)i);
         if (!obj || !clk_json_is_object(obj))
             continue;
         parse_one_bgm(&bgm_list->items[i], obj);
@@ -672,7 +678,7 @@ void clk_app_config_sync_clock(const clk_app_config* cfg, const clk_clock* clock
                          : clk_json_object_set_false(obj, "enable");
         a->loop ? clk_json_object_set_true(obj, "loop") : clk_json_object_set_false(obj, "loop");
         clk_json_object_set_number(obj, "sound_repeat", a->repeat_count);
-        clk_json_object_set_number(obj, "volume", (int)(a->volume * 100.0f + 0.5f));
+        clk_json_object_set_number(obj, "volume", (int)lroundf(a->volume * 100.0f));
         clk_json_object_set_string(obj, "repeat", clk_repeat_days_to_string(a->repeat_days));
 
         if (a->sound) {
@@ -713,7 +719,7 @@ void clk_app_config_sync_clock(const clk_app_config* cfg, const clk_clock* clock
             clk_json_object_set_string(seg_obj, "name", seg->name);
             clk_json_object_set_number(seg_obj, "minutes", seg->duration_seconds / 60.0);
             clk_json_object_set_number(seg_obj, "sound_repeat", seg->repeat_count);
-            clk_json_object_set_number(seg_obj, "volume", (int)(seg->volume * 100.0f + 0.5f));
+            clk_json_object_set_number(seg_obj, "volume", (int)lroundf(seg->volume * 100.0f));
             if (seg->loop)
                 clk_json_object_set_true(seg_obj, "loop");
 

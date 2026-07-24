@@ -721,6 +721,8 @@ static clk_key_event process_byte(int ch) {
                     break;
                 case 0x5D:
                     break;
+                default:
+                    break;
             }
         }
         return ev;
@@ -828,8 +830,8 @@ void clk_key_io_init(void) {
         struct termios new_tio;
         tcgetattr(STDIN_FILENO, &saved_termios);
         new_tio = saved_termios;
-        new_tio.c_lflag &= ~(ICANON | ECHO | ISIG);
-        new_tio.c_iflag &= ~(ICRNL | IXON);
+        new_tio.c_lflag &= ~(tcflag_t)(ICANON | ECHO | ISIG);
+        new_tio.c_iflag &= ~(tcflag_t)(ICRNL | IXON);
         tcsetattr(STDIN_FILENO, TCSANOW, &new_tio);
     }
 #else
@@ -962,7 +964,7 @@ static size_t prev_char_boundary(const char* buf, size_t pos) {
 static size_t next_char_boundary(const char* buf, size_t pos, size_t len) {
     if (pos >= len)
         return len;
-    return pos + char_bytes_at(buf, pos, len);
+    return pos + (size_t)char_bytes_at(buf, pos, len);
 }
 
 /* ================================================================
@@ -990,13 +992,13 @@ static bool write_at_cursor(const char* text, size_t byte_len) {
             text_pos++;
             continue;
         }
-        if (text_pos + ch_bytes > byte_len)
+        if (text_pos + (size_t)ch_bytes > byte_len)
             break;
-        if (to_write + ch_bytes > space)
+        if (to_write + (size_t)ch_bytes > space)
             break;
 
-        to_write += ch_bytes;
-        text_pos += ch_bytes;
+        to_write += (size_t)ch_bytes;
+        text_pos += (size_t)ch_bytes;
     }
 
     if (to_write == 0)
@@ -1025,7 +1027,7 @@ static bool overwrite_at_cursor(const char* text, size_t byte_len) {
             text_pos++;
             continue;
         }
-        if (text_pos + in_bytes > byte_len) {
+        if (text_pos + (size_t)in_bytes > byte_len) {
             truncated = true;
             break;
         }
@@ -1037,14 +1039,14 @@ static bool overwrite_at_cursor(const char* text, size_t byte_len) {
         }
 
         int cur_bytes = char_bytes_at(input_buffer, *input_pos, *input_len);
-        if (*input_len - cur_bytes + in_bytes >= input_buffer_max_bytes) {
+        if (*input_len - (size_t)cur_bytes + (size_t)in_bytes >= input_buffer_max_bytes) {
             truncated = true;
             break;
         }
 
         clk_input_delete_after();
-        write_at_cursor(text + text_pos, in_bytes);
-        text_pos += in_bytes;
+        write_at_cursor(text + text_pos, (size_t)in_bytes);
+        text_pos += (size_t)in_bytes;
     }
     return !truncated;
 }
@@ -1055,8 +1057,9 @@ bool clk_input_write(clk_write_mode mode, const char* text, size_t byte_len) {
             return write_at_cursor(text, byte_len);
         case CLK_WRITE_OVERWRITE:
             return overwrite_at_cursor(text, byte_len);
+        default:
+            return false;
     }
-    return false;
 }
 
 void clk_input_move_cursor(int offset) {
@@ -1091,10 +1094,10 @@ bool clk_input_delete_after(void) {
         return false;
 
     int del_bytes = char_bytes_at(input_buffer, *input_pos, *input_len);
-    if (*input_len > *input_pos + del_bytes)
+    if (*input_len > *input_pos + (size_t)del_bytes)
         memmove(input_buffer + *input_pos, input_buffer + *input_pos + del_bytes,
-                *input_len - *input_pos - del_bytes);
-    *input_len -= del_bytes;
+                *input_len - *input_pos - (size_t)del_bytes);
+    *input_len -= (size_t)del_bytes;
     input_buffer[*input_len] = '\0';
     return true;
 }

@@ -1,5 +1,6 @@
 #include "clk_ascii_render.h"
 
+#include <math.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -48,7 +49,7 @@ static bool trans_json_cell(const clk_json_value* json_cell, clk_cell* out_cell,
     if (!style_id_json || !clk_json_is_number(style_id_json) ||
         clk_json_get_number(style_id_json, &style_id_num) != 0)
         return false;
-    out_cell->style_id = (int)style_id_num;
+    out_cell->style_id = (int)lround(style_id_num);
 
     struct clk_json_value* wide = clk_json_object_get(json_cell, "wide");
     out_cell->type = (wide && clk_json_is_true(wide)) ? CELL_WIDE_LEAD : CELL_NORMAL;
@@ -117,11 +118,11 @@ static const clk_cell* cell_lookup(const char* utf8_char, const clk_cell_entry* 
 
 /** Search for a character in the glyph table.
  *  Returns a pointer to the matching texture, or NULL if not found. */
-static clk_texture* glyph_lookup(const clk_glyph* glyphs, int glyph_count, char character) {
+static clk_texture* glyph_lookup(const clk_glyph* glyphs, size_t glyph_count, char character) {
     char key[5] = {character, '\0'};
-    for (int i = 0; i < glyph_count; ++i)
+    for (size_t i = 0; i < glyph_count; ++i)
         if (strcmp(glyphs[i].key, key) == 0)
-            return (clk_texture*)&glyphs[i].texture;
+            return (clk_texture*)(uintptr_t)&glyphs[i].texture;
     return NULL;
 }
 
@@ -164,7 +165,8 @@ static bool load_glyph_textures(const clk_json_value* json, clk_ascii_render* re
     }
     clk_json_key_value_pair cell_pair;
     while (clk_json_object_iterator_next(&cell_iter, &cell_pair)) {
-        clk_cell_entry* tmp = realloc(cell_entries, (cell_entry_count + 1) * sizeof(*cell_entries));
+        clk_cell_entry* tmp =
+            realloc(cell_entries, ((size_t)cell_entry_count + 1) * sizeof(*cell_entries));
         if (!tmp) {
             free(cell_entries);
             clk_json_free(translator);
@@ -181,7 +183,7 @@ static bool load_glyph_textures(const clk_json_value* json, clk_ascii_render* re
         cell_entry_count++;
     }
 
-    int glyph_count = (int)clk_json_object_count(json_glyphs);
+    size_t glyph_count = clk_json_object_count(json_glyphs);
     clk_glyph* glyphs = calloc(glyph_count, sizeof(clk_glyph));
     if (!glyphs) {
         free(cell_entries);
@@ -198,7 +200,7 @@ static bool load_glyph_textures(const clk_json_value* json, clk_ascii_render* re
     }
 
     clk_json_key_value_pair pair;
-    int slot = 0;
+    size_t slot = 0;
     while (clk_json_object_iterator_next(&iter, &pair)) {
         memset(glyphs[slot].key, 0, 5);
         strncpy(glyphs[slot].key, pair.key, 4);
@@ -206,7 +208,7 @@ static bool load_glyph_textures(const clk_json_value* json, clk_ascii_render* re
 
         struct clk_json_value* glyph_value = pair.value;
         if (clk_json_get_type(glyph_value) != CLK_JSON_ARRAY) {
-            for (int i = 0; i <= slot; ++i)
+            for (size_t i = 0; i <= slot; ++i)
                 clk_texture_destroy(&glyphs[i].texture);
             free(glyphs);
             free(cell_entries);
@@ -215,10 +217,10 @@ static bool load_glyph_textures(const clk_json_value* json, clk_ascii_render* re
         }
 
         for (int y = 0; y < glyph_height; ++y) {
-            struct clk_json_value* row_value = clk_json_array_get(glyph_value, y);
+            struct clk_json_value* row_value = clk_json_array_get(glyph_value, (size_t)y);
             const char* str = NULL;
             if (clk_json_get_string(row_value, &str) != 0) {
-                for (int i = 0; i <= slot; ++i)
+                for (size_t i = 0; i <= slot; ++i)
                     clk_texture_destroy(&glyphs[i].texture);
                 free(glyphs);
                 free(cell_entries);
@@ -239,7 +241,7 @@ static bool load_glyph_textures(const clk_json_value* json, clk_ascii_render* re
                     byte_count = 4;
 
                 char ch_buf[5] = {0};
-                memcpy(ch_buf, str + byte_position, byte_count);
+                memcpy(ch_buf, str + byte_position, (size_t)byte_count);
                 const clk_cell* cell = cell_lookup(ch_buf, cell_entries, cell_entry_count);
                 if (!cell->is_empty)
                     clk_texture_set_cell(&glyphs[slot].texture, cell_x, y, cell);
@@ -292,10 +294,10 @@ static bool load_font_config(clk_ascii_render* render) {
         return false;
     }
 
-    render->glyph_spacing = (int)spacing;
-    render->line_spacing = (int)line_spacing;
+    render->glyph_spacing = (int)lround(spacing);
+    render->line_spacing = (int)lround(line_spacing);
 
-    if (!load_glyph_textures(json, render, (int)glyph_width, (int)glyph_height)) {
+    if (!load_glyph_textures(json, render, (int)lround(glyph_width), (int)lround(glyph_height))) {
         clk_json_free(json);
         return false;
     }
@@ -335,7 +337,7 @@ void clk_ascii_render_destroy(clk_ascii_render* render) {
     free(render->font_path);
     render->font_path = NULL;
 
-    for (int i = 0; i < render->glyph_count; ++i)
+    for (size_t i = 0; i < render->glyph_count; ++i)
         clk_texture_destroy(&render->glyphs[i].texture);
     free(render->glyphs);
     render->glyphs = NULL;
@@ -355,7 +357,7 @@ bool clk_ascii_render_reload(clk_ascii_render* render) {
     if (!render)
         return false;
 
-    for (int i = 0; i < render->glyph_count; ++i)
+    for (size_t i = 0; i < render->glyph_count; ++i)
         clk_texture_destroy(&render->glyphs[i].texture);
     free(render->glyphs);
     render->glyphs = NULL;

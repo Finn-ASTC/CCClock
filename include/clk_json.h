@@ -201,7 +201,7 @@ int clk_json_merge_objects(clk_json_value* dest, const clk_json_value* src);
 /** Look up a value by path string, e.g. "users[0].name".
  *  Supports dot-notation for objects and bracket-notation for arrays.
  *  @return Found value, or NULL if any step is missing or invalid. */
-clk_json_value* clk_json_get_by_path(const clk_json_value* root, const char* path);
+const clk_json_value* clk_json_get_by_path(const clk_json_value* root, const char* path);
 
 #ifdef __cplusplus
 }
