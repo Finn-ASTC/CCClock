@@ -601,3 +601,136 @@ void clk_app_config_deinit(clk_app_config* cfg) {
     clk_json_free(cfg->json);
     cfg->json = NULL;
 }
+
+void clk_app_config_save(const clk_app_config* cfg, const char* path) {
+    if (!cfg || !path)
+        return;
+    char* out = clk_json_stringify_pretty(cfg->json);
+    if (!out)
+        return;
+    FILE* file = fopen(path, "w");
+    if (file) {
+        fputs(out, file);
+        fclose(file);
+    }
+    free(out);
+}
+
+void clk_app_config_sync_basic(const clk_app_config* cfg) {
+    if (!cfg)
+        return;
+    clk_json_value* theme_obj = clk_json_object_get(cfg->json, "ascii_clock_theme");
+    clk_json_value* menu_obj = clk_json_object_get(cfg->json, "menu");
+    if (theme_obj) {
+        clk_json_value* font_obj = clk_json_object_get(theme_obj, "fonts");
+        clk_json_value* time_obj = clk_json_object_get(theme_obj, "time_format");
+        if (font_obj && cfg->ascii_clock.fonts.index >= 0 &&
+            cfg->ascii_clock.fonts.index < cfg->ascii_clock.fonts.count)
+            clk_json_object_set_string(font_obj, "font",
+                                       cfg->ascii_clock.fonts.names[cfg->ascii_clock.fonts.index]);
+        if (time_obj && cfg->ascii_clock.time_formats.index >= 0 &&
+            cfg->ascii_clock.time_formats.index < cfg->ascii_clock.time_formats.count)
+            clk_json_object_set_string(
+                time_obj, "selected_time_format",
+                cfg->ascii_clock.time_formats.strings[cfg->ascii_clock.time_formats.index]);
+    }
+    if (menu_obj && cfg->themes.index >= 0 && cfg->themes.index < cfg->themes.count)
+        clk_json_object_set_string(menu_obj, "theme", cfg->themes.names[cfg->themes.index]);
+}
+
+void clk_app_config_sound_basename(const char* full_path, char* out, size_t size) {
+    const char* last_slash = NULL;
+    for (const char* p = full_path; p && *p; ++p)
+        if (*p == '/' || *p == '\\')
+            last_slash = p;
+    const char* start = last_slash ? last_slash + 1 : full_path;
+
+    size_t len = 0;
+    while (start[len] && start[len] != '.' && len < size - 1)
+        out[len] = start[len], ++len;
+    out[len] = '\0';
+}
+
+void clk_app_config_sync_clock(const clk_app_config* cfg, const clk_clock* clock) {
+    if (!cfg || !clock)
+        return;
+
+    clk_json_value* clock_obj = clk_json_object_get(cfg->json, "clock");
+    if (!clock_obj) {
+        clock_obj = clk_json_create_object();
+        clk_json_object_set(cfg->json, "clock", clock_obj);
+    }
+
+    clk_json_value* alarms_arr = clk_json_create_array();
+    for (int i = 0; i < clock->alarm_count; ++i) {
+        const clk_clock_alarm* a = &clock->alarms[i];
+        clk_json_value* obj = clk_json_create_object();
+
+        clk_json_object_set_string(obj, "name", a->name);
+        clk_json_object_set_number(obj, "hour", a->alarm.hour);
+        clk_json_object_set_number(obj, "minute", a->alarm.minute);
+        a->alarm.enabled ? clk_json_object_set_true(obj, "enable")
+                         : clk_json_object_set_false(obj, "enable");
+        a->loop ? clk_json_object_set_true(obj, "loop") : clk_json_object_set_false(obj, "loop");
+        clk_json_object_set_number(obj, "sound_repeat", a->repeat_count);
+        clk_json_object_set_number(obj, "volume", (int)(a->volume * 100.0f + 0.5f));
+        clk_json_object_set_string(obj, "repeat", clk_repeat_days_to_string(a->repeat_days));
+
+        if (a->sound) {
+            const char* full = clk_audio_sound_get_path(a->sound);
+            if (full && full[0]) {
+                char basename[CLK_CONFIG_ALARM_SOUND_MAX];
+                clk_app_config_sound_basename(full, basename, sizeof(basename));
+                clk_json_object_set_string(obj, "sound", basename);
+            }
+        }
+
+        if (a->repeat_days == CLK_REPEAT_TODAY && a->today_date != 0) {
+            struct tm tm;
+            if (clk_time_localtime_from(a->today_date, &tm)) {
+                char date[32];
+                snprintf(date, sizeof(date), "%04d-%02d-%02d", tm.tm_year + 1900, tm.tm_mon + 1,
+                         tm.tm_mday);
+                clk_json_object_set_string(obj, "today_date", date);
+            }
+        }
+
+        clk_json_array_append(alarms_arr, obj);
+    }
+    clk_json_object_set(clock_obj, "alarms", alarms_arr);
+
+    clk_json_value* pomo_arr = clk_json_create_array();
+    for (int i = 0; i < clock->pomodoro_count; ++i) {
+        const clk_clock_pomodoro* po = &clock->pomodoros[i];
+        clk_json_value* po_obj = clk_json_create_object();
+
+        clk_json_object_set_string(po_obj, "name", po->name);
+
+        clk_json_value* segs_arr = clk_json_create_array();
+        for (int j = 0; j < po->segment_count; ++j) {
+            const clk_clock_pomodoro_segment* seg = &po->segments[j];
+            clk_json_value* seg_obj = clk_json_create_object();
+
+            clk_json_object_set_string(seg_obj, "name", seg->name);
+            clk_json_object_set_number(seg_obj, "minutes", seg->duration_seconds / 60.0);
+            clk_json_object_set_number(seg_obj, "sound_repeat", seg->repeat_count);
+            clk_json_object_set_number(seg_obj, "volume", (int)(seg->volume * 100.0f + 0.5f));
+            if (seg->loop)
+                clk_json_object_set_true(seg_obj, "loop");
+
+            if (seg->sound) {
+                const char* full = clk_audio_sound_get_path(seg->sound);
+                if (full && full[0]) {
+                    char basename[CLK_CONFIG_ALARM_SOUND_MAX];
+                    clk_app_config_sound_basename(full, basename, sizeof(basename));
+                    clk_json_object_set_string(seg_obj, "sound", basename);
+                }
+            }
+
+            clk_json_array_append(segs_arr, seg_obj);
+        }
+        clk_json_object_set(po_obj, "segments", segs_arr);
+        clk_json_array_append(pomo_arr, po_obj);
+    }
+    clk_json_object_set(clock_obj, "pomodoro", pomo_arr);
+}

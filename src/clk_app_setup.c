@@ -18,8 +18,6 @@ const char* clk_repeat_day_options[] = {
 
 static void register_basic_tab(const clk_app_config* cfg, clk_menu* menu);
 
-static void sound_extract_basename(const char* full_path, char* out, size_t size);
-
 static void scan_sound_options(const clk_app_config* cfg, char*** out_paths, int* out_count,
                                char*** out_names, const char*** out_opts);
 
@@ -264,19 +262,6 @@ void clk_app_setup_clock_deinit(clk_clock* clock, clk_audio_engine* engine) {
  *  Internal helpers — sound path utilities
  * ================================================================ */
 
-static void sound_extract_basename(const char* full_path, char* out, size_t size) {
-    const char* last_slash = NULL;
-    for (const char* p = full_path; p && *p; ++p)
-        if (*p == '/' || *p == '\\')
-            last_slash = p;
-    const char* start = last_slash ? last_slash + 1 : full_path;
-
-    size_t len = 0;
-    while (start[len] && start[len] != '.' && len < size - 1)
-        out[len] = start[len], ++len;
-    out[len] = '\0';
-}
-
 static void scan_sound_options(const clk_app_config* cfg, char*** out_paths, int* out_count,
                                char*** out_names, const char*** out_opts) {
     *out_paths = NULL;
@@ -323,7 +308,7 @@ static void register_alarm_tab(clk_menu* menu, clk_clock* clock, const char** so
         if (a->sound && sound_count > 0) {
             const char* full_path = clk_audio_sound_get_path(a->sound);
             char basename[CLK_CONFIG_ALARM_SOUND_MAX];
-            sound_extract_basename(full_path, basename, sizeof(basename));
+            clk_app_config_sound_basename(full_path, basename, sizeof(basename));
             sound_idx = clk_menu_find_index(basename, sound_opts, sound_count, 0);
         }
 
@@ -385,7 +370,7 @@ static void register_pomodoro_tab(clk_menu* menu, clk_clock* clock, const char**
             if (seg->sound && sound_count > 0) {
                 const char* full_path = clk_audio_sound_get_path(seg->sound);
                 char basename[CLK_CONFIG_ALARM_SOUND_MAX];
-                sound_extract_basename(full_path, basename, sizeof(basename));
+                clk_app_config_sound_basename(full_path, basename, sizeof(basename));
                 sound_idx = clk_menu_find_index(basename, sound_opts, sound_count, 0);
             }
 
@@ -407,8 +392,8 @@ static void register_pomodoro_tab(clk_menu* menu, clk_clock* clock, const char**
 
         if (po->segment_count == 0) {
             int seg_base = base + CLK_POMO_SEGMENT_BASE + 0 * CLK_POMO_SEG_STRIDE;
-            clk_item_list_add_action(list, CLK_TAB_POMODORO,
-                                     seg_base + CLK_POMO_SEG_ADD_OFFSET, "add segment");
+            clk_item_list_add_action(list, CLK_TAB_POMODORO, seg_base + CLK_POMO_SEG_ADD_OFFSET,
+                                     "add segment");
         }
 
         clk_item_list_add_action(list, CLK_TAB_POMODORO, base + CLK_POMO_ADD_OFFSET,

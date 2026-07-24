@@ -170,6 +170,8 @@ clk_repeat_days clk_repeat_days_from_string(const char* str);
 /** Convert a repeat-day enum value back to its canonical string. */
 const char* clk_repeat_days_to_string(clk_repeat_days d);
 
+void clk_app_config_sound_basename(const char* full_path, char* out, size_t size);
+
 /* ------------------------------------------------------------------
  *  Aggregate
  * ------------------------------------------------------------------ */
@@ -194,6 +196,12 @@ void clk_app_config_reload(clk_app_config* cfg, clk_menu* menu, int tab_id, int 
 
 /** Release all resources held by all modules. */
 void clk_app_config_deinit(clk_app_config* cfg);
+
+void clk_app_config_save(const clk_app_config* cfg, const char* path);
+
+void clk_app_config_sync_basic(const clk_app_config* cfg);
+
+void clk_app_config_sync_clock(const clk_app_config* cfg, const clk_clock* clock);
 
 #ifdef __cplusplus
 }

@@ -218,6 +218,8 @@ int main(void) {
                                     cfg.ascii_clock.time_formats.count,
                                     cfg.ascii_clock.time_formats.index);
                                 clk_cfg_ascii_clock_theme_switch_time(&cfg.ascii_clock);
+                                clk_app_config_sync_basic(&cfg);
+                                clk_app_config_save(&cfg, APP_CONFIG);
                                 break;
                             case CLK_BASIC_ITEM_FONT:
                                 cfg.ascii_clock.fonts.index = clk_menu_find_index(
@@ -226,6 +228,8 @@ int main(void) {
                                 clk_ascii_render_change_font(
                                     &render,
                                     cfg.ascii_clock.fonts.paths[cfg.ascii_clock.fonts.index]);
+                                clk_app_config_sync_basic(&cfg);
+                                clk_app_config_save(&cfg, APP_CONFIG);
                                 break;
                             case CLK_BASIC_ITEM_THEME:
                                 cfg.themes.index = clk_menu_find_index(
@@ -233,6 +237,8 @@ int main(void) {
                                     cfg.themes.count, cfg.themes.index);
                                 clk_menu_instance_change_theme(menu_inst,
                                                                cfg.themes.paths[cfg.themes.index]);
+                                clk_app_config_sync_basic(&cfg);
+                                clk_app_config_save(&cfg, APP_CONFIG);
                                 break;
                         }
                     }
@@ -286,6 +292,8 @@ int main(void) {
                                 break;
                             }
                         }
+                        clk_app_config_sync_clock(&cfg, &clock);
+                        clk_app_config_save(&cfg, APP_CONFIG);
                     }
 
                     if (menu_event.type == CLK_MENU_EVENT_SUBMIT &&
@@ -302,6 +310,8 @@ int main(void) {
                             clk_clock_add_alarm_at(&clock, &a,
                                                    idx >= 0 ? idx + 1 : clock.alarm_count);
                             clk_app_menu_rebuild(menu, &clock, &cfg);
+                            clk_app_config_sync_clock(&cfg, &clock);
+                            clk_app_config_save(&cfg, APP_CONFIG);
                         }
                         if (off == CLK_ALARM_DELETE_OFFSET) {
                             clk_clock_alarm* a = clk_clock_find_alarm_by_id(&clock, al_id);
@@ -309,6 +319,8 @@ int main(void) {
                                 clk_audio_destroy(a->sound);
                                 clk_clock_remove_alarm_by_id(&clock, al_id);
                                 clk_app_menu_rebuild(menu, &clock, &cfg);
+                                clk_app_config_sync_clock(&cfg, &clock);
+                                clk_app_config_save(&cfg, APP_CONFIG);
                             }
                         }
                     }
@@ -323,11 +335,14 @@ int main(void) {
 
                         if (po_off < CLK_POMO_SEGMENT_BASE) {
                             switch (po_off) {
-                                case CLK_POMO_ENABLED_OFFSET:
-                                    clk_clock_pomodoro_set_enabled(
-                                        &clock, clk_clock_find_pomodoro_index_by_id(&clock, po_id),
-                                        menu_event.value.b);
+                                case CLK_POMO_ENABLED_OFFSET: {
+                                    int idx = clk_clock_find_pomodoro_index_by_id(&clock, po_id);
+                                    if (menu_event.value.b)
+                                        clk_clock_pomodoro_start(&clock, idx);
+                                    else
+                                        clk_clock_pomodoro_stop(&clock, idx);
                                     break;
+                                }
                             }
                         } else {
                             int seg_id, field;
@@ -364,6 +379,8 @@ int main(void) {
                                 }
                             }
                         }
+                        clk_app_config_sync_clock(&cfg, &clock);
+                        clk_app_config_save(&cfg, APP_CONFIG);
                     }
 
                     if (menu_event.type == CLK_MENU_EVENT_SUBMIT &&
@@ -382,6 +399,8 @@ int main(void) {
                                 clk_clock_add_pomodoro_at(
                                     &clock, &po, idx >= 0 ? idx + 1 : clock.pomodoro_count);
                                 clk_app_menu_rebuild(menu, &clock, &cfg);
+                                clk_app_config_sync_clock(&cfg, &clock);
+                                clk_app_config_save(&cfg, APP_CONFIG);
                             }
                             if (po_off == CLK_POMO_DELETE_OFFSET) {
                                 clk_clock_pomodoro* po =
@@ -391,6 +410,8 @@ int main(void) {
                                         clk_audio_destroy(po->segments[j].sound);
                                     clk_clock_remove_pomodoro_by_id(&clock, po_id);
                                     clk_app_menu_rebuild(menu, &clock, &cfg);
+                                    clk_app_config_sync_clock(&cfg, &clock);
+                                    clk_app_config_save(&cfg, APP_CONFIG);
                                 }
                             }
                         } else {
@@ -416,6 +437,8 @@ int main(void) {
                                     clk_clock_pomodoro_add_segment_at(
                                         &clock, po_idx, &seg, seg_idx >= 0 ? seg_idx + 1 : 0);
                                     clk_app_menu_rebuild(menu, &clock, &cfg);
+                                    clk_app_config_sync_clock(&cfg, &clock);
+                                    clk_app_config_save(&cfg, APP_CONFIG);
                                 }
                             }
                             if (field == CLK_POMO_SEG_DELETE_OFFSET) {
@@ -432,6 +455,8 @@ int main(void) {
                                         &clock, po_id, seg_id);
                                     clk_clock_pomodoro_remove_segment(&clock, po_idx, seg_idx);
                                     clk_app_menu_rebuild(menu, &clock, &cfg);
+                                    clk_app_config_sync_clock(&cfg, &clock);
+                                    clk_app_config_save(&cfg, APP_CONFIG);
                                 }
                             }
                         }
@@ -498,34 +523,9 @@ int main(void) {
      *  Save + cleanup
      * ================================================================ */
 
-    {
-        clk_json_value* theme_obj = clk_json_object_get(cfg.json, "ascii_clock_theme");
-        clk_json_value* menu_obj = clk_json_object_get(cfg.json, "menu");
-        if (theme_obj) {
-            clk_json_value* font_obj = clk_json_object_get(theme_obj, "fonts");
-            clk_json_value* time_obj = clk_json_object_get(theme_obj, "time_format");
-            if (font_obj)
-                clk_json_object_set_string(
-                    font_obj, "font", cfg.ascii_clock.fonts.names[cfg.ascii_clock.fonts.index]);
-            if (time_obj)
-                clk_json_object_set_string(
-                    time_obj, "selected_time_format",
-                    cfg.ascii_clock.time_formats.strings[cfg.ascii_clock.time_formats.index]);
-        }
-        if (menu_obj)
-            clk_json_object_set_string(menu_obj, "theme", cfg.themes.names[cfg.themes.index]);
-    }
-    {
-        char* out = clk_json_stringify_pretty(cfg.json);
-        if (out) {
-            FILE* file = fopen(APP_CONFIG, "w");
-            if (file) {
-                fputs(out, file);
-                fclose(file);
-            }
-            free(out);
-        }
-    }
+    clk_app_config_sync_basic(&cfg);
+    clk_app_config_sync_clock(&cfg, &clock);
+    clk_app_config_save(&cfg, APP_CONFIG);
 
     clk_menu_instance_destroy(menu_inst);
     clk_menu_destroy(menu);

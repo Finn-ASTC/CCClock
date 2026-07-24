@@ -391,11 +391,19 @@ void clk_clock_update(clk_clock* clock) {
             clk_audio_play_inst* inst =
                 clk_audio_play(alarm_ptr->sound, alarm_ptr->volume, alarm_ptr->loop,
                                alarm_ptr->loop ? 0 : alarm_ptr->repeat_count);
-            if (inst)
+            if (inst && alarm_ptr->loop)
                 add_bell(clock, inst);
         }
+    }
 
-        if (alarm_ptr->repeat_days != CLK_REPEAT_TODAY)
+    for (int i = 0; i < clock->alarm_count; ++i) {
+        clk_clock_alarm* alarm_ptr = &clock->alarms[i];
+        if (!alarm_ptr->alarm.enabled || !alarm_ptr->alarm.triggered)
+            continue;
+        if (alarm_ptr->repeat_days == CLK_REPEAT_TODAY)
+            continue;
+        if (time_info.tm_hour != alarm_ptr->alarm.hour ||
+            time_info.tm_min != alarm_ptr->alarm.minute)
             clk_alarm_rearm(&alarm_ptr->alarm);
     }
 
@@ -411,7 +419,7 @@ void clk_clock_update(clk_clock* clock) {
             if (seg->sound) {
                 clk_audio_play_inst* inst = clk_audio_play(seg->sound, seg->volume, seg->loop,
                                                            seg->loop ? 0 : seg->repeat_count);
-                if (inst)
+                if (inst && seg->loop)
                     add_bell(clock, inst);
             }
         }
