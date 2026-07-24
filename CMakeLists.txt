@@ -152,3 +152,12 @@ find_program(VALGRIND_EXECUTABLE valgrind)
 if(VALGRIND_EXECUTABLE)
     set(MEMORYCHECK_COMMAND "${VALGRIND_EXECUTABLE}" CACHE FILEPATH "Valgrind executable")
 endif()
+
+# ---- libFuzzer (clang + ASan + UBSan) ----
+if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+    add_executable(test_fuzz_json test/test_fuzz_json.c)
+    target_link_libraries(test_fuzz_json PRIVATE libclock)
+    target_include_directories(test_fuzz_json PRIVATE include)
+    target_compile_options(test_fuzz_json PRIVATE -fsanitize=fuzzer,address,undefined)
+    target_link_options(test_fuzz_json PRIVATE -fsanitize=fuzzer,address,undefined)
+endif()
