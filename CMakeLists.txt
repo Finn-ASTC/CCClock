@@ -150,5 +150,5 @@ add_clk_test(audio)
 # ---- Valgrind memcheck ----
 find_program(VALGRIND_EXECUTABLE valgrind)
 if(VALGRIND_EXECUTABLE)
-    set(MEMORYCHECK_COMMAND "${VALGRIND_EXECUTABLE}")
+    set(MEMORYCHECK_COMMAND "${VALGRIND_EXECUTABLE}" CACHE FILEPATH "Valgrind executable")
 endif()
