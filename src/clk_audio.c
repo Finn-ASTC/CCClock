@@ -25,9 +25,10 @@ struct clk_audio_play_inst {
     int managed_remaining;
     clk_audio_sound* template;
     struct clk_audio_play_inst* next;
+    clk_audio_play_inst** bell_ref;
 };
 
-static clk_audio_play_inst* managed_head = NULL; /* global managed instance list */
+static clk_audio_play_inst* clk_audio_managed_head = NULL;
 
 /* ================================================================
  *  Engine lifecycle
@@ -94,10 +95,12 @@ void clk_audio_destroy(clk_audio_sound* sound) {
         return;
 
     /* stop all managed instances belonging to this template */
-    clk_audio_play_inst** pp = &managed_head;
+    clk_audio_play_inst** pp = &clk_audio_managed_head;
     while (*pp) {
         clk_audio_play_inst* s = *pp;
         if (s->template == sound) {
+            if (s->bell_ref)
+                *s->bell_ref = NULL;
             ma_sound_uninit(&s->sound);
             *pp = s->next;
             free(s);
@@ -155,8 +158,8 @@ clk_audio_play_inst* clk_audio_play(clk_audio_sound* sound, float volume, bool l
     ma_sound_start(&inst->sound);
 
     /* Prepend to head — newest instances processed first */
-    inst->next = managed_head;
-    managed_head = inst;
+    inst->next = clk_audio_managed_head;
+    clk_audio_managed_head = inst;
 
     return inst;
 }
@@ -167,7 +170,10 @@ void clk_audio_stop(clk_audio_play_inst* inst) {
 
     ma_sound_uninit(&inst->sound);
 
-    clk_audio_play_inst** pp = &managed_head;
+    if (inst->bell_ref)
+        *inst->bell_ref = NULL;
+
+    clk_audio_play_inst** pp = &clk_audio_managed_head;
     while (*pp) {
         if (*pp == inst) {
             *pp = inst->next;
@@ -201,6 +207,11 @@ const char* clk_audio_sound_get_path(const clk_audio_sound* sound) {
     return sound ? sound->file_path : NULL;
 }
 
+void clk_audio_inst_set_bell_ref(clk_audio_play_inst* inst, clk_audio_play_inst** ref) {
+    if (inst)
+        inst->bell_ref = ref;
+}
+
 /* ================================================================
  *  Query
  * ================================================================ */
@@ -222,7 +233,7 @@ bool clk_audio_is_finished(const clk_audio_play_inst* inst) {
  * ================================================================ */
 
 void clk_audio_update(void) {
-    clk_audio_play_inst** pp = &managed_head;
+    clk_audio_play_inst** pp = &clk_audio_managed_head;
 
     while (*pp) {
         clk_audio_play_inst* s = *pp;
@@ -239,6 +250,8 @@ void clk_audio_update(void) {
             ma_sound_start(&s->sound);
             pp = &s->next;
         } else {
+            if (s->bell_ref)
+                *s->bell_ref = NULL;
             ma_sound_uninit(&s->sound);
             *pp = s->next;
             free(s);
@@ -248,7 +261,7 @@ void clk_audio_update(void) {
 
 int clk_audio_playing_count(void) {
     int count = 0;
-    for (clk_audio_play_inst* s = managed_head; s; s = s->next)
+    for (clk_audio_play_inst* s = clk_audio_managed_head; s; s = s->next)
         count++;
     return count;
 }

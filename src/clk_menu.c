@@ -543,9 +543,16 @@ void clk_tab_list_set_item_list(clk_tab_list* list, int tab_id, clk_item_list* n
     clk_menu_tab* tab = clk_tab_list_find(list, tab_id);
     if (!tab)
         return;
+    int saved = tab->active_item;
     clk_item_list_destroy(tab->item_list);
     tab->item_list = new_item_list ? new_item_list : clk_item_list_create();
-    tab->active_item = 0;
+    size_t new_count = clk_item_list_count(tab->item_list);
+    if (saved < 0 || new_count == 0)
+        tab->active_item = 0;
+    else if ((size_t)saved >= new_count)
+        tab->active_item = (int)new_count - 1;
+    else
+        tab->active_item = saved;
 }
 
 const clk_item_list* clk_tab_list_get_item_list(const clk_tab_list* list, int tab_id) {

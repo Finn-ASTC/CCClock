@@ -244,9 +244,7 @@ int main(void) {
     TEST("bell_count == 2", clk_clock_bell_count(&clock) == 2);
 
     clk_clock_stop_bell(&clock);
-    TEST("stop_bell reduces count", clk_clock_bell_count(&clock) == 1);
-    clk_clock_stop_bell(&clock);
-    TEST("stop_bell reduces to zero", clk_clock_bell_count(&clock) == 0);
+    TEST("stop_bell skips NULL", clk_clock_bell_count(&clock) == 0);
 
     clock.active_bells[0] = NULL;
     clock.active_bells[1] = NULL;

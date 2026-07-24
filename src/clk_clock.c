@@ -320,22 +320,28 @@ void clk_clock_pomodoro_set_enabled(clk_clock* clock, int index, bool enabled) {
  * ================================================================ */
 
 void clk_clock_stop_bell(clk_clock* clock) {
-    if (!clock || clock->active_bell_count == 0)
+    if (!clock)
         return;
-    int last = clock->active_bell_count - 1;
-    if (clock->active_bells[last])
-        clk_audio_stop(clock->active_bells[last]);
-    clock->active_bells[last] = NULL;
-    clock->active_bell_count--;
+    while (clock->active_bell_count > 0) {
+        int last = clock->active_bell_count - 1;
+        if (clock->active_bells[last]) {
+            clk_audio_stop(clock->active_bells[last]);
+            clock->active_bells[last] = NULL;
+            clock->active_bell_count--;
+            return;
+        }
+        clock->active_bell_count--;
+    }
 }
 
 void clk_clock_stop_all_bells(clk_clock* clock) {
     if (!clock)
         return;
     for (int i = 0; i < clock->active_bell_count; ++i) {
-        if (clock->active_bells[i])
+        if (clock->active_bells[i]) {
             clk_audio_stop(clock->active_bells[i]);
-        clock->active_bells[i] = NULL;
+            clock->active_bells[i] = NULL;
+        }
     }
     clock->active_bell_count = 0;
 }
@@ -349,9 +355,13 @@ int clk_clock_bell_count(const clk_clock* clock) {
  * ================================================================ */
 
 static void add_bell(clk_clock* clock, clk_audio_play_inst* inst) {
-    if (clock->active_bell_count <
-        (int)(sizeof(clock->active_bells) / sizeof(clock->active_bells[0])))
-        clock->active_bells[clock->active_bell_count++] = inst;
+    int slot = clock->active_bell_count;
+    int max_slots = (int)(sizeof(clock->active_bells) / sizeof(clock->active_bells[0]));
+    if (slot < max_slots) {
+        clock->active_bells[slot] = inst;
+        clock->active_bell_count++;
+        clk_audio_inst_set_bell_ref(inst, &clock->active_bells[slot]);
+    }
 }
 
 void clk_clock_update(clk_clock* clock) {
@@ -391,7 +401,7 @@ void clk_clock_update(clk_clock* clock) {
             clk_audio_play_inst* inst =
                 clk_audio_play(alarm_ptr->sound, alarm_ptr->volume, alarm_ptr->loop,
                                alarm_ptr->loop ? 0 : alarm_ptr->repeat_count);
-            if (inst && alarm_ptr->loop)
+            if (inst)
                 add_bell(clock, inst);
         }
     }
@@ -419,7 +429,7 @@ void clk_clock_update(clk_clock* clock) {
             if (seg->sound) {
                 clk_audio_play_inst* inst = clk_audio_play(seg->sound, seg->volume, seg->loop,
                                                            seg->loop ? 0 : seg->repeat_count);
-                if (inst && seg->loop)
+                if (inst)
                     add_bell(clock, inst);
             }
         }

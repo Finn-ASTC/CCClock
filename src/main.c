@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 
 #include "clk_app_config.h"
 #include "clk_app_setup.h"
@@ -71,6 +72,13 @@ static clk_menu_input translate_menu_key(clk_key_event key_event) {
 /* ------------------------------------------------------------------
  *  Focus model
  * ------------------------------------------------------------------ */
+
+static void main_save_config(const clk_app_config* cfg, time_t* last_mtime) {
+    clk_app_config_save(cfg, CLK_CONFIG_PATH);
+    struct stat statbuf;
+    if (stat(CLK_CONFIG_PATH, &statbuf) == 0)
+        *last_mtime = statbuf.st_mtime;
+}
 
 typedef enum { CLK_FOCUS_CLOCK, CLK_FOCUS_MENU } clk_focus;
 
@@ -233,7 +241,7 @@ int main(void) {
                                     cfg.ascii_clock.time_formats.index);
                                 clk_cfg_ascii_clock_theme_switch_time(&cfg.ascii_clock);
                                 clk_app_config_sync_basic(&cfg);
-                                clk_app_config_save(&cfg, CLK_CONFIG_PATH);
+                                main_save_config(&cfg, &last_app_mtime);
                                 break;
                             case CLK_BASIC_ITEM_FONT:
                                 cfg.ascii_clock.fonts.index = clk_menu_find_index(
@@ -243,7 +251,7 @@ int main(void) {
                                     &render,
                                     cfg.ascii_clock.fonts.paths[cfg.ascii_clock.fonts.index]);
                                 clk_app_config_sync_basic(&cfg);
-                                clk_app_config_save(&cfg, CLK_CONFIG_PATH);
+                                main_save_config(&cfg, &last_app_mtime);
                                 break;
                             case CLK_BASIC_ITEM_THEME:
                                 cfg.themes.index = clk_menu_find_index(
@@ -252,7 +260,7 @@ int main(void) {
                                 clk_menu_instance_change_theme(menu_inst,
                                                                cfg.themes.paths[cfg.themes.index]);
                                 clk_app_config_sync_basic(&cfg);
-                                clk_app_config_save(&cfg, CLK_CONFIG_PATH);
+                                main_save_config(&cfg, &last_app_mtime);
                                 break;
                         }
                     }
@@ -307,7 +315,7 @@ int main(void) {
                             }
                         }
                         clk_app_config_sync_clock(&cfg, &clock);
-                        clk_app_config_save(&cfg, CLK_CONFIG_PATH);
+                        main_save_config(&cfg, &last_app_mtime);
                     }
 
                     if (menu_event.type == CLK_MENU_EVENT_SUBMIT &&
@@ -325,7 +333,7 @@ int main(void) {
                                                    idx >= 0 ? idx + 1 : clock.alarm_count);
                             clk_app_menu_rebuild(menu, &clock, &cfg);
                             clk_app_config_sync_clock(&cfg, &clock);
-                            clk_app_config_save(&cfg, CLK_CONFIG_PATH);
+                            main_save_config(&cfg, &last_app_mtime);
                         }
                         if (off == CLK_ALARM_DELETE_OFFSET) {
                             clk_clock_alarm* a = clk_clock_find_alarm_by_id(&clock, alarm_id);
@@ -334,7 +342,7 @@ int main(void) {
                                 clk_clock_remove_alarm_by_id(&clock, alarm_id);
                                 clk_app_menu_rebuild(menu, &clock, &cfg);
                                 clk_app_config_sync_clock(&cfg, &clock);
-                                clk_app_config_save(&cfg, CLK_CONFIG_PATH);
+                                main_save_config(&cfg, &last_app_mtime);
                             }
                         }
                     }
@@ -395,7 +403,7 @@ int main(void) {
                             }
                         }
                         clk_app_config_sync_clock(&cfg, &clock);
-                        clk_app_config_save(&cfg, CLK_CONFIG_PATH);
+                        main_save_config(&cfg, &last_app_mtime);
                     }
 
                     if (menu_event.type == CLK_MENU_EVENT_SUBMIT &&
@@ -415,7 +423,7 @@ int main(void) {
                                     &clock, &po, idx >= 0 ? idx + 1 : clock.pomodoro_count);
                                 clk_app_menu_rebuild(menu, &clock, &cfg);
                                 clk_app_config_sync_clock(&cfg, &clock);
-                                clk_app_config_save(&cfg, CLK_CONFIG_PATH);
+                                main_save_config(&cfg, &last_app_mtime);
                             }
                             if (pomodoro_offset == CLK_POMO_DELETE_OFFSET) {
                                 clk_clock_pomodoro* po =
@@ -426,7 +434,7 @@ int main(void) {
                                     clk_clock_remove_pomodoro_by_id(&clock, pomodoro_id);
                                     clk_app_menu_rebuild(menu, &clock, &cfg);
                                     clk_app_config_sync_clock(&cfg, &clock);
-                                    clk_app_config_save(&cfg, CLK_CONFIG_PATH);
+                                    main_save_config(&cfg, &last_app_mtime);
                                 }
                             }
                         } else {
@@ -455,7 +463,7 @@ int main(void) {
                                         segment_idx >= 0 ? segment_idx + 1 : 0);
                                     clk_app_menu_rebuild(menu, &clock, &cfg);
                                     clk_app_config_sync_clock(&cfg, &clock);
-                                    clk_app_config_save(&cfg, CLK_CONFIG_PATH);
+                                    main_save_config(&cfg, &last_app_mtime);
                                 }
                             }
                             if (field == CLK_POMO_SEG_DELETE_OFFSET) {
@@ -475,7 +483,7 @@ int main(void) {
                                                                       segment_idx);
                                     clk_app_menu_rebuild(menu, &clock, &cfg);
                                     clk_app_config_sync_clock(&cfg, &clock);
-                                    clk_app_config_save(&cfg, CLK_CONFIG_PATH);
+                                    main_save_config(&cfg, &last_app_mtime);
                                 }
                             }
                         }
@@ -546,7 +554,7 @@ int main(void) {
 
     clk_app_config_sync_basic(&cfg);
     clk_app_config_sync_clock(&cfg, &clock);
-    clk_app_config_save(&cfg, CLK_CONFIG_PATH);
+    main_save_config(&cfg, &last_app_mtime);
 
     clk_menu_instance_destroy(menu_inst);
     clk_menu_destroy(menu);

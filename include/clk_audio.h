@@ -86,6 +86,8 @@ void clk_audio_inst_set_volume(clk_audio_play_inst* inst, float volume);
 /** Return the file path this sound template was loaded from, or NULL. */
 const char* clk_audio_sound_get_path(const clk_audio_sound* sound);
 
+void clk_audio_inst_set_bell_ref(clk_audio_play_inst* inst, clk_audio_play_inst** ref);
+
 /* ------------------------------------------------------------------
  *  Query
  * ------------------------------------------------------------------ */
