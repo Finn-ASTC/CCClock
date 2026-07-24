@@ -127,6 +127,9 @@ int clk_clock_find_alarm_index_by_id(const clk_clock* clock, int id);
 /** Find the first alarm whose name field equals @p name.  Returns NULL if not found. */
 clk_clock_alarm* clk_clock_find_alarm_by_name(clk_clock* clock, const char* name);
 
+/** Return the smallest non-negative id not used by any existing alarm. */
+int clk_clock_next_alarm_id(const clk_clock* clock);
+
 /* ================================================================
  *  Pomodoro groups
  * ================================================================ */
@@ -146,6 +149,8 @@ clk_clock_pomodoro* clk_clock_find_pomodoro_by_id(clk_clock* clock, int id);
 int clk_clock_find_pomodoro_index_by_id(const clk_clock* clock, int id);
 
 clk_clock_pomodoro* clk_clock_find_pomodoro_by_name(clk_clock* clock, const char* name);
+
+int clk_clock_next_pomodoro_id(const clk_clock* clock);
 
 /** Append a segment to an existing pomodoro group. */
 bool clk_clock_pomodoro_add_segment(clk_clock* clock, int pomodoro_index,

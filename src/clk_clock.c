@@ -97,6 +97,16 @@ clk_clock_alarm* clk_clock_find_alarm_by_name(clk_clock* clock, const char* name
     return NULL;
 }
 
+int clk_clock_next_alarm_id(const clk_clock* clock) {
+    int max_id = -1;
+    if (!clock)
+        return 0;
+    for (int i = 0; i < clock->alarm_count; ++i)
+        if (clock->alarms[i].id > max_id)
+            max_id = clock->alarms[i].id;
+    return max_id + 1;
+}
+
 /* ================================================================
  *  Pomodoro groups
  * ================================================================ */
@@ -164,6 +174,16 @@ clk_clock_pomodoro* clk_clock_find_pomodoro_by_name(clk_clock* clock, const char
         if (strcmp(clock->pomodoros[i].name, name) == 0)
             return &clock->pomodoros[i];
     return NULL;
+}
+
+int clk_clock_next_pomodoro_id(const clk_clock* clock) {
+    int max_id = -1;
+    if (!clock)
+        return 0;
+    for (int i = 0; i < clock->pomodoro_count; ++i)
+        if (clock->pomodoros[i].id > max_id)
+            max_id = clock->pomodoros[i].id;
+    return max_id + 1;
 }
 
 bool clk_clock_pomodoro_add_segment(clk_clock* clock, int pomodoro_index,

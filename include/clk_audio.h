@@ -83,6 +83,9 @@ void clk_audio_resume(clk_audio_play_inst* inst);
 /** Set per-instance volume (clamped 0.0–1.0).  NULL-safe. */
 void clk_audio_inst_set_volume(clk_audio_play_inst* inst, float volume);
 
+/** Return the file path this sound template was loaded from, or NULL. */
+const char* clk_audio_sound_get_path(const clk_audio_sound* sound);
+
 /* ------------------------------------------------------------------
  *  Query
  * ------------------------------------------------------------------ */

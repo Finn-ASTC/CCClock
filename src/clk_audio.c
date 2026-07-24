@@ -197,6 +197,10 @@ void clk_audio_inst_set_volume(clk_audio_play_inst* inst, float volume) {
     ma_sound_set_volume(&inst->sound, clamp_volume(volume));
 }
 
+const char* clk_audio_sound_get_path(const clk_audio_sound* sound) {
+    return sound ? sound->file_path : NULL;
+}
+
 /* ================================================================
  *  Query
  * ================================================================ */

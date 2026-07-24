@@ -4,6 +4,11 @@
 #include <stdio.h>
 #include <string.h>
 
+const char* clk_repeat_day_options[] = {
+    "Today",  "Monday",   "Tuesday", "Wednesday", "Thursday",
+    "Friday", "Saturday", "Sunday",  "Everyday",
+};
+
 /* ================================================================
  *  Internal helpers
  * ================================================================ */
