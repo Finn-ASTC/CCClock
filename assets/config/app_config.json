@@ -45,14 +45,14 @@
         "segments": [
           {
             "name": "Work",
-            "minutes": 1,
+            "minutes": 45,
             "sound_repeat": 3,
             "volume": 50,
-            "sound": "u_inx5oo5fv3-alarm-327234"
+            "sound": "liecio-calming-rain-257596"
           },
           {
             "name": "relax",
-            "minutes": 1,
+            "minutes": 15,
             "sound_repeat": 3,
             "volume": 50,
             "sound": "u_inx5oo5fv3-alarm-327234"

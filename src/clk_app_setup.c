@@ -572,7 +572,7 @@ static void register_pomodoro_tab(clk_menu* menu, clk_clock* clock, const char**
             clk_item_list_add_action(list, CLK_TAB_POMODORO, seg_base + CLK_POMO_SEG_HEADER_OFFSET,
                                      seg->name);
             clk_item_list_add_int(list, CLK_TAB_POMODORO, seg_base + CLK_POMO_SEG_DURATION_OFFSET,
-                                  "duration (m)", seg->duration_seconds / 60.0, 1, 999, 5);
+                                  "duration (m)", seg->duration_seconds / 60.0, 1, 999, 1);
             clk_item_list_add_int(list, CLK_TAB_POMODORO, seg_base + CLK_POMO_SEG_REPEAT_OFFSET,
                                   "repeat", seg->repeat_count, 1, 99, 1);
             clk_item_list_add_int(list, CLK_TAB_POMODORO, seg_base + CLK_POMO_SEG_VOLUME_OFFSET,
