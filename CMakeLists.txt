@@ -58,6 +58,7 @@ add_library(libclock STATIC
     src/clk_app_setup.c
     src/clk_menu_theme.c
     src/clk_menu_instance.c
+    src/clk_input_box.c
     src/clk_audio.c
 )
 target_include_directories(libclock PRIVATE include)

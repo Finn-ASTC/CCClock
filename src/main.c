@@ -9,6 +9,7 @@
 #include "clk_app_setup.h"
 #include "clk_file_util.h"
 #include "clk_fs_watch.h"
+#include "clk_input_box.h"
 #include "clk_json.h"
 #include "clk_key_io.h"
 #include "clk_menu.h"
@@ -21,7 +22,12 @@
 #define CLK_FRAME_MS 16
 #define CLK_HOTRELOAD_TICKS 30
 #define CLK_MENU_Z_ORDER 5
+#define CLK_INPUT_BOX_Z_ORDER 10
 #define CLK_CLOCK_FORMAT_TRANSLATED_MAX 128
+
+#define ENTITY_ALARM 0
+#define ENTITY_POMODORO 1
+#define ENTITY_SEGMENT 2
 
 /* ------------------------------------------------------------------
  *  Layout helpers
@@ -73,6 +79,10 @@ static clk_menu_input translate_menu_key(clk_key_event key_event) {
  *  Focus model
  * ------------------------------------------------------------------ */
 
+static int edit_entity_type = 0;
+static int edit_entity_id = 0;
+static int edit_entity_id2 = 0;
+
 static void main_save_config(const clk_app_config* cfg, time_t* last_mtime) {
     clk_app_config_save(cfg, CLK_CONFIG_PATH);
     struct stat statbuf;
@@ -80,7 +90,27 @@ static void main_save_config(const clk_app_config* cfg, time_t* last_mtime) {
         *last_mtime = statbuf.st_mtime;
 }
 
-typedef enum { CLK_FOCUS_CLOCK, CLK_FOCUS_MENU } clk_focus;
+static void main_open_input_box(clk_input_box** box, const char* initial, int entity_type,
+                                int entity_id, int entity_id2, int term_w, int term_h) {
+    *box = clk_input_box_create(initial, CLK_CLOCK_NAME_MAX - 1);
+    clk_input_box_set_position(*box, (term_w - CLK_INPUT_BOX_WIDTH) / 2,
+                               (term_h - CLK_INPUT_BOX_HEIGHT) / 2);
+    clk_input_box_add_to_term(*box);
+    clk_input_box_set_z_order(*box, CLK_INPUT_BOX_Z_ORDER);
+    char* buf;
+    size_t max;
+    size_t* len;
+    size_t* pos;
+    clk_input_box_get_buffer(*box, &buf, &max, &len, &pos);
+    clk_key_io_set_input(buf, max, len, pos);
+    edit_entity_type = entity_type;
+    edit_entity_id = entity_id;
+    edit_entity_id2 = entity_id2;
+    clk_term_cursor_set_shape(CLK_CURSOR_BAR_BLINK);
+    clk_term_cursor_show();
+}
+
+typedef enum { CLK_FOCUS_CLOCK, CLK_FOCUS_MENU, CLK_FOCUS_INPUT_BOX } clk_focus;
 
 int main(void) {
     if (!clk_term_init()) {
@@ -175,6 +205,7 @@ int main(void) {
     time_t last_app_mtime = 0, last_font_mtime = 0, last_theme_mtime = 0;
     clk_fs_file_changed(CLK_CONFIG_PATH, &last_app_mtime);
     int reload_tick = 0;
+    clk_input_box* input_box = NULL;
 
     /* ================================================================
      *  Main loop
@@ -184,9 +215,47 @@ int main(void) {
     bool running = true;
 
     while (running) {
-        clk_key_event key_event = clk_normal_get_key_event();
+        clk_key_event key_event =
+            (focus == CLK_FOCUS_INPUT_BOX) ? clk_input_get_key_event() : clk_normal_get_key_event();
 
         switch (focus) {
+            case CLK_FOCUS_INPUT_BOX: {
+                if (clk_input_box_handle_input(input_box, key_event)) {
+                    if (clk_input_box_is_confirmed(input_box)) {
+                        const char* result = clk_input_box_get_result(input_box);
+                        if (result[0] != '\0') {
+                            if (edit_entity_type == ENTITY_ALARM) {
+                                clk_clock_alarm* a =
+                                    clk_clock_find_alarm_by_id(&clock, edit_entity_id);
+                                if (a)
+                                    strncpy(a->name, result, CLK_CLOCK_NAME_MAX - 1);
+                            } else if (edit_entity_type == ENTITY_POMODORO) {
+                                clk_clock_pomodoro* po =
+                                    clk_clock_find_pomodoro_by_id(&clock, edit_entity_id);
+                                if (po)
+                                    strncpy(po->name, result, CLK_CLOCK_NAME_MAX - 1);
+                            } else {
+                                clk_clock_pomodoro_segment* seg =
+                                    clk_clock_pomodoro_find_segment_by_id(&clock, edit_entity_id,
+                                                                          edit_entity_id2);
+                                if (seg)
+                                    strncpy(seg->name, result, CLK_CLOCK_NAME_MAX - 1);
+                            }
+                            clk_app_menu_rebuild(menu, &clock, &cfg);
+                            main_save_config(&cfg, &last_app_mtime);
+                        }
+                    }
+                    clk_key_io_set_normal();
+                    clk_input_box_remove_from_term(input_box);
+                    clk_input_box_destroy(input_box);
+                    input_box = NULL;
+                    clk_term_cursor_hide();
+                    focus = CLK_FOCUS_MENU;
+                    continue;
+                }
+                clk_input_box_render(input_box);
+                break;
+            }
             case CLK_FOCUS_CLOCK:
                 if (key_event.key_mask == KEY_SPACE) {
                     clk_clock_stop_bell(&clock);
@@ -335,6 +404,15 @@ int main(void) {
                             clk_app_config_sync_clock(&cfg, &clock);
                             main_save_config(&cfg, &last_app_mtime);
                         }
+                        if (off == CLK_ALARM_HEADER_OFFSET) {
+                            clk_clock_alarm* a = clk_clock_find_alarm_by_id(&clock, alarm_id);
+                            if (a) {
+                                main_open_input_box(&input_box, a->name, ENTITY_ALARM, alarm_id, 0,
+                                                    term_width, term_height);
+                                focus = CLK_FOCUS_INPUT_BOX;
+                                continue;
+                            }
+                        }
                         if (off == CLK_ALARM_DELETE_OFFSET) {
                             clk_clock_alarm* a = clk_clock_find_alarm_by_id(&clock, alarm_id);
                             if (a) {
@@ -412,6 +490,16 @@ int main(void) {
                         CLK_POMO_DECODE(menu_event.item_id, pomodoro_id, pomodoro_offset);
 
                         if (pomodoro_offset < CLK_POMO_SEGMENT_BASE) {
+                            if (pomodoro_offset == CLK_POMO_HEADER_OFFSET) {
+                                clk_clock_pomodoro* po =
+                                    clk_clock_find_pomodoro_by_id(&clock, pomodoro_id);
+                                if (po) {
+                                    main_open_input_box(&input_box, po->name, ENTITY_POMODORO,
+                                                        pomodoro_id, 0, term_width, term_height);
+                                    focus = CLK_FOCUS_INPUT_BOX;
+                                    continue;
+                                }
+                            }
                             if (pomodoro_offset == CLK_POMO_ADD_OFFSET) {
                                 clk_clock_pomodoro po;
                                 memset(&po, 0, sizeof(po));
@@ -441,6 +529,18 @@ int main(void) {
                             int segment_id, field;
                             CLK_POMO_SEG_DECODE(pomodoro_offset, segment_id, field);
 
+                            if (field == CLK_POMO_SEG_HEADER_OFFSET) {
+                                clk_clock_pomodoro_segment* seg =
+                                    clk_clock_pomodoro_find_segment_by_id(&clock, pomodoro_id,
+                                                                          segment_id);
+                                if (seg) {
+                                    main_open_input_box(&input_box, seg->name, ENTITY_SEGMENT,
+                                                        pomodoro_id, segment_id, term_width,
+                                                        term_height);
+                                    focus = CLK_FOCUS_INPUT_BOX;
+                                    continue;
+                                }
+                            }
                             if (field == CLK_POMO_SEG_ADD_OFFSET) {
                                 clk_clock_pomodoro* po =
                                     clk_clock_find_pomodoro_by_id(&clock, pomodoro_id);

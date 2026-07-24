@@ -858,19 +858,37 @@ static int clk_cell_char_width(const char* utf8) {
             return 1;
         codepoint = (codepoint << 6) | (cb & 0x3F);
     }
-    if (codepoint >= 0x4E00 && codepoint <= 0x9FFF)
+    if (codepoint >= 0x1100 && codepoint <= 0x115F)
+        return 2;
+    if (codepoint >= 0x2300 && codepoint <= 0x27BF)
+        return 2;
+    if (codepoint >= 0x2E80 && codepoint <= 0x303E)
+        return 2;
+    if (codepoint >= 0x3040 && codepoint <= 0x33BF)
         return 2;
     if (codepoint >= 0x3400 && codepoint <= 0x4DBF)
         return 2;
+    if (codepoint >= 0x4E00 && codepoint <= 0x9FFF)
+        return 2;
+    if (codepoint >= 0xA000 && codepoint <= 0xA4CF)
+        return 2;
+    if (codepoint >= 0xAC00 && codepoint <= 0xD7AF)
+        return 2;
     if (codepoint >= 0xF900 && codepoint <= 0xFAFF)
         return 2;
-    if (codepoint >= 0xFF01 && codepoint <= 0xFF60)
+    if (codepoint >= 0xFE10 && codepoint <= 0xFE6F)
         return 2;
-    if (codepoint >= 0xFFE0 && codepoint <= 0xFFE6)
+    if (codepoint >= 0xFF01 && codepoint <= 0xFFE6)
         return 2;
-    if (codepoint >= 0x1F300 && codepoint <= 0x1F9FF)
+    if (codepoint >= 0x1B000 && codepoint <= 0x1B2FF)
         return 2;
-    if (codepoint >= 0x20000 && codepoint <= 0x2EBE0)
+    if (codepoint >= 0x1F000 && codepoint <= 0x1F9FF)
+        return 2;
+    if (codepoint >= 0x1F200 && codepoint <= 0x1F2FF)
+        return 2;
+    if (codepoint >= 0x20000 && codepoint <= 0x2FFFD)
+        return 2;
+    if (codepoint >= 0x30000 && codepoint <= 0x3FFFD)
         return 2;
     return 1;
 }

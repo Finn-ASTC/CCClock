@@ -6,7 +6,7 @@
     },
     "time_format": {
       "time_formats": ["hh:MM:ss","yyyy:mm:dd\n hh:MM:ss","hh:MM","dd:hh:MM"],
-      "selected_time_format": "hh:MM:ss"
+      "selected_time_format": "yyyy:mm:dd\n hh:MM:ss"
     }
   },
   "menu": {
@@ -17,7 +17,7 @@
   "clock": {
     "alarms": [
       {
-        "name": "alarm1",
+        "name": "闹钟1",
         "hour": 16,
         "minute": 52,
         "enable": true,
