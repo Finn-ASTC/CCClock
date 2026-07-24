@@ -175,6 +175,9 @@ void clk_clock_pomodoro_clear_segments(clk_clock* clock, int pomodoro_index);
 clk_clock_pomodoro_segment* clk_clock_pomodoro_find_segment_by_id(clk_clock* clock, int pomodoro_id,
                                                                   int segment_id);
 
+int clk_clock_pomodoro_find_segment_index_by_id(const clk_clock* clock, int pomodoro_id,
+                                                int segment_id);
+
 /** Start cycling from segment 0. */
 void clk_clock_pomodoro_start(clk_clock* clock, int index);
 void clk_clock_pomodoro_pause(clk_clock* clock, int index);

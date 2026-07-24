@@ -252,6 +252,20 @@ clk_clock_pomodoro_segment* clk_clock_pomodoro_find_segment_by_id(clk_clock* clo
     return NULL;
 }
 
+int clk_clock_pomodoro_find_segment_index_by_id(const clk_clock* clock, int pomodoro_id,
+                                                int segment_id) {
+    if (!clock)
+        return -1;
+    for (int i = 0; i < clock->pomodoro_count; ++i) {
+        if (clock->pomodoros[i].id != pomodoro_id)
+            continue;
+        for (int j = 0; j < clock->pomodoros[i].segment_count; ++j)
+            if (clock->pomodoros[i].segments[j].id == segment_id)
+                return j;
+    }
+    return -1;
+}
+
 void clk_clock_pomodoro_start(clk_clock* clock, int index) {
     if (!clock || index < 0 || index >= clock->pomodoro_count)
         return;

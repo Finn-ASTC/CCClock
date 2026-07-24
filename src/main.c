@@ -2,6 +2,7 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "clk_app_config.h"
 #include "clk_app_setup.h"
@@ -91,11 +92,25 @@ int main(void) {
     }
 
     /* ================================================================
+     *  Clock
+     * ================================================================ */
+
+    clk_audio_engine* audio_engine = NULL;
+    clk_clock clock;
+    if (!clk_app_setup_clock(&clock, &audio_engine, &cfg)) {
+        clk_app_config_deinit(&cfg);
+        clk_term_close();
+        fprintf(stderr, "clock setup fail\n");
+        return 1;
+    }
+
+    /* ================================================================
      *  Renderer
      * ================================================================ */
 
     clk_ascii_render render;
     if (!clk_app_setup_render(&render, &cfg.ascii_clock)) {
+        clk_app_setup_clock_deinit(&clock, audio_engine);
         clk_app_config_deinit(&cfg);
         clk_term_close();
         fprintf(stderr, "render setup fail\n");
@@ -106,9 +121,10 @@ int main(void) {
      *  Menu
      * ================================================================ */
 
-    clk_menu* menu = clk_app_setup_menu(&cfg);
+    clk_menu* menu = clk_app_setup_menu(&cfg, &clock);
     if (!menu) {
         clk_ascii_render_destroy(&render);
+        clk_app_setup_clock_deinit(&clock, audio_engine);
         clk_app_config_deinit(&cfg);
         clk_term_close();
         fprintf(stderr, "menu setup fail\n");
@@ -192,7 +208,9 @@ int main(void) {
                     if (menu_event.type == CLK_MENU_EVENT_SUBMIT &&
                         menu_event.item_id == CLK_BASIC_ITEM_QUIT)
                         running = false;
-                    if (menu_event.type == CLK_MENU_EVENT_VALUE_CHANGED) {
+
+                    if (menu_event.type == CLK_MENU_EVENT_VALUE_CHANGED &&
+                        menu_event.tab_id == CLK_TAB_BASIC) {
                         switch (menu_event.item_id) {
                             case CLK_BASIC_ITEM_TIME_FORMAT:
                                 cfg.ascii_clock.time_formats.index = clk_menu_find_index(
@@ -218,9 +236,212 @@ int main(void) {
                                 break;
                         }
                     }
+
+                    if (menu_event.type == CLK_MENU_EVENT_VALUE_CHANGED &&
+                        menu_event.tab_id == CLK_TAB_ALARM) {
+                        int al_id, off;
+                        CLK_ALARM_DECODE(menu_event.item_id, al_id, off);
+                        clk_clock_alarm* a = clk_clock_find_alarm_by_id(&clock, al_id);
+                        if (!a)
+                            break;
+
+                        switch (off) {
+                            case CLK_ALARM_ENABLED_OFFSET:
+                                a->alarm.enabled = menu_event.value.b;
+                                break;
+                            case CLK_ALARM_HOUR_OFFSET:
+                                clk_alarm_set(&a->alarm, (int)menu_event.value.num, a->alarm.minute,
+                                              0);
+                                break;
+                            case CLK_ALARM_MINUTE_OFFSET:
+                                clk_alarm_set(&a->alarm, a->alarm.hour, (int)menu_event.value.num,
+                                              0);
+                                break;
+                            case CLK_ALARM_REPEAT_OFFSET:
+                                a->repeat_days = clk_repeat_days_from_string(menu_event.value.str);
+                                break;
+                            case CLK_ALARM_LOOP_OFFSET:
+                                a->loop = menu_event.value.b;
+                                break;
+                            case CLK_ALARM_REPEAT_COUNT:
+                                a->repeat_count = (int)menu_event.value.num;
+                                break;
+                            case CLK_ALARM_VOLUME_OFFSET:
+                                a->volume = menu_event.value.num / 100.0f;
+                                break;
+                            case CLK_ALARM_SOUND_OFFSET: {
+                                clk_audio_destroy(a->sound);
+                                a->sound = NULL;
+                                const char* audio_dir = NULL;
+                                clk_json_value* v = clk_json_object_get(cfg.json, "audio_dir");
+                                if (v && clk_json_is_string(v))
+                                    clk_json_get_string(v, &audio_dir);
+                                if (audio_dir && menu_event.value.str &&
+                                    strcmp(menu_event.value.str, "(none)") != 0) {
+                                    char path[CLK_CONFIG_ALARM_SOUND_MAX + 512];
+                                    snprintf(path, sizeof(path), "%s/%s.mp3", audio_dir,
+                                             menu_event.value.str);
+                                    a->sound = clk_audio_load(audio_engine, path);
+                                }
+                                break;
+                            }
+                        }
+                    }
+
+                    if (menu_event.type == CLK_MENU_EVENT_SUBMIT &&
+                        menu_event.tab_id == CLK_TAB_ALARM) {
+                        int al_id, off;
+                        CLK_ALARM_DECODE(menu_event.item_id, al_id, off);
+
+                        if (off == CLK_ALARM_ADD_OFFSET) {
+                            clk_clock_alarm a;
+                            memset(&a, 0, sizeof(a));
+                            a.id = clk_clock_next_alarm_id(&clock);
+                            snprintf(a.name, sizeof(a.name), "unnamed alarm");
+                            int idx = clk_clock_find_alarm_index_by_id(&clock, al_id);
+                            clk_clock_add_alarm_at(&clock, &a,
+                                                   idx >= 0 ? idx + 1 : clock.alarm_count);
+                            clk_app_menu_rebuild(menu, &clock, &cfg);
+                        }
+                        if (off == CLK_ALARM_DELETE_OFFSET) {
+                            clk_clock_alarm* a = clk_clock_find_alarm_by_id(&clock, al_id);
+                            if (a) {
+                                clk_audio_destroy(a->sound);
+                                clk_clock_remove_alarm_by_id(&clock, al_id);
+                                clk_app_menu_rebuild(menu, &clock, &cfg);
+                            }
+                        }
+                    }
+
+                    if (menu_event.type == CLK_MENU_EVENT_VALUE_CHANGED &&
+                        menu_event.tab_id == CLK_TAB_POMODORO) {
+                        int po_id, po_off;
+                        CLK_POMO_DECODE(menu_event.item_id, po_id, po_off);
+                        clk_clock_pomodoro* po = clk_clock_find_pomodoro_by_id(&clock, po_id);
+                        if (!po)
+                            break;
+
+                        if (po_off < CLK_POMO_SEGMENT_BASE) {
+                            switch (po_off) {
+                                case CLK_POMO_ENABLED_OFFSET:
+                                    clk_clock_pomodoro_set_enabled(
+                                        &clock, clk_clock_find_pomodoro_index_by_id(&clock, po_id),
+                                        menu_event.value.b);
+                                    break;
+                            }
+                        } else {
+                            int seg_id, field;
+                            CLK_POMO_SEG_DECODE(po_off, seg_id, field);
+                            clk_clock_pomodoro_segment* seg =
+                                clk_clock_pomodoro_find_segment_by_id(&clock, po_id, seg_id);
+                            if (!seg)
+                                break;
+                            switch (field) {
+                                case CLK_POMO_SEG_DURATION_OFFSET:
+                                    seg->duration_seconds = (int)menu_event.value.num * 60;
+                                    break;
+                                case CLK_POMO_SEG_REPEAT_OFFSET:
+                                    seg->repeat_count = (int)menu_event.value.num;
+                                    break;
+                                case CLK_POMO_SEG_VOLUME_OFFSET:
+                                    seg->volume = menu_event.value.num / 100.0f;
+                                    break;
+                                case CLK_POMO_SEG_SOUND_OFFSET: {
+                                    clk_audio_destroy(seg->sound);
+                                    seg->sound = NULL;
+                                    const char* audio_dir = NULL;
+                                    clk_json_value* v = clk_json_object_get(cfg.json, "audio_dir");
+                                    if (v && clk_json_is_string(v))
+                                        clk_json_get_string(v, &audio_dir);
+                                    if (audio_dir && menu_event.value.str &&
+                                        strcmp(menu_event.value.str, "(none)") != 0) {
+                                        char path[CLK_CONFIG_ALARM_SOUND_MAX + 512];
+                                        snprintf(path, sizeof(path), "%s/%s.mp3", audio_dir,
+                                                 menu_event.value.str);
+                                        seg->sound = clk_audio_load(audio_engine, path);
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if (menu_event.type == CLK_MENU_EVENT_SUBMIT &&
+                        menu_event.tab_id == CLK_TAB_POMODORO) {
+                        int po_id, po_off;
+                        CLK_POMO_DECODE(menu_event.item_id, po_id, po_off);
+
+                        if (po_off < CLK_POMO_SEGMENT_BASE) {
+                            if (po_off == CLK_POMO_ADD_OFFSET) {
+                                clk_clock_pomodoro po;
+                                memset(&po, 0, sizeof(po));
+                                po.id = clk_clock_next_pomodoro_id(&clock);
+                                po.current_segment = -1;
+                                snprintf(po.name, sizeof(po.name), "unnamed pomodoro");
+                                int idx = clk_clock_find_pomodoro_index_by_id(&clock, po_id);
+                                clk_clock_add_pomodoro_at(
+                                    &clock, &po, idx >= 0 ? idx + 1 : clock.pomodoro_count);
+                                clk_app_menu_rebuild(menu, &clock, &cfg);
+                            }
+                            if (po_off == CLK_POMO_DELETE_OFFSET) {
+                                clk_clock_pomodoro* po =
+                                    clk_clock_find_pomodoro_by_id(&clock, po_id);
+                                if (po) {
+                                    for (int j = 0; j < po->segment_count; ++j)
+                                        clk_audio_destroy(po->segments[j].sound);
+                                    clk_clock_remove_pomodoro_by_id(&clock, po_id);
+                                    clk_app_menu_rebuild(menu, &clock, &cfg);
+                                }
+                            }
+                        } else {
+                            int seg_id, field;
+                            CLK_POMO_SEG_DECODE(po_off, seg_id, field);
+
+                            if (field == CLK_POMO_SEG_ADD_OFFSET) {
+                                clk_clock_pomodoro* po =
+                                    clk_clock_find_pomodoro_by_id(&clock, po_id);
+                                int po_idx = clk_clock_find_pomodoro_index_by_id(&clock, po_id);
+                                if (po && po_idx >= 0) {
+                                    clk_clock_pomodoro_segment seg;
+                                    memset(&seg, 0, sizeof(seg));
+                                    int max_seg_id = -1;
+                                    for (int j = 0; j < po->segment_count; ++j)
+                                        if (po->segments[j].id > max_seg_id)
+                                            max_seg_id = po->segments[j].id;
+                                    seg.id = max_seg_id + 1;
+                                    seg.duration_seconds = 60;
+                                    snprintf(seg.name, sizeof(seg.name), "unnamed segment");
+                                    int seg_idx = clk_clock_pomodoro_find_segment_index_by_id(
+                                        &clock, po_id, seg_id);
+                                    clk_clock_pomodoro_add_segment_at(
+                                        &clock, po_idx, &seg, seg_idx >= 0 ? seg_idx + 1 : 0);
+                                    clk_app_menu_rebuild(menu, &clock, &cfg);
+                                }
+                            }
+                            if (field == CLK_POMO_SEG_DELETE_OFFSET) {
+                                clk_clock_pomodoro* po =
+                                    clk_clock_find_pomodoro_by_id(&clock, po_id);
+                                int po_idx = clk_clock_find_pomodoro_index_by_id(&clock, po_id);
+                                if (po && po_idx >= 0) {
+                                    clk_clock_pomodoro_segment* seg =
+                                        clk_clock_pomodoro_find_segment_by_id(&clock, po_id,
+                                                                              seg_id);
+                                    if (seg)
+                                        clk_audio_destroy(seg->sound);
+                                    int seg_idx = clk_clock_pomodoro_find_segment_index_by_id(
+                                        &clock, po_id, seg_id);
+                                    clk_clock_pomodoro_remove_segment(&clock, po_idx, seg_idx);
+                                    clk_app_menu_rebuild(menu, &clock, &cfg);
+                                }
+                            }
+                        }
+                    }
                 }
                 break;
         }
+
+        clk_clock_update(&clock);
+        clk_audio_update();
 
         if (clk_term_size_changed()) {
             clk_term_get_size(&term_width, &term_height);
@@ -310,6 +531,7 @@ int main(void) {
     clk_menu_destroy(menu);
     clk_menu_theme_destroy(&theme);
     clk_ascii_render_destroy(&render);
+    clk_app_setup_clock_deinit(&clock, audio_engine);
     clk_app_config_deinit(&cfg);
     clk_term_close();
     return 0;

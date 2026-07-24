@@ -71,10 +71,10 @@ extern "C" {
 #define CLK_REPEAT_DAY_OPTION_COUNT 9
 extern const char* clk_repeat_day_options[];
 
-/** Create a menu and populate all tabs + items from @p cfg.
+/** Create a menu and populate all tabs + items from @p cfg and @p clock.
  *  Returns NULL on allocation failure.  Caller owns the returned
  *  clk_menu* and must free it via clk_menu_destroy. */
-clk_menu* clk_app_setup_menu(const clk_app_config* cfg);
+clk_menu* clk_app_setup_menu(const clk_app_config* cfg, clk_clock* clock);
 
 /** Create a renderer from the selected font in @p ascii_clock,
  *  set z_order to 0, and add it to the term sprite list.
@@ -89,6 +89,8 @@ bool clk_app_setup_clock(clk_clock* clock, clk_audio_engine** out_engine,
                          const clk_app_config* cfg);
 
 void clk_app_setup_clock_deinit(clk_clock* clock, clk_audio_engine* engine);
+
+void clk_app_menu_rebuild(clk_menu* menu, clk_clock* clock, const clk_app_config* cfg);
 
 #ifdef __cplusplus
 }

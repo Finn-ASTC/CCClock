@@ -11,7 +11,7 @@
   },
   "menu": {
     "themes_dir": "assets/config/menu_config",
-    "theme": "menu_theme_pinkblue"
+    "theme": "menu_theme_config"
   },
   "audio_dir": "assets/audio",
   "clock": {
