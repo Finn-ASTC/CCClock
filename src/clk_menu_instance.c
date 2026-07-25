@@ -245,8 +245,10 @@ static int render_composite(const clk_menu* menu, clk_texture* tex, const clk_me
 static int render_tab_special(const clk_menu* menu, clk_texture* tex, const clk_menu_def* def,
                               int item_idx, int x, int y, int max_x) {
     int total = 0;
-    for (size_t ti = 0; ti < clk_tab_list_count(menu->tab_list); ++ti) {
-        bool act = ((int)ti == (int)menu->active_tab);
+    size_t tab_count = clk_tab_list_count(menu->tab_list);
+    for (size_t offset = 0; offset < tab_count; ++offset) {
+        size_t ti = ((size_t)menu->active_tab + offset) % tab_count;
+        bool act = (offset == 0);
         clk_menu_def** mbs =
             act ? (clk_menu_def**)def->active_members : (clk_menu_def**)def->inactive_members;
         int cnt = (int)(act ? def->active_cnt : def->inactive_cnt);

@@ -215,6 +215,10 @@
                 [
                     "edge_l",
                     {
+                        "ref": "blank",
+                        "fill": 0.1
+                    },
+                    {
                         "ref": "tab",
                         "fill": 0.8
                     },
@@ -254,7 +258,7 @@
                     "edge_l",
                     {
                         "ref": "blank",
-                        "fill": 0.20
+                        "fill": 0.2
                     },
                     {
                         "ref": "item_label",

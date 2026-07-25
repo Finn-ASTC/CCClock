@@ -18,8 +18,8 @@
     "alarms": [
       {
         "name": "⏰1",
-        "hour": 16,
-        "minute": 10,
+        "hour": 17,
+        "minute": 49,
         "enable": false,
         "loop": false,
         "sound_repeat": 3,
