@@ -1,11 +1,13 @@
 #define _GNU_SOURCE
 #include "clk_term.h"
 
+#include <locale.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <wchar.h>
 
 #include "clk_key_io.h"
 
@@ -92,6 +94,7 @@ bool clk_term_init(void) {
     if (term_initialized)
         return true;
 
+    setlocale(LC_CTYPE, "");
     clk_key_io_init();
 
     int detected_width, detected_height;
@@ -936,6 +939,12 @@ static int mk_wcwidth(wchar_t ucs) {
         return -1;
 
     if (mk_bisearch(ucs, combining, (int)(sizeof(combining) / sizeof(struct mk_interval) - 1)))
+        return 0;
+
+    int w = wcwidth(ucs);
+    if (w >= 1)
+        return w;
+    if (w == 0)
         return 0;
 
     return 1 + (ucs >= 0x1100 &&

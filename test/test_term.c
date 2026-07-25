@@ -1,3 +1,4 @@
+#include <locale.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -5,6 +6,7 @@
 #include "test_utils.h"
 
 int main(void) {
+    setlocale(LC_CTYPE, "");
     if (isatty_fd(fileno(stdout))) {
         g_pass = "  \033[32m[PASS]\033[0m ";
         g_fail = "  \033[31m[FAIL]\033[0m ";
