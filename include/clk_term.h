@@ -265,6 +265,10 @@ void clk_term_cursor_hide(void);
  *  Returns a best-effort estimate on broken UTF-8. */
 int clk_term_utf8_display_width(const char* str, size_t byte_len);
 
+/** Compute display-width columns for a NUL-terminated string.
+ *  Uses the same per-character iteration as clk_texture_write_string. */
+int clk_term_string_width(const char* str);
+
 #ifdef __cplusplus
 }
 #endif

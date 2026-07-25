@@ -261,6 +261,34 @@ int clk_term_utf8_display_width(const char* str, size_t byte_len) {
     return width;
 }
 
+int clk_term_string_width(const char* str) {
+    if (!str)
+        return 0;
+    int w = 0, i = 0;
+    while (str[i]) {
+        unsigned char c = (unsigned char)str[i];
+        int len;
+        if ((c & 0x80) == 0)
+            len = 1;
+        else if ((c & 0xE0) == 0xC0)
+            len = 2;
+        else if ((c & 0xF0) == 0xE0)
+            len = 3;
+        else if ((c & 0xF8) == 0xF0)
+            len = 4;
+        else {
+            ++i;
+            continue;
+        }
+        char tmp[5] = {0};
+        for (int j = 0; j < len && str[i + j]; ++j)
+            tmp[j] = str[i + j];
+        w += clk_cell_char_width(tmp);
+        i += len;
+    }
+    return w;
+}
+
 /* ================================================================
  *  Style registry
  * ================================================================ */
@@ -910,16 +938,14 @@ static int mk_wcwidth(wchar_t ucs) {
     if (mk_bisearch(ucs, combining, (int)(sizeof(combining) / sizeof(struct mk_interval) - 1)))
         return 0;
 
-    return 1 +
-           (ucs >= 0x1100 &&
-            (ucs <= 0x115f || ucs == 0x2329 || ucs == 0x232a || (ucs >= 0x2300 && ucs <= 0x23FF) ||
-             (ucs >= 0x2460 && ucs <= 0x24FF) || (ucs >= 0x25A0 && ucs <= 0x27BF) ||
-             (ucs >= 0x2e80 && ucs <= 0xa4cf && ucs != 0x303f) ||
-             (ucs >= 0xac00 && ucs <= 0xd7a3) || (ucs >= 0xf900 && ucs <= 0xfaff) ||
-             (ucs >= 0xfe10 && ucs <= 0xfe19) || (ucs >= 0xfe30 && ucs <= 0xfe6f) ||
-             (ucs >= 0xff00 && ucs <= 0xff60) || (ucs >= 0xffe0 && ucs <= 0xffe6) ||
-             (ucs >= 0x1B000 && ucs <= 0x1B2FF) || (ucs >= 0x1F000 && ucs <= 0x1F9FF) ||
-             (ucs >= 0x20000 && ucs <= 0x2fffd) || (ucs >= 0x30000 && ucs <= 0x3fffd)));
+    return 1 + (ucs >= 0x1100 &&
+                (ucs <= 0x115f || ucs == 0x2329 || ucs == 0x232a ||
+                 (ucs >= 0x2e80 && ucs <= 0xa4cf && ucs != 0x303f) ||
+                 (ucs >= 0xac00 && ucs <= 0xd7a3) || (ucs >= 0xf900 && ucs <= 0xfaff) ||
+                 (ucs >= 0xfe10 && ucs <= 0xfe19) || (ucs >= 0xfe30 && ucs <= 0xfe6f) ||
+                 (ucs >= 0xff00 && ucs <= 0xff60) || (ucs >= 0xffe0 && ucs <= 0xffe6) ||
+                 (ucs >= 0x1B000 && ucs <= 0x1B2FF) || (ucs >= 0x1F000 && ucs <= 0x1F9FF) ||
+                 (ucs >= 0x20000 && ucs <= 0x2fffd) || (ucs >= 0x30000 && ucs <= 0x3fffd)));
 }
 
 static int clk_cell_char_width(const char* utf8) {

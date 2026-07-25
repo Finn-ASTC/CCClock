@@ -156,14 +156,9 @@ static int render_def(const clk_menu* menu, clk_texture* tex, const clk_menu_def
 static int render_dyn_str(const clk_menu* menu, clk_texture* tex, const clk_menu_def* def,
                           int tab_index, int item_idx, int x, int y, int max_chars, int max_x);
 
-/** Counts display cells (Unicode code points) in a UTF-8 string by skipping
- *  continuation bytes. Returns the cell width. */
+/** Counts display cells (code points) in a UTF-8 string. Returns the cell width. */
 static int utf8_cell_width(const char* s) {
-    int w = 0;
-    for (const unsigned char* p = (const unsigned char*)s; *p; ++p)
-        if ((*p & 0xC0) != 0x80)
-            ++w;
-    return w;
+    return clk_term_string_width(s);
 }
 
 /** Recursively measures the rendered cell width of a def for the given tab/item.
@@ -185,7 +180,7 @@ static int measure_def(const clk_menu* menu, const clk_menu_def* def, int tab_in
         case CLK_MENU_DEF_TAB_STR: {
             clk_tab_list* tlist = menu->tab_list;
             return (tab_index >= 0 && (size_t)tab_index < clk_tab_list_count(tlist))
-                       ? (int)strlen(clk_tab_list_get_at(tlist, (size_t)tab_index)->name)
+                       ? clk_term_string_width(clk_tab_list_get_at(tlist, (size_t)tab_index)->name)
                        : 0;
         }
         case CLK_MENU_DEF_ITEM_LABEL_STR: {
@@ -193,7 +188,7 @@ static int measure_def(const clk_menu* menu, const clk_menu_def* def, int tab_in
             if (!mtab || item_idx < 0 || (size_t)item_idx >= clk_item_list_count(mtab->item_list))
                 return 0;
             const clk_menu_item* it = clk_item_list_get_at(mtab->item_list, (size_t)item_idx);
-            return it ? (int)strlen(it->label) : 0;
+            return it ? clk_term_string_width(it->label) : 0;
         }
         case CLK_MENU_DEF_ITEM_VALUE_STR: {
             const clk_menu_tab* mtab = clk_tab_list_get_at(menu->tab_list, (size_t)tab_index);
@@ -210,7 +205,7 @@ static int measure_def(const clk_menu* menu, const clk_menu_def* def, int tab_in
                 case CLK_MENU_TYPE_BOOL:
                     return it->value.b ? (int)(sizeof("true") - 1) : (int)(sizeof("false") - 1);
                 case CLK_MENU_TYPE_STR:
-                    return (int)strlen(it->value.str);
+                    return clk_term_string_width(it->value.str);
                 default:
                     return 0;
             }
@@ -339,7 +334,7 @@ static int render_tab_str(const clk_menu* menu, clk_texture* tex, const clk_menu
     int style_id =
         ((int)tab_index == (int)menu->active_tab) ? def->active_style_id : def->inactive_style_id;
     clk_texture_write_string(tex, x, y, name, style_id);
-    return (int)strlen(name);
+    return clk_term_string_width(name);
 }
 
 /** Draws an item's label at (x,y) using its active or inactive style. Returns the label length in
@@ -356,7 +351,7 @@ static int render_item_label_str(const clk_menu* menu, clk_texture* tex, const c
     int style_id =
         (item_idx == (int)mtab->active_item) ? def->active_style_id : def->inactive_style_id;
     clk_texture_write_string(tex, x, y, it->label, style_id);
-    return (int)strlen(it->label);
+    return clk_term_string_width(it->label);
 }
 
 /** Draws an item's value (int, bool, or string) formatted to text at (x,y) using
@@ -389,7 +384,7 @@ static int render_item_value_str(const clk_menu* menu, clk_texture* tex, const c
             return 0;
     }
     clk_texture_write_string(tex, x, y, ptr, style_id);
-    return (int)strlen(ptr);
+    return clk_term_string_width(ptr);
 }
 
 /* ── render_def: dispatch ── */
@@ -478,7 +473,7 @@ static int render_dyn_str(const clk_menu* menu, clk_texture* tex, const clk_menu
     }
 
     clk_texture_write_string(tex, x, y, str, style_id);
-    return clk_term_utf8_display_width(str, strlen(str));
+    return clk_term_string_width(str);
 }
 
 /** Walks to the rightmost leaf of a def, recursing into the last composite
