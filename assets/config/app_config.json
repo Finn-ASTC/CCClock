@@ -18,14 +18,25 @@
     "alarms": [
       {
         "name": "⏰1",
-        "hour": 2,
-        "minute": 55,
-        "enable": true,
+        "hour": 16,
+        "minute": 10,
+        "enable": false,
         "loop": false,
         "sound_repeat": 3,
-        "volume": 50,
+        "volume": 100,
         "repeat": "Everyday",
         "sound": "u_inx5oo5fv3-alarm-327234"
+      },
+      {
+        "name": "闹钟2",
+        "hour": 15,
+        "minute": 31,
+        "enable": false,
+        "loop": false,
+        "sound_repeat": 3,
+        "volume": 100,
+        "repeat": "Everyday",
+        "sound": "lesiakower-chiptune-alarm-clock-112869"
       },
       {
         "name": "alarm2",
@@ -63,9 +74,9 @@
   },
   "BGM": [
     {
-      "sound": "lesiakower-lo-fi-alarm-clock-243766",
-      "volume": 100,
-      "enable": false
+      "sound": "dragon-studio-relaxing-rain-444802",
+      "volume": 80,
+      "enable": true
     }
   ]
 }

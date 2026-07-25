@@ -5,10 +5,12 @@
 ## 快速开始
 
 ### 依赖
+
 - CMake 3.25+ / Ninja / vcpkg
 - miniaudio（vcpkg 自动安装）
 
 ### 构建
+
 ```bash
 cmake --preset wsl-debug
 cmake --build build/wsl-debug
@@ -17,16 +19,16 @@ cmake --build build/wsl-debug
 
 ## 快捷键
 
-| 键 | 功能 |
-|----|------|
-| `s` | 打开/关闭菜单 |
-| `f` | 切换时间格式 |
-| `r` | 切换字体 |
-| `j/k` / `↑/↓` | 菜单项上下 |
-| `h/l` / `←/→` | 调整值 |
-| `Tab` | 切换标签页 |
-| `Enter` | 确认操作 |
-| `q` | 退出菜单 / 退出程序 |
+| 键            | 功能                |
+| ------------- | ------------------- |
+| `s`           | 打开/关闭菜单       |
+| `f`           | 切换时间格式        |
+| `r`           | 切换字体            |
+| `j/k` / `↑/↓` | 菜单项上下          |
+| `h/l` / `←/→` | 调整值              |
+| `Tab`         | 切换标签页          |
+| `Enter`       | 确认操作            |
+| `q`           | 退出菜单 / 退出程序 |
 
 ## 配置
 
@@ -39,6 +41,10 @@ cmake --preset wsl-debug       # Debug + ASan/UBSan
 cmake --preset wsl-release     # Release -O3 -flto
 ctest --preset wsl-debug       # 运行测试
 ```
+
+## 说明
+
+这是我的大一期末作业，后面暑假之后，慢慢尝试做完，最后做不下去了，vibe 完成的。
 
 ## 许可
 

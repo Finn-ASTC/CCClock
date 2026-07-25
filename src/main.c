@@ -3,7 +3,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
 
 #include "clk_app_config.h"
 #include "clk_app_setup.h"
@@ -82,12 +81,12 @@ static clk_menu_input translate_menu_key(clk_key_event key_event) {
 static int edit_entity_type = 0;
 static int edit_entity_id = 0;
 static int edit_entity_id2 = 0;
+static bool g_self_saved = false;
 
 static void main_save_config(const clk_app_config* cfg, time_t* last_mtime) {
     clk_app_config_save(cfg, CLK_CONFIG_PATH);
-    struct stat statbuf;
-    if (stat(CLK_CONFIG_PATH, &statbuf) == 0)
-        *last_mtime = statbuf.st_mtime;
+    g_self_saved = true;
+    (void)last_mtime;
 }
 
 static void main_open_input_box(clk_input_box** box, const char* initial, int entity_type,
@@ -387,12 +386,12 @@ int main(void) {
                                 a->alarm.enabled = menu_event.value.b;
                                 break;
                             case CLK_ALARM_HOUR_OFFSET:
-                                clk_alarm_set(&a->alarm, (int)menu_event.value.num, a->alarm.minute,
-                                              0);
+                                a->alarm.hour = (int)menu_event.value.num;
+                                a->alarm.triggered = false;
                                 break;
                             case CLK_ALARM_MINUTE_OFFSET:
-                                clk_alarm_set(&a->alarm, a->alarm.hour, (int)menu_event.value.num,
-                                              0);
+                                a->alarm.minute = (int)menu_event.value.num;
+                                a->alarm.triggered = false;
                                 break;
                             case CLK_ALARM_REPEAT_OFFSET:
                                 a->repeat_days = clk_repeat_days_from_string(menu_event.value.str);
@@ -664,7 +663,10 @@ int main(void) {
         if (++reload_tick > CLK_HOTRELOAD_TICKS) {
             reload_tick = 0;
 
-            if (clk_fs_file_changed(CLK_CONFIG_PATH, &last_app_mtime)) {
+            if (g_self_saved) {
+                g_self_saved = false;
+                clk_fs_file_changed(CLK_CONFIG_PATH, &last_app_mtime);
+            } else if (clk_fs_file_changed(CLK_CONFIG_PATH, &last_app_mtime)) {
                 char* raw = clk_file_read_all(CLK_CONFIG_PATH, NULL);
                 if (raw) {
                     clk_json_value* new_json = clk_json_parse(raw);
