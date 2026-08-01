@@ -836,6 +836,14 @@ void clk_key_io_init(void) {
     }
 #else
     stdin_handle = GetStdHandle(STD_INPUT_HANDLE);
+    {
+        HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+        DWORD outMode;
+        if (GetConsoleMode(hOut, &outMode)) {
+            outMode |= ENABLE_PROCESSED_OUTPUT | ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+            SetConsoleMode(hOut, outMode);
+        }
+    }
     if (GetConsoleMode(stdin_handle, &saved_console_mode)) {
         has_console_mode = true;
         DWORD mode = saved_console_mode;
